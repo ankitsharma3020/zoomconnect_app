@@ -54,7 +54,7 @@ const floatAnim = useRef(new Animated.Value(0)).current;
     ]);
 
     const logoSwipeUp = Animated.timing(logoTranslateYAnim, {
-      toValue: -height * 0.37,
+      toValue: -height * 0.39,
       duration: 1200,
       easing: Easing.out(Easing.ease),
       useNativeDriver: true,
@@ -160,6 +160,7 @@ Animated.sequence([
     },
   ]}
 />
+<Image source={require('./assets/Shadow.png')} style={styles.illustration1} resizeMode="contain" />
 
 
           <TouchableOpacity style={styles.loginButton}
@@ -203,8 +204,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   bigLogo: {
-    width: width * 0.8,
-    height: height * 0.4,
+    width: width * 0.7,
+    height: height * 0.3,
   },
   bottomContainer: {
     justifyContent: 'center',
@@ -237,7 +238,13 @@ const styles = StyleSheet.create({
   illustration: {
     width: width * 0.7,
     height: height * 0.3,
-    marginVertical: 30,
+    // marginVertical: 10,
+  },
+    illustration1: {
+    width: width * 0.5,
+    height: height * 0.07,
+    marginVertical: 20,
+    marginLeft:10,
   },
  loginButton: {
   width: '70%',
