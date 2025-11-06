@@ -78,7 +78,7 @@ const RegisterScreen = ({ navigation, route }) => {
                   source={
                     dp
                       ? { uri: dp }
-                      : require('./assets/user.png')
+                      : require('../../assets/user.png')
                   }
                   style={styles.avatar}
                 />

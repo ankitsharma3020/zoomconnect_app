@@ -1,149 +1,264 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, View, Animated, Easing, StatusBar, Dimensions } from 'react-native';
-import ShimmerPlaceholder from './component/shimmer'; // Assuming this is your shimmer component
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useRef } from 'react';
+import {
+  StyleSheet,
+  View,
+  Animated,
+  Easing,
+  StatusBar,
+  Dimensions,
+  Text,
+  TouchableOpacity,
+  Image,
+  ImageBackground,
+} from 'react-native';
 
 const { width, height } = Dimensions.get('window');
 
+// Animated version of ImageBackground
+const AnimatedImageBackground = Animated.createAnimatedComponent(ImageBackground);
+
 const Splash = () => {
-  // State to control the transition from the initial shimmer to the logo animations
-  const [showLogos, setShowLogos] = useState(false);
+  const navigation=useNavigation()
+  // Logo animations
+  const logoScaleXAnim = useRef(new Animated.Value(0)).current;
+  const logoOpacityAnim = useRef(new Animated.Value(0)).current;
+  const logoTranslateYAnim = useRef(new Animated.Value(0)).current;
+const floatAnim = useRef(new Animated.Value(0)).current;
+  // Bottom content animation
+  const bottomContentTranslateYAnim = useRef(new Animated.Value(height)).current;
 
-  // General animation values
-  const backgroundFadeAnim = useRef(new Animated.Value(0)).current;
-  const logosOpacityAnim = useRef(new Animated.Value(1)).current; // To control final fade-out
-
-  // Animation for the SHORT LOGO
-  const shortLogoBounceAnim = useRef(new Animated.Value(0)).current;
-  const shortLogoOpacityAnim = useRef(new Animated.Value(0)).current;
-
-  // Animation for the MAIN LOGO
-  const mainLogoFadeAnim = useRef(new Animated.Value(0)).current;
+  // Whole screen slide-in
+  const screenTranslateYAnim = useRef(new Animated.Value(height)).current;
 
   useEffect(() => {
-    // Phase 1: Initial Generic Shimmer
-    const initialShimmerTimer = setTimeout(() => {
-      setShowLogos(true); // After 2 seconds, switch to the logo sequence
-    }, 2000);
-
-    // Main animation sequence
-    const backgroundFadeIn = Animated.timing(backgroundFadeAnim, {
-      toValue: 1,
-      duration: 800,
+    const screenSlideIn = Animated.timing(screenTranslateYAnim, {
+      toValue: 0,
+      duration: 1200,
+      easing: Easing.out(Easing.ease),
       useNativeDriver: true,
     });
 
-    const shortLogoBounce = Animated.sequence([
-      Animated.timing(shortLogoOpacityAnim, {
+    const logoAppear = Animated.parallel([
+      Animated.timing(logoScaleXAnim, {
         toValue: 1,
-        duration: 300,
+        duration: 800,
+        easing: Easing.out(Easing.ease),
         useNativeDriver: true,
       }),
-      Animated.timing(shortLogoBounceAnim, {
+      Animated.timing(logoOpacityAnim, {
         toValue: 1,
-        duration: 1000, // Slower bounce
-        easing: Easing.bounce,
+        duration: 800,
         useNativeDriver: true,
       }),
     ]);
 
-    const mainLogoFadeIn = Animated.timing(mainLogoFadeAnim, {
-      toValue: 1,
-      duration: 800,
+    const logoSwipeUp = Animated.timing(logoTranslateYAnim, {
+      toValue: -height * 0.37,
+      duration: 1200,
+      easing: Easing.out(Easing.ease),
       useNativeDriver: true,
     });
-    
-    const finalFadeOut = Animated.timing(logosOpacityAnim, {
+
+    const contentSlideUp = Animated.timing(bottomContentTranslateYAnim, {
       toValue: 0,
-      duration: 500,
+      duration: 1400,
+      easing: Easing.out(Easing.ease),
       useNativeDriver: true,
     });
 
-    // Chain the animations together
-    if (showLogos) {
-      Animated.sequence([
-        Animated.parallel([backgroundFadeIn, shortLogoBounce]), // Background and short logo appear together
-        mainLogoFadeIn, // Then the main logo appears
-        Animated.delay(4000), // Hold both logos for 4 seconds
-        finalFadeOut // Fade both out
-      ]).start();
-    }
-    
-    return () => clearTimeout(initialShimmerTimer); // Cleanup timer on unmount
-  }, [showLogos]); // This effect runs when `showLogos` changes
+Animated.sequence([
+  Animated.delay(400),
+  screenSlideIn,
+  logoAppear,
+  Animated.delay(1000),
+  Animated.parallel([logoSwipeUp, contentSlideUp]),
+]).start(() => {
+  // start gentle up/down oscillation
+  Animated.loop(
+    Animated.sequence([
+      Animated.timing(floatAnim, {
+        toValue: 1,
+        duration: 1800,
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver: true,
+      }),
+      Animated.timing(floatAnim, {
+        toValue: 0,
+        duration: 1800,
+        easing: Easing.inOut(Easing.sin),
+        useNativeDriver: true,
+      }),
+    ])
+  ).start();
+});
 
-  // Interpolations for short logo 3D bounce
-  const shortLogoScale = shortLogoBounceAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.5, 1],
-  });
-  const shortLogoRotation = shortLogoBounceAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['180deg', '0deg'],
-  });
+  }, [logoScaleXAnim, logoOpacityAnim, logoTranslateYAnim, bottomContentTranslateYAnim, screenTranslateYAnim]);
 
-  if (!showLogos) {
-    return (
-      <View style={styles.initialLoadingContainer}>
-        <StatusBar hidden={true} />
-        <ShimmerPlaceholder width={width} height={height} style={StyleSheet.absoluteFill} />
-      </View>
-    );
-  }
-
-  // --- Main Content View for the logo animations ---
   return (
-    <Animated.View style={[styles.container, { opacity: backgroundFadeAnim }]}>
-      <StatusBar barStyle="light-content" backgroundColor="#934790" />
-      
-      <Animated.View style={{ opacity: logosOpacityAnim, alignItems: 'center' }}>
-        <Animated.Image
-          source={require('./assets/Whiteshortlogo.png')}
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#f3e0f9" />
+
+      {/* Background IMAGE with the same slide-in animation */}
+      <AnimatedImageBackground
+        source={require('./assets/Splashbg.jpg')}  // <-- replace with your image
+        resizeMode="cover"
+        style={[
+          StyleSheet.absoluteFillObject,
+          styles.backgroundImage,
+          { transform: [{ translateY: screenTranslateYAnim }] },
+        ]}
+      >
+        {/* Logo */}
+        <Animated.View
           style={[
-            styles.shortLogo,
+            StyleSheet.absoluteFillObject,
+            styles.logoContainer,
             {
-              opacity: shortLogoOpacityAnim,
-              transform: [
-                { scale: shortLogoScale },
-                { rotate: shortLogoRotation },
-              ],
+              transform: [{ scaleX: logoScaleXAnim }, { translateY: logoTranslateYAnim }],
+              opacity: logoOpacityAnim,
+              zIndex: 2,
             },
           ]}
-          resizeMode="contain"
-        />
+        >
+          <Animated.Image
+            source={require('./assets/WhiteNewZoomConnectlogo.png')}
+            style={styles.bigLogo}
+            resizeMode="contain"
+          />
+        </Animated.View>
 
-        <Animated.Image
-          source={require('./assets/WhiteNewZoomConnectlogo.png')}
+        {/* Bottom Content */}
+        <Animated.View
           style={[
-            styles.mainLogo,
-            { opacity: mainLogoFadeAnim },
+            StyleSheet.absoluteFillObject,
+            styles.bottomContainer,
+            { transform: [{ translateY: bottomContentTranslateYAnim }], zIndex: 1 },
           ]}
-          resizeMode="contain"
-        />
-      </Animated.View>
-    </Animated.View>
+        >
+          <View style={styles.textContainer}>
+            <Text style={styles.welcomeTitle}>Welcome</Text>
+            <Text style={styles.welcomeSubtitle}>
+              Empower Your Well-being and Insurance Management with ZoomConnect
+            </Text>
+          </View>
+
+          <Animated.Image
+  source={require('./assets/Login.png')}
+  resizeMode="contain"
+  style={[
+    styles.illustration,
+    {
+      transform: [
+        {
+          translateY: floatAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [-10, 10], // up to down distance (tweak to taste)
+          }),
+        },
+      ],
+    },
+  ]}
+/>
+
+
+          <TouchableOpacity style={styles.loginButton}
+          onPress={()=>{
+            navigation.navigate('Login' as never)
+            }}
+          >
+            <Text style={styles.loginButtonText}>Login</Text>
+          </TouchableOpacity>
+        </Animated.View>
+      </AnimatedImageBackground>
+    </View>
   );
 };
 
 export default Splash;
 
 const styles = StyleSheet.create({
-  initialLoadingContainer: {
-    flex: 1,
-    backgroundColor: '#C59AC3',
-  },
   container: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#934790',
+    overflow: 'hidden',
+    backgroundColor: '#FFFFF',
   },
-  shortLogo: {
-    width: 150,
-    height: 150,
-    marginBottom: 20,
+
+  // Replaces gradientContainer
+  backgroundImage: {
+    borderTopLeftRadius: 40,
+    borderTopRightRadius: 40,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 20,
   },
-  mainLogo: {
-    width: 300,
-    height: 80, // Adjusted height for a more banner-like logo
+
+  logoContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
-});33
+  bigLogo: {
+    width: width * 0.8,
+    height: height * 0.4,
+  },
+  bottomContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  textContainer: {
+    alignItems: 'center',
+    width: '80%',
+    marginTop: height * 0.1,
+  },
+  welcomeTitle: {
+    fontSize: 42,
+    // fontWeight: 'bold',
+    fontFamily: 'Montserrat-Bold',
+    color: '#FFFFFF',
+    marginBottom: 15,
+    textShadowColor: 'rgba(0, 0, 0, 0.2)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  welcomeSubtitle: {
+    fontSize: 16,
+    color: '#f7f4f8ff',
+     fontFamily: 'Montserrat-Bold',
+    textAlign: 'center',
+    opacity: 0.9,
+    lineHeight: 24,
+  },
+  illustration: {
+    width: width * 0.7,
+    height: height * 0.3,
+    marginVertical: 30,
+  },
+ loginButton: {
+  width: '70%',
+  padding: 10,
+  backgroundColor: '#FFFFFF',
+  borderRadius: 20,
+  alignItems: 'center',
+
+  // --- Shadow (iOS) ---
+  shadowColor: '#370235ff',
+  shadowOffset: { width: 0, height: 10 }, // 👈 pushes shadow more downward
+  shadowOpacity: 0.25, // a bit stronger
+  shadowRadius: 10, // smoother spread
+
+  // --- Shadow (Android) ---
+  elevation: 18, // 👈 increase for deeper shadow on Android
+},
+
+  loginButtonText: {
+    fontSize: 20,
+   fontFamily: 'Montserrat-Bold',
+    color: '#934790',
+  },
+});
