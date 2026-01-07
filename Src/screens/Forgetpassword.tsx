@@ -9,123 +9,171 @@ import {
   StatusBar,
   Keyboard,
   TouchableWithoutFeedback,
-  Image,
   Animated,
-  Modal, // --- ADDED ---
+  Image,
+  Platform,
 } from 'react-native';
-import FastImage from '@d11/react-native-fast-image'
+
 import React, { useState, useRef, useEffect } from 'react';
-import DotPattern from '../component/Pattern';
-// import LinearGradient from 'react-native-linear-gradient'; // --- NO GRADIENT ---
+import LinearGradient from 'react-native-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
 
 const { height, width } = Dimensions.get('window');
 
-// Define animation constants
 const START_HEIGHT = height * 0.45;
-const END_HEIGHT = START_HEIGHT / 1.5; 
+const END_HEIGHT = START_HEIGHT / 1.5;
+// CHANGED: Increased overlap to ensure proper layering
+const OVERLAP = 50; 
 
-// --- REMOVED AnimatedLinearGradient ---
-
-// Placeholder for images
-const Images = {
-  gmail: require('../../assets/Google.png'),
-  microsoft: require('../../assets/micosoft.png'),
-  phone: require('../../assets/phone.png'),
-  email: require('../../assets/email.png'),
-  welcomeBackBg: require('../../assets/purpleshortlogo.png'),
-  appLogo: require('../../assets/purpleshortlogo.png'),
-  // forgotPasswordGif: require('../../assets/Login.gif') // This was in your code but not used
+const COLORS_DEF = {
+  primary: '#934790',     
+  primaryDark: '#6A2C66', 
+  primaryLight: '#B565B0',
+  secondary: '#FFE8D6',
+  white: '#FFFFFF',
+  bg: '#FDF8F5', 
+  text: '#4A4A4A',
+  placeholder: '#A0A0A0',
+  inputBorder: '#EADDF2',
+  inputBg: '#FAFAFC',
 };
 
 const Forgetpassword = () => {
-  // const [loginMode, setLoginMode] = useState('phone');
-  const [password, setPassword] = useState('');
-  const [username, setUsername] = useState('');
-  const [rememberMe, setRememberMe] = useState(false);
-  const [isModalVisible, setIsModalVisible] = useState(false); // --- ADDED ---
+  const navigation = useNavigation();
+  const [email, setEmail] = useState('');
+  const COLORS = COLORS_DEF;
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
 
-  // --- ADDED: Animation value ---
   const topSectionHeightAnim = useRef(new Animated.Value(START_HEIGHT)).current;
 
-  // --- ADDED: Animation logic ---
   useEffect(() => {
     Animated.timing(topSectionHeightAnim, {
       toValue: END_HEIGHT,
-      duration: 600, 
-      delay: 200,     
-      useNativeDriver: false, 
+      duration: 600,
+      delay: 200,
+      useNativeDriver: false,
     }).start();
-  }, []); 
+  }, []);
 
-  // --- DUPLICATE IMAGES OBJECT REMOVED ---
+useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-  // ... (handleSetLoginMode function is unchanged)
-  const handleSetLoginMode = (mode) => {
-    setLoginMode(mode);
-    setUsername('');
-    setPassword('');
-  };
+    const onShow = (e: any) => {
+      const h = e?.endCoordinates?.height ?? 0;
+      Animated.timing(keyboardOffset, {
+        toValue: -Math.max(0, h - 40),
+        duration: Platform.OS === 'ios' ? 250 : 200,
+        useNativeDriver: false, // <--- CHANGE THIS TO FALSE
+      }).start();
+    };
 
-  let usernamePlaceholder = 'Phone Number';
-  let keyboardType = 'phone-pad';
+    const onHide = () => {
+      Animated.timing(keyboardOffset, {
+        toValue: 0,
+        duration: Platform.OS === 'ios' ? 250 : 200,
+        useNativeDriver: false, // <--- CHANGE THIS TO FALSE
+      }).start();
+    };
 
+    const subShow = Keyboard.addListener(showEvent, onShow);
+    const subHide = Keyboard.addListener(hideEvent, onHide);
 
-
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, [keyboardOffset]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#934790" />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
-                {/* --- MODIFIED: Wrapped in Animated.View and applied animated style --- */}
-                <Animated.View style={[styles.topBackground, { height: topSectionHeightAnim }]} />
-                <Animated.View style={[styles.bottomBackground, { top: topSectionHeightAnim }]} />
           
-          {/* --- MODIFIED: Wrapped in Animated.View and applied animated style --- */}
-          <Animated.View style={[styles.topSection,{height: topSectionHeightAnim }] }>
-            <DotPattern color="#FFFFFF" opacity={0.1} />
-           <View style={styles.logoCircle}>
-                         <Image source={Images.appLogo} style={styles.logo} resizeMode="contain" />
-                       </View>
-          
-            <Text style={styles.welcomeBackText}>Forget Password!</Text>
-          </Animated.View>
-
-          {/* --- MODIFIED: Wrapped in Animated.View and applied animated style --- */}
-          <Animated.View
-            style={[styles.bottomSection, { top: topSectionHeightAnim }]}
-          >
-            {/* Input Fields */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.inputLabel}>
-               Email
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder={usernamePlaceholder}
-                keyboardType={keyboardType}
-                value={username}
-                onChangeText={setUsername}
-                placeholderTextColor="#A0A0A0"
-                autoCapitalize="none"
+          {/* --- TOP SECTION --- */}
+          {/* zIndex 1 to stay behind */}
+          <Animated.View style={[styles.topSection, { height: topSectionHeightAnim, zIndex: 1 }]}>
+             <LinearGradient
+                colors={[COLORS.primaryDark, COLORS.primary, COLORS.primaryLight]} 
+                start={{ x: 0, y: 0.5 }} 
+                end={{ x: 1, y: 0.5 }}   
+                style={StyleSheet.absoluteFill}
+              />
+            
+            <View style={styles.topBar}>
+              <TouchableOpacity onPress={() => navigation.goBack()}>
+                <Text style={styles.backText}>‹ Back</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.topLogoWrap}>
+              <Image
+                source={require('../../assets/WhiteNewZoomConnectlogo.png')}
+                style={styles.topLogo}
+                resizeMode="contain"
               />
             </View>
-
-       
-
-            {/* Main Login Button */}
-            <TouchableOpacity style={styles.loginBtn}>
-              <Text style={styles.loginBtnText}>Submit</Text>
-            </TouchableOpacity>
-
-            {/* --- ADDED: Powered By Text --- */}
-            <Text style={styles.poweredByText}>Product by Zoom Insurance Brokers Pvt Ltd</Text>
-       
-
           </Animated.View>
-              
- 
 
+          {/* --- BOTTOM CARD --- */}
+          {/* zIndex 10 to sit on top */}
+          <Animated.View
+            style={[
+              styles.bottomSection,
+              {
+                // Pulls the card UP over the top section
+                top: Animated.subtract(topSectionHeightAnim, OVERLAP),
+                transform: [{ translateY: keyboardOffset }],
+                zIndex: 10, 
+              },
+            ]}
+          >
+               <View style={styles.titleContainer}>
+            <Text style={styles.welcomeTitle}>
+              <Text style={{ color: COLORS.primaryDark}}>Forgot </Text>
+              <Text style={{ color: COLORS.primary }}>Password</Text>
+              
+            </Text>
+            <View style={styles.titleUnderline} />
+            </View>
+             
+
+            {/* Email input only */}
+            <View style={styles.inputGroup}>
+              <View style={styles.inputPill}>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Email Address"
+                  keyboardType="email-address"
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholderTextColor={COLORS.placeholder}
+                  autoCapitalize="none"
+                />
+              </View>
+            </View>
+
+            {/* CTA */}
+            <TouchableOpacity onPress={() => navigation.navigate('Otp')}>
+               <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryLight]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.loginBtn}
+            >
+              <Text style={styles.loginBtnText}>Send Reset Link</Text>
+            </LinearGradient>
+
+            </TouchableOpacity>
+           
+            {/* Divider (Optional, kept empty structure to maintain layout if needed) */}
+            <View style={styles.orLoginWithContainer}>
+              <View style={styles.line} />
+              <View style={styles.line} />
+            </View>
+
+            <Text style={styles.poweredByText}>Powered by Novel Healthtech</Text>
+          </Animated.View>
         </View>
       </TouchableWithoutFeedback>
     </SafeAreaView>
@@ -135,312 +183,121 @@ const Forgetpassword = () => {
 export default Forgetpassword;
 
 const styles = StyleSheet.create({
-  // --- Styles are UNCHANGED, except for adding poweredByText ---
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    // backgroundColor: '#E8D4B7', 
-    position: 'relative',
-  },
-  topBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF', 
-  
-  },
-  bottomBackground: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    // marginTop: 1,
-    backgroundColor: '#934790', 
-  },
+  safeArea: { flex: 1, backgroundColor: COLORS_DEF.primaryDark },
+  container: { flex: 1, backgroundColor: COLORS_DEF.bg },
+
+  // Top section
   topSection: {
-    backgroundColor: '#934790', 
-    borderBottomRightRadius: 70, 
-    shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    // elevation: 6,
-    justifyContent: 'flex-end', 
-    alignItems: 'center',
-    overflow: 'hidden',
-    paddingBottom: 20, 
-    zIndex: 1, 
-  },
-  imageBackgroundContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-    overflow: 'hidden', 
+    // Removed border radius here to let the bottom card do the masking/overlap effect
+    overflow: 'hidden',
+  },
+
+  topBar: {
+    paddingHorizontal: 18,
+    paddingTop: 38,
+    paddingBottom: 16,
+    alignItems: 'flex-start',
+  },
+  backText: { color: COLORS_DEF.white, fontSize: 17, fontWeight: '700' },
+
+  topLogoWrap: {
+    width: '100%',
     alignItems: 'center',
-    justifyContent: 'center', 
+    marginTop: 60,
   },
-  logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'white',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    top: '35%',
-    zIndex: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
+  topLogo: {
+    width: 300,
+    height: 90,
   },
-  logo: {
-    width: 100,
-    height: 100,
-  },
-  welcomeBackText: {
-    fontSize: 28,
-    color: '#fff',
-    fontWeight: 'bold',
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-  },
+
+  // Bottom card
   bottomSection: {
     position: 'absolute',
-    //  marginTop: 1,
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: '#FFFFFF', // This is YOUR style, left unchanged
-    borderTopLeftRadius: 50, 
-    
-    padding: 24,
-    overflow: 'hidden',
-    paddingTop: height * 0.10, 
+    paddingTop: 40, // Increased top padding for better visual spacing
+    paddingHorizontal: 22,
+    paddingBottom: 24,
+    backgroundColor: '#FFFFFF',
+    borderTopLeftRadius: 40, // Matches Login screen
+    borderTopRightRadius: 40,
+    // Soft Shadow
+    shadowColor: COLORS_DEF.primary,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 25,
+  },
+
+  // Titles
+  welcomeTitle: { 
+    fontSize: 32, 
+    fontWeight: '800', 
+    textAlign: 'center',
+    marginBottom: 15,
+  },
+
+  // Inputs
+  inputGroup: { width: '100%', marginBottom: 16, alignItems: 'center' },
+  inputPill: {
+    marginTop: 15,
+    width: '100%',
+    justifyContent: 'center',
+    height: 56,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: COLORS_DEF.inputBorder,
+    backgroundColor: COLORS_DEF.inputBg,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 1, 
-      shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    // elevation: 6,
-    // marginTop: 4,
   },
-  // ... (All other styles are UNCHANGED)
-  inputGroup: {
-    width: '100%',
-    marginBottom: 20,
-  },
-  inputLabel: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 8,
-    fontWeight: '600',
-  },
-  input: {
-    width: '100%',
-    height: 45,
-    borderBottomColor: '#B0AFAF',
-    borderBottomWidth: 1,
-    paddingHorizontal: 0,
-    fontSize: 16,
-    color: '#333',
-    backgroundColor: 'transparent',
-  },
-  authOptionsRow: {
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 24,
-    alignItems: 'flex-end',
-  },
-  forgotPasswordText: {
-    fontSize: 14,
-    color: '#934790',
-    fontWeight: '600',
-  },
+  inputField: { flex: 1, fontSize: 16, color: '#333' },
+
+  // CTA
   loginBtn: {
     width: '100%',
-    backgroundColor: '#934790',
-    padding: 16,
-    borderRadius: 16,
+    alignSelf: 'center',
+    paddingVertical: 17,
+    borderRadius: 29,
     alignItems: 'center',
-    marginBottom: 24,
-    shadowColor: '#6A9B48',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  loginBtnText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  smallOptionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '48%',
-    backgroundColor: '#FFFFFF',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 10,
-    borderColor: '#E0E0E0',
-    borderWidth: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  smallOptionBtnText: {
-    color: '#292727ff',
-    fontSize: 14,
-    fontWeight: '500',
-    marginLeft: 10,
-  },
-  smallOptionBtnIcon: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
-  },
-  smallOptionBtnRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: 10,
-  },
-  gif: {
-    width: 250,
-    height: 250,
-    resizeMode: 'cover',
-    marginBottom: 10, // Adds a little space above the text
-  },
-  smallOptionBtnHalf: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '45.5%',
-    backgroundColor: '#FFFFFF',
-    padding: 10,
-    borderRadius: 12,
-    borderColor: '#E0E0E0',
-    borderWidth: 1,
-  },
-  signUpContainer: {
-    flexDirection: 'row',
     marginTop: 20,
-  },
-  dontHaveAccountText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  signUpText: {
-    fontSize: 14,
-    color: '#934790',
-    fontWeight: 'bold',
-  },
- orLoginWithContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '90%', 
-    marginBottom: 24, 
-  },
-  line: {
-    flex: 1, 
-    height: 1,
-    backgroundColor: '#B0AFAF', 
-  },
-  orLoginWithText: {
-    fontSize: 14,
-    color: '#888',
-    marginHorizontal: 10, 
-  },
-
-  // --- ADDED --- Styles for the Modal ---
-modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
-  },
-  modalContent: {
-    width: '65%', // --- MODIFIED: Smaller width ---
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20, // --- MODIFIED: Slightly less padding ---
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
+    marginBottom: 6,
+    // Shadow
+    shadowColor: COLORS_DEF.primary,
+    shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowRadius: 12,
+    elevation: 10,
   },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
-  },
- 
-  modalTransparentButton: { 
-    width: '80%',
-    padding: 8, 
-    borderRadius: 15,
-    alignItems: 'center',
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    backgroundColor: 'transparent', 
-    borderWidth: 2, 
-    borderColor: '#E0E0E0', 
-  },
-  modalButtonIcon: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
-    marginRight: 10,
-  },
-  modalTransparentButtonText: { 
-    color: '#4b4a4aff', 
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  loginBtnText: { color: '#FFFFFF', fontSize: 20, fontWeight: '700', letterSpacing: 1 },
 
-  closeButton: {
-    position: 'absolute',
-    top: 1,
-    right: 2,
-    width: 25,
-    height: 25,
-    borderRadius: 15,
-    backgroundColor: '#E0E0E0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1, // Ensure it's on top
-  },
-  closeButtonText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#555',
-  },
-  
-  // --- ADDED: Powered By Text Style ---
+  // Divider
+  orLoginWithContainer: { flexDirection: 'row', alignItems: 'center', width: '100%', marginBottom: 14, marginTop: 30 },
+  line: { flex: 1, height: 1, backgroundColor: '#E0E0E0' },
+
   poweredByText: {
     position: 'absolute',
-    bottom: 64, // Matches the parent's padding
+    bottom: 40,
     fontSize: 12,
-    color: '#888',
+    color: '#AAAAAA',
+    alignSelf: 'center',
+  },
+    titleUnderline: {
+      width: 80,
+      height: 4,
+      backgroundColor: COLORS_DEF.secondary, // Accent color
+      // marginTop: 5,
+      borderRadius: 2,
+  },
+    titleContainer: {
+      marginTop: 30,
+      alignItems: 'center',
+      marginBottom: 20,
   },
 });

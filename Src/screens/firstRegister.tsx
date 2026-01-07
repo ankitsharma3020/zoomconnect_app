@@ -4,358 +4,560 @@ import {
   View,
   TouchableOpacity,
   TextInput,
-  Dimensions,
   SafeAreaView,
   StatusBar,
   Keyboard,
   TouchableWithoutFeedback,
+  Animated,
   Image,
-  ScrollView, // Added for content
-  ActivityIndicator, // Added for button status
-  Platform, // Added for platform-specific styles
+  ScrollView,
+  Platform,
+  LayoutAnimation,
+  UIManager,
 } from 'react-native';
-import React, { useState } from 'react'; // Removed useEffect, useRef
-// import Icon from 'react-native-vector-icons/MaterialCommunityIcons'; // Removed
 
-// Removed Redux, AsyncStorage, API, and other logic-heavy imports
+import React, { useState, useRef, useEffect } from 'react';
+import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { wp, hp } from '../utilites/Dimension'; // Adjusted import path based on context
 
-const { height } = Dimensions.get('window');
-const TOP_SECTION_HEIGHT = height * 0.3;
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
-// This component is now a static UI representation of the RegisterScreen
-const RegisterScreen = ({ navigation, route }) => {
-  // const { params } = route;
-  // const isnumber = params?.isnumber;
+// --- CONSTANTS ---
+// Adjusted to ensure the card sits in the vertical center
+const START_HEIGHT = hp(50); 
+const OVERLAP = hp(25); // Large overlap to pull card up into center
 
-  // Removed password visibility states as icons are removed
-  // const [passwordVisible, setPasswordVisible] = useState(false);
-  // const [confirmPasswordVisible, setConfirmPasswordVisible] = useState(false);
+// --- THEME COLORS ---
+const COLORS = {
+  primary: '#934790',
+  primaryDark: '#6A2C66',
+  primaryLight: '#B565B0',
+  secondary: '#FFE8D6',
+  white: '#FFFFFF',
+  bg: '#FDF8F5',
+  text: '#333333',
+  textLight: '#666666',
+  inputBorder: '#E0E0E0',
+  inputBg: '#FFFFFF',
+  inputDisabled: '#F5F5F5',
+};
 
-  // Simplified state for inputs
+// --- HEADER PATTERN COMPONENT ---
+const ExactShardPattern = () => {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LinearGradient
+        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)']}
+        start={{ x: 1, y: 1 }} end={{ x: 0, y: 0 }}
+        style={{ 
+          position: 'absolute', 
+          bottom: -hp(10), 
+          right: -wp(20), 
+          width: wp(150), 
+          height: wp(150), 
+          transform: [{ rotate: '-35deg' }] 
+        }}
+      />
+      <LinearGradient
+        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.0)']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={{ 
+          position: 'absolute', 
+          top: -hp(10), 
+          left: -wp(20), 
+          width: wp(120), 
+          height: wp(120), 
+          transform: [{ rotate: '25deg' }] 
+        }}
+      />
+      <View style={{ 
+        position: 'absolute', 
+        top: hp(10), 
+        left: -wp(12), 
+        width: wp(150), 
+        height: hp(25), 
+        backgroundColor: 'rgba(0,0,0,0.05)', 
+        transform: [{ rotate: '-15deg' }] 
+      }} />
+    </View>
+  );
+};
+
+// --- CARD PATTERN COMPONENT ---
+const CardPattern = () => {
+  return (
+    <View style={[StyleSheet.absoluteFill, { borderRadius: wp(6), overflow: 'hidden' }]} pointerEvents="none">
+       <LinearGradient
+          colors={['rgba(147,71,144,0.03)', 'rgba(255,255,255,0)']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+       <LinearGradient
+          colors={['rgba(147,71,144,0.04)', 'transparent']}
+          start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }}
+          style={{ 
+            position: 'absolute', 
+            top: -hp(12), 
+            right: -wp(25), 
+            width: wp(60), 
+            height: wp(60), 
+            transform: [{ rotate: '-45deg' }] 
+          }}
+        />
+    </View>
+  );
+};
+
+const RegisterScreen = ({ navigation }) => {
+  // --- STATE ---
+  const [currentStep, setCurrentStep] = useState(1); 
+
+  // Page 1 Data
+  const userData = {
+    name: 'Brijesh Chaubey',
+    email: 'email@example.com',
+    code: '00UNH72089',
+    gender: 'Male'
+  };
+
+  // Page 2 Data
   const [mobilenumber, setMobilenumber] = useState('');
-  const [employees_code, setEmployees_code] = useState('00UNH72089'); // Placeholder
-  const [email, setEmail] = useState('email@example.com'); // Placeholder
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [dp, setDP] = useState(null); // State for avatar
-  const [focusedInput, setFocusedInput] = useState(null); // State for focused input
+  const [dp, setDP] = useState(null);
 
-  // All logic (onSubmit, handleChoosePhoto, Redux hooks, etc.) has been removed.
+  // --- ANIMATIONS ---
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
+  const topSectionHeightAnim = useRef(new Animated.Value(START_HEIGHT)).current;
 
-  const getButtonStatus = () => {
-    // Simplified to always show the button
-    return (
-      <TouchableOpacity
-        onPress={() => console.log('Submit Pressed')}
-        style={styles.submitButton}>
-        <Text style={styles.submitButtonText}>Get Otp</Text>
-      </TouchableOpacity>
-    );
+  // --- KEYBOARD HANDLING ---
+  useEffect(() => {
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
+
+    const onShow = (e) => {
+      const h = e?.endCoordinates?.height ?? 0;
+      Animated.timing(keyboardOffset, {
+        toValue: -Math.max(0, h * 0.15), 
+        duration: 250,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const onHide = () => {
+      Animated.timing(keyboardOffset, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const subShow = Keyboard.addListener(showEvent, onShow);
+    const subHide = Keyboard.addListener(hideEvent, onHide);
+
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, [keyboardOffset]);
+
+  // Handle Step Transition
+  const goToStep2 = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setCurrentStep(2);
+  };
+
+  const goToStep1 = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setCurrentStep(1);
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#934790" />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <ScrollView
-          style={styles.container}
-          contentContainerStyle={styles.scrollContainer}
-          showsVerticalScrollIndicator={false}>
-          {/* Top Section */}
-          <View style={styles.topSection}>
-            {/* Removed Logout Button/Icon */}
-            <View style={styles.headerContainer}>
-              <Text style={styles.loginTitle}>Verify your details</Text>
-            </View>
-          </View>
+        <View style={styles.container}>
 
-          {/* Bottom Section - Now part of the main scroll */}
-          <View style={styles.bottomSection}>
-            {/* Avatar */}
-            <View style={styles.avatarContainer}>
-              <TouchableOpacity onPress={() => console.log('Change Photo')}>
-                <Image
-                  source={
-                    dp
-                      ? { uri: dp }
-                      : require('../../assets/user.png')
-                  }
-                  style={styles.avatar}
-                />
-              </TouchableOpacity>
-              <Text style={styles.userName}>Full Name Here</Text>
-            </View>
+          {/* --- TOP SECTION --- */}
+          <Animated.View style={[styles.topSection, { height: topSectionHeightAnim, zIndex: 1 }]}>
+            <LinearGradient
+              colors={[COLORS.primaryDark, COLORS.primary, COLORS.primaryLight]}
+              start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
+            />
+            <ExactShardPattern />
 
-            {/* Employee Code Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Employee Code</Text>
-              <View style={styles.inputWrapper}>
-                <TextInput
-                  placeholder="00UNH72089"
-                  onChangeText={setEmployees_code}
-                  placeholderTextColor={'#888'}
-                  value={employees_code}
-                  editable={false} // Kept as non-editable
-                  style={styles.input}
-                />
+            {/* Back Button */}
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonAbsolute}>
+               <Text style={styles.backText}>‹ Back</Text>
+            </TouchableOpacity>
+
+            {/* Logo */}
+            <View style={styles.topLogoWrap}>
+              <Image
+                source={require('../../assets/WhiteNewZoomConnectlogo.png')}
+                style={styles.topLogo}
+                resizeMode="contain"
+              />
+            </View>
+          </Animated.View>
+
+          {/* --- BOTTOM SECTION (Floating Card) --- */}
+          <Animated.View
+            style={[
+              styles.floatingCard,
+              {
+                top: Animated.subtract(topSectionHeightAnim, OVERLAP),
+                transform: [{ translateY: keyboardOffset }],
+                zIndex: 10,
+              },
+            ]}
+          >
+            {/* Pattern inside card */}
+            <CardPattern />
+
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+              bounces={false}
+            >
+              
+              {/* Header: Avatar & Title */}
+              <View style={styles.headerGroup}>
+                 <View style={{flex: 1}}>
+                    <Text style={styles.cardTitle}>Verify Details</Text>
+                    <Text style={styles.cardSubtitle}>Step {currentStep} of 2</Text>
+                 </View>
+                 
+                 <View style={styles.avatarWrapper}>
+                    <Image
+                      source={dp ? { uri: dp } : require('../../assets/user.png')}
+                      style={styles.avatar}
+                    />
+                    {currentStep === 2 && (
+                        <TouchableOpacity style={styles.editIconBadge} activeOpacity={0.8}>
+                        <Icon name="camera" size={hp(1.8)} color={COLORS.white} />
+                        </TouchableOpacity>
+                    )}
+                 </View>
               </View>
-            </View>
 
-            {/* Email ID Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Email ID</Text>
-              <View style={styles.inputWrapper}>
-                {/* Removed Image Icon */}
-                <TextInput
-                  placeholder="email"
-                  style={styles.input}
-                  placeholderTextColor={'#888'}
-                  onChangeText={setEmail}
-                  value={email}
-                  keyboardType="email-address"
-                  editable={false} // Kept as non-editable
-                />
+              {/* --- STEP 1: READ ONLY TEXT ROWS --- */}
+              {currentStep === 1 && (
+                <View style={styles.infoContainer}>
+                  
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Name:</Text>
+                    <Text style={styles.infoValue}>{userData.name}</Text>
+                  </View>
+                  <View style={styles.divider} />
+
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Email:</Text>
+                    <Text style={styles.infoValue}>{userData.email}</Text>
+                  </View>
+                  <View style={styles.divider} />
+
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Employee Code:</Text>
+                    <Text style={styles.infoValue}>{userData.code}</Text>
+                  </View>
+                  <View style={styles.divider} />
+
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Gender:</Text>
+                    <Text style={styles.infoValue}>{userData.gender}</Text>
+                  </View>
+                  <View style={styles.divider} />
+
+                  {/* Next Button */}
+                  <TouchableOpacity 
+                    activeOpacity={0.8}
+                    onPress={goToStep2}
+                    style={styles.buttonShadow}
+                  >
+                    <LinearGradient
+                      colors={[COLORS.primary, COLORS.primaryLight]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.submitBtn}
+                    >
+                      <Text style={styles.submitBtnText}>Next</Text>
+                      <Icon name="arrow-right" size={hp(2.5)} color={COLORS.white} style={{marginLeft: wp(2)}} />
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* --- STEP 2: MOBILE INPUT ONLY --- */}
+              {currentStep === 2 && (
+                <View>
+                  {/* Mobile Number Input */}
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Mobile Number</Text>
+                    <View style={styles.inputContainer}>
+                      <TextInput
+                        placeholder="Enter mobile number"
+                        placeholderTextColor="#BBB"
+                        onChangeText={setMobilenumber}
+                        value={mobilenumber}
+                        keyboardType="numeric"
+                        style={styles.input}
+                        autoFocus={true}
+                      />
+                    </View>
+                  </View>
+
+                  {/* Get OTP Button */}
+                  <TouchableOpacity 
+                    activeOpacity={0.8}
+                    onPress={() => navigation.navigate('Otp')}
+                    style={styles.buttonShadow}
+                  >
+                    <LinearGradient
+                      colors={[COLORS.primary, COLORS.primaryLight]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.submitBtn}
+                    >
+                      <Text style={styles.submitBtnText}>Get OTP</Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+
+                  {/* Back to Step 1 */}
+                  <TouchableOpacity onPress={goToStep1} style={styles.prevStepButton}>
+                    <Icon name="arrow-left" size={hp(2)} color={COLORS.primary} />
+                    <Text style={styles.prevStepText}>Previous Step</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {/* Footer */}
+              <View style={styles.footerContainer}>
+                 <Text style={styles.poweredByText}>Powered by Novel Healthtech</Text>
               </View>
-            </View>
+              
+              <View style={{ height: hp(2.5) }} />
+            </ScrollView>
+          </Animated.View>
 
-            {/* Mobile Number Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Mobile Number</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  focusedInput === 'mobile' && styles.inputWrapperFocused,
-                ]}>
-                {/* Removed Icon */}
-                <TextInput
-                  placeholder="phone no."
-                  placeholderTextColor={'#888'}
-                  style={styles.input}
-                  onChangeText={setMobilenumber}
-                  value={mobilenumber}
-                  keyboardType="numeric"
-                  editable={true} // Made editable
-                  onFocus={() => setFocusedInput('mobile')}
-                  onBlur={() => setFocusedInput(null)}
-                />
-              </View>
-            </View>
-
-            {/* New Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>New Password</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  focusedInput === 'password' && styles.inputWrapperFocused,
-                ]}>
-                {/* Removed Icon */}
-                <TextInput
-                  placeholder="New Password"
-                  placeholderTextColor={'#888'}
-                  style={styles.input}
-                  onChangeText={setPassword}
-                  value={password}
-                  secureTextEntry={true} // Set to true
-                  onFocus={() => setFocusedInput('password')}
-                  onBlur={() => setFocusedInput(null)}
-                />
-                {/* Removed Eye Icon */}
-              </View>
-            </View>
-
-            {/* Confirm Password Input */}
-            <View style={styles.inputContainer}>
-              <Text style={styles.inputLabel}>Confirm Password</Text>
-              <View
-                style={[
-                  styles.inputWrapper,
-                  focusedInput === 'confirmPassword' &&
-                    styles.inputWrapperFocused,
-                ]}>
-                {/* Removed Icon */}
-                <TextInput
-                  placeholderTextColor={'#888'}
-                  placeholder="Confirm Password"
-                  onChangeText={setConfirmPassword}
-                  style={styles.input}
-                  value={confirmPassword}
-                  secureTextEntry={true} // Set to true
-                  onFocus={() => setFocusedInput('confirmPassword')}
-                  onBlur={() => setFocusedInput(null)}
-                />
-                {/* Removed Eye Icon */}
-              </View>
-            </View>
-
-            {/* Submit Button */}
-            {getButtonStatus()}
-
-            {/* Removed Otpverificationmodal */}
-          </View>
-        </ScrollView>
+        </View>
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };
 
-export default RegisterScreen; // Export changed to RegisterScreen
+export default RegisterScreen;
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#E8D4B7', // Changed background to match bottom
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#E8D4B7',
-  },
-  scrollContainer: {
-    // padding: 24, // Padding is now on bottomSection
-    alignItems: 'center', // Center content horizontally in scrollview
-    paddingBottom: 40, // Ensure space at the bottom
-  },
+  safeArea: { flex: 1, backgroundColor: COLORS.primaryDark },
+  container: { flex: 1, backgroundColor: COLORS.primaryDark },
+
+  // --- Top Section ---
   topSection: {
-    height: TOP_SECTION_HEIGHT,
-    backgroundColor: '#934790',
-    borderBottomLeftRadius: 60,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 10,
-    position: 'relative',
-    // paddingTop: 20, // Removed, padding handled by safearea
-    justifyContent: 'center', // Center content vertically
-    width: '100%', // Ensure it takes full width
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    overflow: 'hidden',
+    justifyContent: 'flex-start', 
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'android' ? hp(7.5) : hp(8.5), // approx 60/70
   },
-  headerContainer: {
+  backButtonAbsolute: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? hp(5) : hp(5),
+    left: wp(5),
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    width: '100%',
-    position: 'relative',
-    paddingTop: 20, // Adjusted padding
+    zIndex: 10,
+    padding: wp(2),
   },
-  backButton: {
-    // Style remains for potential future use, but button is removed
+  backText: { 
+    color: COLORS.white, 
+    fontSize: hp(2), 
+    fontFamily: 'Montserrat-SemiBold' 
+  },
+  topLogoWrap: { 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    // Shift logo up slightly to sit nicely above card
+    marginTop: hp(5), 
+  },
+  topLogo: { 
+    width: wp(65), 
+    height: hp(10) 
+  }, 
+
+  // --- Floating Card ---
+  floatingCard: {
     position: 'absolute',
-    right: 20,
-    top: 40,
-    padding: 10,
-    zIndex: 1,
+    left: wp(5), 
+    right: wp(5), 
+    backgroundColor: '#FFFFFF',
+    borderRadius: wp(6),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: hp(1) },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+    paddingBottom: hp(1.2),
+    overflow: 'hidden', 
   },
-  logoutIcon: {
-    // Style remains for potential future use, but button is removed
-    width: 25,
-    height: 25,
+  scrollContent: {
+    paddingHorizontal: wp(6),
+    paddingTop: hp(3.7), // approx 30
+    paddingBottom: hp(2.5),
   },
-  backText: {
-    fontSize: 30,
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  loginTitle: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: 'bold',
-    marginTop: 80,
-  },
-  bottomSection: {
-    // flex: 1, // Removed flex: 1
-    backgroundColor: '#E8D4B7',
-    padding: 24, // Added padding here
-    width: '100%', // Ensure it takes full width
-  },
-  avatarContainer: {
+
+  // --- Header Inside Card ---
+  headerGroup: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20, // Added margin
+    marginBottom: hp(3),
+  },
+  cardTitle: {
+    fontSize: hp(2.4), // approx 24
+    fontFamily: 'Montserrat-Bold',
+    color: COLORS.text,
+  },
+  cardSubtitle: {
+    fontSize: hp(1.6), // approx 13
+    color: COLORS.primary,
+    marginTop: hp(0.5),
+    fontFamily: 'Montserrat-SemiBold',
+  },
+  avatarWrapper: {
+    position: 'relative',
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 10,
-    borderWidth: 3,
-    borderColor: '#934790',
+    width: wp(15), // approx 60
+    height: wp(15),
+    borderRadius: wp(7.5),
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
-  userName: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#333',
+  editIconBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: COLORS.primary,
+    width: wp(5.5), // approx 22
+    height: wp(5.5),
+    borderRadius: wp(2.75),
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFF',
+  },
+
+  // --- Info Display (Step 1) ---
+  infoContainer: {
+    marginTop: hp(1.2),
+    marginBottom: hp(2.5),
+  },
+  infoRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: hp(1.5), // approx 12
+  },
+  infoLabel: {
+    fontSize: hp(1.5), // approx 15
+    color: COLORS.textLight,
+    fontFamily: 'Montserrat-SemiBold',
+  },
+  infoValue: {
+    fontSize: hp(1.6), // approx 16
+    color: COLORS.text,
+    fontFamily: 'Montserrat-Bold',
+    textAlign: 'right',
+    flex: 1, 
+    marginLeft: wp(5), 
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F0F0F0',
+    width: '100%',
+  },
+
+  // --- Input Styles (Step 2) ---
+  inputGroup: {
+    marginBottom: hp(3),
+    marginTop: hp(1.2),
+  },
+  label: {
+    fontSize: hp(1.8), // approx 14
+    fontFamily: 'Montserrat-SemiBold',
+    color: COLORS.textLight,
+    marginBottom: hp(1),
+    marginLeft: wp(1),
   },
   inputContainer: {
-    width: '100%',
-    marginBottom: 15,
-  },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 5,
-  },
-  // New inputWrapper style based on original 'input'
-  inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    width: '100%',
-    height: 55,
-    borderColor: '#B0AFAF',
     borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16, // Adjusted padding as icon is gone
-    backgroundColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  inputWrapperFocused: {
-    borderColor: '#934790',
-    borderWidth: 2,
-    shadowColor: '#934790',
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
+    borderColor: COLORS.inputBorder,
+    borderRadius: wp(3), // approx 12
+    height: hp(6.2), // approx 50
+  
+    paddingHorizontal: wp(3),
+    backgroundColor: 'rgba(255,255,255,0.9)', 
   },
   input: {
     flex: 1,
-    height: '100%', // Take full height of wrapper
-    paddingHorizontal: 0, // Reset padding as it's on wrapper
-    fontSize: 16,
-    color: '#333',
-    fontFamily: 'Roboto-Regular',
+    fontSize: hp(1.7), // approx 15
+    color: COLORS.text,
+    fontFamily: 'Montserrat-SemiBold',
+    height: '100%',
   },
-  inputIcon: {
-    // Style remains for potential future use, but icon is removed
-    width: 24,
-    height: 24,
-    resizeMode: 'contain',
-  },
-  eyeIcon: {
-    // Style remains for potential future use, but icon is removed
-    padding: 5,
-  },
-  // Renamed loginBtn to submitButton
-  submitButton: {
-    width: '100%',
-    backgroundColor: '#934790',
-    padding: 16,
-    borderRadius: 12,
-    alignItems: 'center',
-    marginTop: 20, // Added top margin
-    // marginBottom: 40, // Removed, bottom padding on scrollContainer
-    shadowColor: '#934790',
-    shadowOffset: { width: 0, height: 4 },
+
+  // --- Button ---
+  buttonShadow: {
+    marginTop: hp(2.5),
+    marginBottom: hp(1.2),
+    shadowColor: COLORS.primary,
+    shadowOffset: { width: 0, height: hp(0.5) },
     shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  // Renamed loginBtnText to submitButtonText
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
+  submitBtn: {
+    height: hp(6), // approx 52
+    borderRadius: wp(3), // approx 12
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  submitBtnText: {
+    color: '#FFFFFF',
+    fontSize: hp(1.8), // approx 17
+    fontFamily: 'Montserrat-Bold',
+    letterSpacing: 0.5,
+  },
+
+  // --- Previous Step Button ---
+  prevStepButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: hp(1.5),
+  },
+  prevStepText: {
+    color: COLORS.primary,
+    fontFamily: 'Montserrat-SemiBold',
+    marginLeft: wp(1.5),
+  },
+
+  // --- Footer ---
+  footerContainer: {
+    alignItems: 'center',
+    marginTop: hp(1.8),
+  },
+  poweredByText: {
+    fontSize: hp(1.4), // approx 11
+    color: '#CCC',
+    fontFamily: 'Montserrat-Regular',
   },
 });

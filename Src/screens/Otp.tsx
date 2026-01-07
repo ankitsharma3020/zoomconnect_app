@@ -4,76 +4,170 @@ import {
   View,
   TouchableOpacity,
   TextInput,
-  Dimensions,
   SafeAreaView,
   StatusBar,
   Keyboard,
   TouchableWithoutFeedback,
+  Animated,
   Image,
-  Animated, // --- RE-ADDED ---
-  Modal,
-  Pressable, 
+  ScrollView,
+  Platform,
 } from 'react-native';
-import FastImage from '@d11/react-native-fast-image'
+
 import React, { useState, useRef, useEffect } from 'react';
-import DotPattern from '../component/Pattern';
+import LinearGradient from 'react-native-linear-gradient';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useNavigation } from '@react-navigation/native';
+import { wp, hp } from '../utilites/Dimension'; // Adjusted import
+import { useOtpVerifyMutation } from '../redux/service/user/user';
+import { ActivityIndicator, ToastAndroid } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useDispatch } from 'react-redux';
+import { setUser } from '../redux/service/userSlice';
 
-const { height, width } = Dimensions.get('window');
+// --- CONSTANTS ---
+// Matches Register Screen Header Height
+const START_HEIGHT = hp(32); // Replaced height * 0.32
+const OVERLAP = hp(7); // Replaced height * 0.07
 
-// Define animation constants
-const START_HEIGHT = height * 0.45;
-const END_HEIGHT = START_HEIGHT / 1.5; 
-
-// Placeholder for images
-const Images = {
-  // ... (your images)
-  appLogo: require('../../assets/purpleshortlogo.png'),
+// --- THEME COLORS ---
+const COLORS = {
+  primary: '#934790',     
+  primaryDark: '#6A2C66', 
+  primaryLight: '#B565B0',
+  secondary: '#FFE8D6',   
+  white: '#FFFFFF',
+  bg: '#FDF8F5', 
+  text: '#434141ff',
+  inputBorder: '#EADDF2',
+  inputBg: '#FAFAFC',
+  success: '#81ce85ff',
+  error: '#D32F2F',
+  textLight: '#888',
 };
 
-const OTP = () => {
+// --- HEADER PATTERN (Shard) ---
+const ExactShardPattern = () => {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <LinearGradient
+        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)']}
+        start={{ x: 1, y: 1 }} end={{ x: 0, y: 0 }}
+        style={{ 
+          position: 'absolute', 
+          bottom: -hp(10), 
+          right: -wp(20), 
+          width: wp(150), 
+          height: wp(150), 
+          transform: [{ rotate: '-35deg' }] 
+        }}
+      />
+      <LinearGradient
+        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.0)']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+        style={{ 
+          position: 'absolute', 
+          top: -hp(10), 
+          left: -wp(20), 
+          width: wp(120), 
+          height: wp(120), 
+          transform: [{ rotate: '25deg' }] 
+        }}
+      />
+      <View style={{ 
+        position: 'absolute', 
+        top: hp(10), 
+        left: -50, 
+        width: wp(150), 
+        height: 200, 
+        backgroundColor: 'rgba(0,0,0,0.05)', 
+        transform: [{ rotate: '-15deg' }] 
+      }} />
+    </View>
+  );
+};
+
+// --- CARD PATTERN ---
+const CardPattern = () => {
+  return (
+    <View style={[StyleSheet.absoluteFill, { borderRadius: wp(6), overflow: 'hidden' }]} pointerEvents="none">
+       <LinearGradient
+          colors={['rgba(147,71,144,0.03)', 'rgba(255,255,255,0)']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+       <LinearGradient
+          colors={['rgba(147,71,144,0.04)', 'transparent']}
+          start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }}
+          style={{ 
+            position: 'absolute', 
+            top: -100, 
+            right: -100, 
+            width: wp(60), 
+            height: wp(60), 
+            transform: [{ rotate: '-45deg' }] 
+          }}
+        />
+    </View>
+  );
+};
+
+const Otp = ({route}) => {
+  const { data, mode } = route.params;
+  const navigation = useNavigation();
+  const dispatch = useDispatch();
+
   const [otp, setOtp] = useState('');
-  const textInputRef = useRef(null);
-  const boxArray = new Array(4).fill(0); // For mapping the 4 boxes
-
-  const [status, setStatus] = useState<'idle' | 'success' | 'error'>('idle');
-  const shakeAnimation = useRef(new Animated.Value(0)).current;
+  const [OtpVerify] = useOtpVerifyMutation();
+  const [loading, setLoading] = useState(false);
   
-  const [timer, setTimer] = useState(30);
-  const [isResendDisabled, setIsResendDisabled] = useState(true);
-
-  // --- ADDED: Animation value ---
+  // --- ANIMATIONS ---
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
   const topSectionHeightAnim = useRef(new Animated.Value(START_HEIGHT)).current;
+  const shakeAnimation = useRef(new Animated.Value(0)).current;
 
-  // --- ADDED: Animation logic ---
+  // --- KEYBOARD HANDLING ---
   useEffect(() => {
-    Animated.timing(topSectionHeightAnim, {
-      toValue: END_HEIGHT,
-      duration: 600, 
-      delay: 200,     
-      useNativeDriver: false, 
-    }).start();
-  }, []); 
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-  // Focus the hidden input on mount
+    const onShow = (e) => {
+      const h = e?.endCoordinates?.height ?? 0;
+      Animated.timing(keyboardOffset, {
+        toValue: -Math.max(0, h * 0.15), // Slide slightly
+        duration: 250,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const onHide = () => {
+      Animated.timing(keyboardOffset, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const subShow = Keyboard.addListener(showEvent, onShow);
+    const subHide = Keyboard.addListener(hideEvent, onHide);
+
+    return () => {
+      subShow.remove();
+      subHide.remove();
+    };
+  }, [keyboardOffset]);
+
+  // --- OTP LOGIC ---
+  const textInputRef = useRef(null);
+  const boxArray = new Array(6).fill(0);
+  const [status, setStatus] = useState('idle'); // 'idle' | 'success' | 'error'
+
   useEffect(() => {
     if (textInputRef.current) {
       textInputRef.current.focus();
     }
   }, []);
 
-  // --- useEffect for countdown timer ---
-  useEffect(() => {
-    if (!isResendDisabled || timer === 0) {
-      if(timer === 0) setIsResendDisabled(false);
-      return;
-    }
-    const intervalId = setInterval(() => {
-      setTimer(t => t - 1);
-    }, 1000);
-    return () => clearInterval(intervalId);
-  }, [isResendDisabled, timer]);
-
-  // --- Handlers ---
   const handleOnPress = () => {
     if (textInputRef.current) {
       textInputRef.current.focus();
@@ -81,13 +175,12 @@ const OTP = () => {
   };
 
   const handleOnChangeText = (value) => {
-    setStatus('idle'); // Reset status on new input
+    setStatus('idle');
     setOtp(value);
   };
 
-  // --- Shake animation function ---
   const triggerShake = () => {
-    shakeAnimation.setValue(0); // Reset animation
+    shakeAnimation.setValue(0);
     Animated.sequence([
       Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
       Animated.timing(shakeAnimation, { toValue: -10, duration: 50, useNativeDriver: true }),
@@ -96,272 +189,364 @@ const OTP = () => {
     ]).start();
   };
 
-  // --- Verify OTP function ---
-  const handleVerifyOTP = () => {
-    if (otp.length !== 4) {
+  const handleVerifyOTP = async () => {
+
+  if (!otp ) {
       triggerShake();
       setStatus('error');
+      ToastAndroid.show('Please enter a valid 6-digit OTP', ToastAndroid.SHORT);
       return;
     }
-    
-    // Simulate API check
-    if (otp === '1234') {
-      setStatus('success');
-      Keyboard.dismiss();
-    } else {
+    setLoading(true);
+    try {
+      // You may need to adjust login_type and login_value based on your flow
+      const body = {
+        login_type: mode === 'email' ? 'email' : 'mobile',
+        login_value: data,
+        otp: otp,
+      };
+      
+      const response = await OtpVerify(body).unwrap();
+      console.log('OTP Verify Response:', response);
+      
+      if (response && (response.success || response.status === 'success')) {
+        // Save token in AsyncStorage if present
+        if (response.data && response.data.token) {
+          await AsyncStorage.setItem('token', response.data.token);
+        }
+        setStatus('success');
+        ToastAndroid.show('OTP Verified!', ToastAndroid.SHORT);
+        dispatch(setUser(true));
+        // Navigate or dispatch as needed
+        // navigation.navigate('NextScreen');
+      } else {
+        triggerShake();
+        setStatus('error');
+        ToastAndroid.show('OTP verification faileda', ToastAndroid.SHORT);
+      }
+    } catch (error) {
+      console.error('Error verifying OTP:', error);
       triggerShake();
       setStatus('error');
+      ToastAndroid.show(`OTP verification failedcatch ${error}`, ToastAndroid.SHORT);
+    } finally {
+      setLoading(false);
     }
   };
 
-  // --- Resend OTP function ---
+  // --- TIMER LOGIC ---
+  const [timer, setTimer] = useState(30);
+  const [isResendDisabled, setIsResendDisabled] = useState(true);
+
+  useEffect(() => {
+    if (!isResendDisabled || timer === 0) {
+      if (timer === 0) setIsResendDisabled(false);
+      return;
+    }
+    const intervalId = setInterval(() => {
+      setTimer(t => t - 1);
+    }, 1000);
+    return () => clearInterval(intervalId);
+  }, [isResendDisabled, timer]);
+
   const onResendOtp = () => {
-    console.log("Resending OTP...");
-    setTimer(30); // Reset timer to 30 seconds
-    setIsResendDisabled(true); // Disable the button
+    setTimer(30);
+    setIsResendDisabled(true);
   };
 
-  // --- Animated style for the container ---
   const animatedOtpContainerStyle = {
     transform: [{ translateX: shakeAnimation }]
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="light-content" backgroundColor="#934790" />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
-                {/* --- MODIFIED: Wrapped in Animated.View and applied animated style --- */}
-                <Animated.View style={[styles.topBackground, { height: topSectionHeightAnim }]} />
-                <Animated.View style={[styles.bottomBackground, { top: topSectionHeightAnim }]} />
           
-          {/* --- MODIFIED: Wrapped in Animated.View and applied animated style --- */}
-          <Animated.View style={[styles.topSection,{height: topSectionHeightAnim }] }>
-            <DotPattern color="#FFFFFF" opacity={0.1} />
-           <View style={styles.logoCircle}>
-                         <Image source={Images.appLogo} style={styles.logo} resizeMode="contain" />
-                       </View>
-          
-            <Text style={styles.welcomeBackText}>Enter OTP</Text>
-          </Animated.View>
-
-          {/* --- MODIFIED: Wrapped in Animated.View and applied animated style --- */}
-          <Animated.View
-            style={[styles.bottomSection, { top: topSectionHeightAnim }]}
-          >
-            <Text style={styles.inputLabel}>
-               OTP Code
-            </Text>
-            
-            <Animated.View style={[styles.otpContainer, animatedOtpContainerStyle]}>
-              <Pressable style={styles.pressableContainer} onPress={handleOnPress}>
-                {boxArray.map((_, index) => {
-                  const digit = otp[index] || '';
-                  const isFilled = digit !== '';
-                  const isActive = index === otp.length;
-
-                  const boxStyle = [
-                    styles.otpBox,
-                    isFilled && styles.otpBoxFilled,
-                    isActive && status === 'idle' && styles.otpBoxActive,
-                    status === 'success' && styles.otpBoxSuccess,
-                    status === 'error' && styles.otpBoxError,
-                  ];
-
-                  return (
-                    <View key={index} style={boxStyle}>
-                      <Text style={styles.otpText}>{digit}</Text>
-                    </View>
-                  );
-                })}
-              </Pressable>
-            </Animated.View>
-
-            {/* This is the hidden input that actually handles the text */}
-            <TextInput
-              ref={textInputRef}
-              style={styles.hiddenTextInput}
-              value={otp}
-              onChangeText={handleOnChangeText}
-              maxLength={4}
-              keyboardType="number-pad"
-              textContentType="oneTimeCode" // For iOS autofill
+          {/* --- TOP SECTION (Gradient Header) --- */}
+          <Animated.View style={[styles.topSection, { height: topSectionHeightAnim, zIndex: 1 }]}>
+            <LinearGradient
+              colors={[COLORS.primaryDark, COLORS.primary, COLORS.primaryLight]}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={StyleSheet.absoluteFill}
             />
             
-            <TouchableOpacity style={styles.loginBtn} onPress={handleVerifyOTP}>
-              <Text style={styles.loginBtnText}>Verify OTP</Text>
+            <ExactShardPattern />
+            
+            {/* Back Button */}
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonAbsolute}>
+              <Text style={styles.backText}>‹ Back</Text>
             </TouchableOpacity>
-              <View style={styles.resendContainer}>
-              {isResendDisabled ? (
-                <Text style={styles.resendText}>
-                  Resend code in <Text style={{fontWeight: 'bold'}}>{timer}s</Text>
-                </Text>
-              ) : (
-                <View style={{flexDirection:'row'}}>
-                  <Text style={styles.resendText}>Didn't receive the code? </Text>
-                  <TouchableOpacity onPress={onResendOtp}>
-                  <Text style={styles.resendButtonText}>Resend</Text>
-                </TouchableOpacity>
-                </View>
-                  
-               
-              )}
+
+            {/* Logo */}
+            <View style={styles.topLogoWrap}>
+              <Image
+                source={require('../../assets/WhiteNewZoomConnectlogo.png')}
+                style={styles.topLogo}
+                resizeMode="contain"
+              />
             </View>
-
-            <Text style={styles.poweredByText}>Product by Zoom Insurance Brokers Pvt Ltd</Text>
-
           </Animated.View>
-              
+
+          {/* --- BOTTOM SECTION (Floating Card) --- */}
+          <Animated.View
+            style={[
+              styles.floatingCard,
+              {
+                top: Animated.subtract(topSectionHeightAnim, OVERLAP),
+                transform: [{ translateY: keyboardOffset }],
+                zIndex: 10,
+              },
+            ]}
+          >
+            {/* Inner Pattern */}
+            <CardPattern />
+
+            <ScrollView 
+              contentContainerStyle={styles.scrollContent} 
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+            >
+                {/* Title */}
+                <View style={styles.titleContainer}>
+                    <Text style={styles.welcomeTitle}>
+                    <Text style={{ color: COLORS.primaryDark}}>Enter </Text>
+                    <Text style={{ color: COLORS.primary }}>OTP</Text>
+                    </Text>
+                    <View style={styles.titleUnderline} />
+                </View>
+
+                {/* OTP Input */}
+                <View style={styles.inputGroup}>
+                <Animated.View style={[styles.otpContainer, animatedOtpContainerStyle]}>
+                    <TouchableOpacity style={styles.pressableContainer} onPress={handleOnPress} activeOpacity={1}>
+                    {boxArray.map((_, index) => {
+                        const digit = otp[index] || '';
+                        const isFilled = digit !== '';
+                        const isActive = index === otp.length;
+                        
+                        const boxStyle = [
+                        styles.otpBox,
+                        isFilled && styles.otpBoxFilled,
+                        isActive && status === 'idle' && styles.otpBoxActive,
+                        status === 'success' && styles.otpBoxSuccess,
+                        status === 'error' && styles.otpBoxError,
+                        ];
+                        
+                        return (
+                        <View key={index} style={boxStyle}>
+                            <Text style={styles.otpText}>{digit}</Text>
+                        </View>
+                        );
+                    })}
+                    </TouchableOpacity>
+                </Animated.View>
+                
+                {/* Hidden input */}
+        <TextInput
+          ref={textInputRef}
+          style={styles.hiddenTextInput}
+          value={otp}
+          onChangeText={handleOnChangeText}
+          maxLength={6}
+          keyboardType="number-pad"
+          textContentType="oneTimeCode"
+        />
+                </View>
+
+                {/* Verify Button */}
+                <TouchableOpacity 
+                    onPress={loading ? undefined : handleVerifyOTP}
+                    style={styles.buttonShadow}
+                    activeOpacity={0.8}
+                    disabled={loading}
+                >
+                  <LinearGradient
+                      colors={[COLORS.primary, COLORS.primaryLight]}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.loginBtn}
+                  >
+                    {loading ? (
+                      <ActivityIndicator color="#fff" />
+                    ) : (
+                      <Text style={styles.loginBtnText}>Verify OTP</Text>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+
+                {/* Resend Link */}
+                <View style={styles.resendContainer}>
+                {isResendDisabled ? (
+                    <Text style={styles.resendText}>
+                    Resend code in <Text style={{ fontFamily: 'Montserrat-Bold' }}>{timer}s</Text>
+                    </Text>
+                ) : (
+                    <View style={{ flexDirection: 'row' }}>
+                    <Text style={styles.resendText}>Didn't receive the code? </Text>
+                    <TouchableOpacity onPress={onResendOtp}>
+                        <Text style={styles.resendButtonText}>Resend</Text>
+                    </TouchableOpacity>
+                    </View>
+                )}
+                </View>
+
+                <View style={styles.footerContainer}>
+                    <Text style={styles.poweredByText}>Powered by Novel Healthtech</Text>
+                </View>
+
+                {/* Spacer */}
+                <View style={{height: hp(2.5)}} />
+            </ScrollView>
+          </Animated.View>
         </View>
       </TouchableWithoutFeedback>
     </SafeAreaView>
   );
 };
 
-export default OTP;
+export default Otp;
 
 const styles = StyleSheet.create({
-  // --- Styles are UNCHANGED ---
-  safeArea: {
-    flex: 1,
-  },
-  container: {
-    flex: 1,
-    position: 'relative',
-  },
-  topBackground: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: '#FFFFFF', 
-  },
-  bottomBackground: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#934790', 
-  },
+  safeArea: { flex: 1, backgroundColor: COLORS.primaryDark },
+  container: { flex: 1, backgroundColor: COLORS.primaryDark },
+
+  // --- Top Section ---
   topSection: {
-    backgroundColor: '#934790', 
-    borderBottomRightRadius: 70, 
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    justifyContent: 'flex-end', 
-    alignItems: 'center',
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
     overflow: 'hidden',
-    paddingBottom: 20, 
-    zIndex: 1, 
-  },
-  logoCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'white',
-    justifyContent: 'center',
+    justifyContent: 'flex-start', 
     alignItems: 'center',
+    paddingTop: Platform.OS === 'android' ? hp(7.5) : hp(8.5), // approx 60/70
+  },
+  backButtonAbsolute: {
     position: 'absolute',
-    top: '35%',
-    zIndex: 1,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  logo: {
-    width: 100,
-    height: 100,
-  },
-  welcomeBackText: {
-    fontSize: 28,
-    color: '#fff',
-    fontWeight: 'bold',
-    position: 'absolute',
-    bottom: 20,
-    left: 0,
-    right: 0,
-    textAlign: 'center',
-  },
-  bottomSection: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: 50, 
-    padding: 24,
-    overflow: 'hidden',
-    paddingTop: height * 0.10, 
-    alignItems: 'center',
-    zIndex: 1, 
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-  },
-  
-  // --- OTP Styles ---
-  inputLabel: {
-    fontSize: 16, 
-    color: '#333',
-    marginBottom: 24, 
-    fontWeight: '600',
-    alignSelf: 'center', 
-  },
-  otpContainer: {
-    width: '90%',
-    // --- MODIFIED: Reduced bottom margin ---
-    marginBottom: 20, 
-  },
-  pressableContainer: { 
+    top: Platform.OS === 'android' ? hp(5) : hp(5),
+    left: wp(5),
     flexDirection: 'row',
-    justifyContent: 'space-around',
+    alignItems: 'center',
+    zIndex: 10,
+    padding: wp(2),
   },
-  otpBox: {
-    width: 70,
-    height: 80,
-    borderRadius: 12,
-    backgroundColor: '#FFFFFF', 
+  backText: { 
+    color: COLORS.white, 
+    fontSize: hp(2), 
+    fontFamily: 'Montserrat-SemiBold' 
+  },
+  topLogoWrap: { 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: hp(5), 
+  },
+  topLogo: { 
+    width: wp(65), 
+    height: hp(10) 
+  }, 
+
+  // --- Floating Card ---
+  floatingCard: {
+    position: 'absolute',
+    left: wp(5), 
+    right: wp(5), 
+    backgroundColor: '#FFFFFF',
+    borderRadius: wp(6),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: hp(1) },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+    paddingBottom: hp(1.2),
+    overflow: 'hidden', 
+  },
+  scrollContent: {
+    paddingHorizontal: wp(6),
+    paddingTop: hp(5), // approx 40
+    paddingBottom: hp(2.5),
+  },
+
+  // --- Titles ---
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: hp(5),
+  },
+  welcomeTitle: { 
+    fontSize: hp(3), // approx 28
+    fontFamily: 'Montserrat-Bold', 
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  titleUnderline: {
+      width: wp(10), // approx 40
+      height: hp(0.5), // approx 4
+      backgroundColor: COLORS.secondary, // Beige Accent
+      marginTop: hp(1),
+      borderRadius: wp(0.5),
+  },
+
+  // --- Inputs ---
+  inputGroup: { width: '100%', marginBottom: hp(2), alignItems: 'center' },
+
+  // --- OTP Box Styling ---
+  otpContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: hp(2.3),
+    width: '100%',
+  },
+  pressableContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-evenly', 
+    width: '100%',
+    gap: wp(0.5),
+  },
+ otpBox: {
+    width: wp(12), // smaller width
+    height: hp(6.5), // smaller height
+    borderRadius: wp(2),
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#E8E8E8',
+    borderBottomWidth: 3,
+    borderBottomColor: '#D9D9D9',
     shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: hp(0.2) },
+    shadowOpacity: 0.10,
+    shadowRadius: 3,
     elevation: 3,
-    transitionProperty: 'border-color, transform',
-    transitionDuration: '0.2s',
+    marginHorizontal: wp(0.5),
   },
   otpBoxFilled: {
-    borderColor: '#333', // Black outline when filled
-    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderBottomColor: COLORS.primary, // Make ledge purple
+    backgroundColor: '#FAFAFA',
   },
   otpBoxActive: {
-    borderColor: '#934790', // Purple outline when active
-    borderWidth: 2,
-    transform: [{ scale: 1.05 }], // "Pop" animation
+    borderColor: COLORS.primary,
+    borderBottomColor: COLORS.primary,
+    backgroundColor: '#FFF',
+    transform: [{ translateY: 2 }], // Press down effect (move down by 2px)
+    borderBottomWidth: 3, // Reduce ledge height to simulate pressing
+    elevation: 2, // Reduce elevation
   },
   otpBoxSuccess: {
-    borderColor: '#2E7D32', // Green
-    backgroundColor: '#E8F5E9',
-    borderWidth: 2,
+    borderColor: COLORS.success,
+    borderBottomColor: '#1B5E20',
+    backgroundColor: '#F1F8E9',
   },
   otpBoxError: {
-    borderColor: '#D32F2F', // Red
+    borderColor: COLORS.error,
+    borderBottomColor: '#B71C1C',
     backgroundColor: '#FFEBEE',
-    borderWidth: 2,
   },
   otpText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#5c5555ff',
+    fontSize: hp(2.2), // smaller font
+    fontFamily: 'Montserrat-Bold',
+    color: COLORS.text,
   },
   hiddenTextInput: {
     position: 'absolute',
@@ -369,122 +554,55 @@ const styles = StyleSheet.create({
     height: 1,
     opacity: 0,
   },
-  // --- END OTP Styles ---
-  
-  // --- ADDED: Resend and Powered By Styles ---
+
+  // --- CTA Button ---
+  buttonShadow: {
+      marginTop: hp(1.5),
+      marginBottom: hp(0.8),
+      shadowColor: COLORS.primary,
+      shadowOffset: { width: 0, height: hp(0.5) },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
+  },
+  loginBtn: {
+    width: '100%',
+    alignSelf: 'center',
+    paddingVertical: hp(1.5), // approx 16
+    borderRadius: wp(6), // approx 25
+    alignItems: 'center',
+  },
+  loginBtnText: { 
+    color: '#FFFFFF', 
+    fontSize: hp(2), // approx 18
+    fontFamily: 'Montserrat-Bold', 
+    letterSpacing: 1 
+  },
+
+  // --- Resend ---
   resendContainer: {
-     marginTop: 20,
-   // Space before the verify button
+    marginTop: hp(2.5),
     alignItems: 'center',
   },
   resendText: {
-    fontSize: 14,
+    fontSize: hp(1.5), // approx 14
     color: '#888',
+    fontFamily: 'Montserrat-Regular',
   },
   resendButtonText: {
-    fontSize: 14,
-    color: '#934790',
-    fontWeight: 'bold',
+    fontSize: hp(1.5), // approx 14
+    color: COLORS.primary,
+    fontFamily: 'Montserrat-Bold',
+  },
+
+  // --- Footer ---
+  footerContainer: {
+    marginTop: hp(4.3), // approx 30
+    alignItems: 'center',
   },
   poweredByText: {
-    position: 'absolute',
-    bottom: 64, // Matches the parent's padding
-    fontSize: 12,
-    color: '#888',
-  },
-  // --- END ADDED ---
-
-  loginBtn: {
-    width: '100%',
-    backgroundColor: '#934790',
-    padding: 16,
-    borderRadius: 16,
-    alignItems: 'center',
-    // --- MODIFIED: Removed margin ---
-    marginTop: 20, 
-    shadowColor: '#934790', 
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
-  },
-  loginBtnText: {
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  gif: {
-    width: 250,
-    height: 250,
-    resizeMode: 'cover',
-    marginBottom: 10,
-  },
-  // --- All modal styles are unchanged ---
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
-  },
-  modalContent: {
-    width: '65%', 
-    backgroundColor: 'white',
-    borderRadius: 12,
-    padding: 20, 
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 20,
-  },
-  modalTransparentButton: { 
-    width: '80%',
-    padding: 8, 
-    borderRadius: 15,
-    alignItems: 'center',
-    marginBottom: 10,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    backgroundColor: 'transparent', 
-    borderWidth: 2, 
-    borderColor: '#E0E0E0', 
-  },
-  modalButtonIcon: {
-    width: 20,
-    height: 20,
-    resizeMode: 'contain',
-    marginRight: 10,
-  },
-  modalTransparentButtonText: { 
-    color: '#4b4a4aff', 
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 1,
-    right: 2,
-    width: 25,
-    height: 25,
-    borderRadius: 15,
-    backgroundColor: '#E0E0E0',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1, 
-  },
-  closeButtonText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: '#555',
+    fontSize: hp(1.2), // approx 12
+    fontFamily: 'Montserrat-Regular',
+    color: '#AAAAAA',
   },
 });
