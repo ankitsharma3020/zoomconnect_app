@@ -1,3 +1,9 @@
+if (!Array.prototype.toReversed) {
+  Array.prototype.toReversed = function() {
+    return [...this].reverse();
+  };
+}
+
 const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 
 /**

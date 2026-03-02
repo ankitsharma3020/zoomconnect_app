@@ -9,21 +9,15 @@ import {
   import { combineReducers } from '@reduxjs/toolkit';
   import AsyncStorage from '@react-native-async-storage/async-storage';
   import userSlice from './service/userSlice';
-// import userdataSlice from './services/userdataSlice';
-// import policydataSlice from './services/policydataSlice';
-// import AdditionlistSlice from '../screens/Natural addition/AdditionlistSlice';
-// import profileSlice from '../screens/Dashboard/profileSlice';
-// import WellnessSlice from '../screens/Dashboard/WellnessSlice';
-// import policySlice from '../screens/Dashboard/AllpolicySlice';
-// import AllpolicySlice from '../screens/Dashboard/AllpolicySlice';
-// import ClaimSlice from '../screens/claims/ClaimSlice';
-// import nhtSlice from '../screens/Nhtconsultant/nhtSlice';
-// import newUserSlice from '../navigation/newUserSlice';
-// import SurveySlice from '../screens/Survey/SurveySlice';
-// import SurveylistSlice from '../screens/Dashboard/SurveylistSlice';
-// import EnrollSlice from '../screens/Dashboard/EnrollSlice'
-// import SingleEnrollmentSlice from '../screens/Enrollment/SingleEnrollmentSlice'
-
+  import profileReducer from '../screens/Slices/ProfileSlice';
+  import policyReducer from '../screens/Slices/PolicySlice';
+  import wellnessReducer from '../screens/Slices/wellnessSlice';
+  import ticketReducer from '../screens/Slices/ticketSlice';
+  import singleChatReducer from '../screens/Slices/singleChatSlice';
+  import policydetailsReducer from '../screens/Slices/PolicydetailsSlice';
+  import surveyReducer from '../screens/Slices/SurveySlice';
+  import hospitalstateReducer from '../screens/Slices/getStatebypidSlice';
+  import DependentReducer from '../screens/Slices/getDependentList';
 
 
 
@@ -37,19 +31,18 @@ import {
  
   const reducer=combineReducers({
     user: userSlice,
-    // userdata:userdataSlice,
-    // profiledata:profileSlice,
-    // policydata:policydataSlice,
-    // naturallistdata:AdditionlistSlice,
-    // wellnessdata:WellnessSlice,
-    // allpolicydata:AllpolicySlice,
-    // claimsdata:ClaimSlice,
-    // nhtdata:nhtSlice,
-    // newuserdata:newUserSlice,
-    // questionlistdata:SurveySlice,
-    // surveylistdata:SurveylistSlice,
-    // enrollmentlistdata:EnrollSlice,
-    // singleenrollmentdata:SingleEnrollmentSlice,
+    profile:profileReducer,
+    policy:policyReducer,
+    wellness:wellnessReducer,
+    tickets:ticketReducer,
+    chat:singleChatReducer,
+    policydetails:policydetailsReducer,
+    surveys:surveyReducer,
+    hospitalstate:hospitalstateReducer,
+    dependence:DependentReducer,
+
+     
+ 
   })
 
   const persistedReducer=persistReducer(persistConfig,reducer)
@@ -79,3 +72,12 @@ const store = configureStore({
 });
 
 export default store;
+
+// import { configureStore } from '@reduxjs/toolkit';    
+// import todoReducer from './todoSlice';
+// const store=configureStore({
+//   reducer: {
+//     todo: todoReducer,
+//   },
+// });
+// export default store;

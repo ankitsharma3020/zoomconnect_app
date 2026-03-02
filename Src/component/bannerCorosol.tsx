@@ -152,7 +152,7 @@ export default function BannerCarousel() {
                 },
               ]}
             >
-              <TouchableOpacity onPress={()=>navigation.navigate(item.navigation)} activeOpacity={0.8} >
+              <TouchableOpacity onPress={()=>navigation.navigate(item.navigation)} activeOpacity={0.8}  style={styles.card} >
                   <LinearGradient
                 colors={item.gradient}
                 style={styles.card}
@@ -272,7 +272,7 @@ const styles = StyleSheet.create({
     },
     shadowOpacity: 0.3, 
     shadowRadius: 12,
-    elevation: 2,
+    // elevation: 2,
     position: 'relative',
   },
   textContainer: {

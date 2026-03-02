@@ -1,39 +1,18 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Linking, Dimensions, Platform } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Linking, Dimensions, Platform,LayoutAnimation } from 'react-native';
 import { Avatar } from 'react-native-paper';
 // import { DOMAIN_URL } from '../../utility/strings';
 import Header from '../component/header';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+
 import { wp, hp } from '../utilites/Dimension'; // Adjusted import
 
 const { width } = Dimensions.get('window');
 
 // --- DUMMY DATA ---
-const dummyClaim = {
-  tpa_claim_id: 'CLM-2023-8945',
-  patient_name: 'Rahul Sharma',
-  patient_relation: 'Self',
-  hospital_name: 'Apollo Hospital, Delhi',
-  date_of_admission: '12 Oct 2023',
-  date_of_discharge: '15 Oct 2023',
-  claim_amount: '₹ 45,000',
-  type_of_claim: 'Cashless',
-  claim_status: 'Approved', 
-  claim_mode: 'Reimbursement',
-  deduction_reasons: 'Non-medical expenses deducted.',
-  policy_number: 'POL-987654321',
-  policy: {
-    insurance_company_name: 'HDFC ERGO General Insurance',
-    insurance_comp_icon_url: '', 
-  },
-  settlment_letter: 'https://example.com/settlement.pdf',
-  query_letter: null,
-  claim_document: [
-    { filename: 'Discharge Summary', url: 'example.com/doc1' },
-    { filename: 'Final Bill', url: 'example.com/doc2' },
-  ]
-};
+
 
 // --- SVG PATTERN ---
 const HeaderPattern = () => (
@@ -52,22 +31,40 @@ const HeaderPattern = () => (
 const ClaimDetailss = ({ navigation, route }) => {
   const [showModal, setShowModal] = useState(false);
   const [modalDocuments, setModalDocuments] = useState([]);
+    const [isExpanded, setIsExpanded] = useState(false);
+  
+    // 1. Check if text is long enough to need expansion
+   
 
-  const claim = route.params?.item || dummyClaim;
+  const claim = route.params?.item || null;
+const onDownload = route.params?.onDownload || null;
+ const statusText = claim?.claim_status || '';
+    const isLongText = statusText.length > 15; 
 
   const getStatusColor = (status) => {
     const s = status?.toLowerCase() || '';
-    if (s.includes('approved') || s.includes('settled')) return '#065F46';
+    if (s.includes('approved') || s.includes('paid')) return '#065F46';
     if (s.includes('reject') || s.includes('denied')) return '#991B1B';
     return '#92400E';
   };
 
   const getStatusBg = (status) => {
     const s = status?.toLowerCase() || '';
-    if (s.includes('approved') || s.includes('settled')) return '#D1FAE5'; 
+    if (s.includes('approved') || s.includes('paid')) return '#D1FAE5'; 
     if (s.includes('reject') || s.includes('denied')) return '#FEE2E2'; 
     return '#FEF3C7'; 
   };
+    const toggleExpand = () => {
+      if (!isLongText) return; // Disable click for short text
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setIsExpanded(!isExpanded);
+    };
+  useEffect(() => {
+   if(onDownload){
+      setModalDocuments(claim.claim_document);
+      setShowModal(true);
+    }
+  }, []);
 
   return (
     <View style={styles.mainContainer}>
@@ -118,9 +115,41 @@ const ClaimDetailss = ({ navigation, route }) => {
                 <Text style={styles.label}>Claim ID</Text>
                 <Text style={styles.valueBold}>{claim?.tpa_claim_id}</Text>
              </View>
-             <View style={[styles.statusBadge, { backgroundColor: getStatusBg(claim?.claim_status) }]}>
+             
+              <TouchableOpacity 
+                               activeOpacity={isLongText ? 0.5 : 1}
+                               onPress={toggleExpand}
+                               disabled={!isLongText} // Disable touch if text is short
+                               style={[
+                                 styles.statusBadge, 
+                                 { 
+                                     backgroundColor: getStatusBg(claim?.claim_status),
+                                     maxWidth: '100%', // Ensure it doesn't overflow parent flex
+                                 }
+                               ]}
+                             >
+                               <Text 
+                                 // If expanded, show all lines. If collapsed, show 1 line.
+                                 numberOfLines={isExpanded ? 0 : 1} 
+                                 ellipsizeMode="tail"
+                                 style={[styles.statusText, { color: getStatusColor(claim?.claim_status)  }]}
+                               >
+                                 {statusText}
+                               </Text>
+                               
+                               {/* Only show arrow if text is actually long */}
+                               {isLongText && (
+                                 <Icon 
+                                   name={isExpanded ? "chevron-up" : "chevron-down"} 
+                                   size={hp(1.8)} 
+                                   color={getStatusColor(claim?.claim_status)} 
+                                   style={{ marginLeft: 4, marginTop: 1 }}
+                                 />
+                               )}
+                             </TouchableOpacity>
+             {/* <View style={[styles.statusBadge, { backgroundColor: getStatusBg(claim?.claim_status) }]}>
                <Text style={[styles.statusText, { color: getStatusColor(claim?.claim_status) }]}>{claim?.claim_status}</Text>
-             </View>
+             </View> */}
           </View>
 
           <View style={styles.dashedDivider} />
@@ -365,17 +394,36 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start', 
     marginBottom: hp(2) // approx 16
   },
-  statusBadge: { 
-    paddingHorizontal: wp(3), // approx 12
-    paddingVertical: hp(0.75), // approx 6
-    borderRadius: wp(5) // approx 20
+   statusBadge: {
+    marginLeft: wp(8), // Pushes badge to the right
+    paddingVertical: hp(0.6), 
+    paddingHorizontal: wp(2.5),
+    borderRadius: wp(3),
+    flexDirection: 'row',
+    alignItems: 'center', // Aligns arrow with text center
+    justifyContent: 'center',
+    alignSelf: 'flex-end', // Ensures badge stays to the right
+    flexShrink: 1, // Allows badge to shrink if needed
   },
-  statusText: { 
-    fontSize: hp(1.5), // approx 12
+  statusText: {
+    fontSize: hp(1.3),
     fontFamily: 'Montserrat-Bold',
-    textTransform: 'uppercase', 
-    letterSpacing: 0.5 
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+    flexShrink: 1, // Critical: Allows text to wrap or shrink
+    textAlign: 'right', // Aligns text to look neat next to arrow
   },
+  // statusBadge: { 
+  //   paddingHorizontal: wp(3), // approx 12
+  //   paddingVertical: hp(0.75), // approx 6
+  //   borderRadius: wp(5) // approx 20
+  // },
+  // statusText: { 
+  //   fontSize: hp(1.5), // approx 12
+  //   fontFamily: 'Montserrat-Bold',
+  //   textTransform: 'uppercase', 
+  //   letterSpacing: 0.5 
+  // },
   dashedDivider: { 
     height: 1, 
     width: '100%', 

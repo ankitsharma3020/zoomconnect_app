@@ -7,16 +7,14 @@ import { Provider as StoreProvider } from 'react-redux';
 import { persistStore } from 'redux-persist';
 import store from './Src/redux/store';
 
+// 1. Import SafeAreaProvider
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 const { width, height } = Dimensions.get('window');
 
-// 1. Create a simple static component for the milliseconds it takes Redux to load
 const BootSplash = () => (
      <View style={styles.container}>
        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
-       {/* We keep this empty/white to match the START of your Splash.tsx animation 
-          (where the background image hasn't slid up yet). 
-          This prevents a "flash" of content.
-       */}
      </View>
 );
 
@@ -25,12 +23,13 @@ const App = () => {
   
   return (
      <StoreProvider store={store}>
-      {/* 2. Pass BootSplash here. It has NO navigation logic. */}
       <PersistGate persistor={persistor} loading={<BootSplash />}>
-        <NavigationContainer>
-          {/* 3. Your real interactive Splash screen should be the first route in RouteManager */}
-          <RouteManager />
-        </NavigationContainer>
+        {/* 2. Wrap your NavigationContainer with SafeAreaProvider */}
+        <SafeAreaProvider>
+          <NavigationContainer>
+            <RouteManager />
+          </NavigationContainer>
+        </SafeAreaProvider>
       </PersistGate>
     </StoreProvider>
   );

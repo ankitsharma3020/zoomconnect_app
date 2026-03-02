@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Dimensions, Image, Platform, TextInput } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Defs, Pattern, Circle, Rect, Path } from 'react-native-svg';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { setUser } from '../redux/service/userSlice';
 import { wp, hp } from '../utilites/Dimension'; // Adjusted import path
 
@@ -14,7 +14,7 @@ const dummyProfile = {
   employees_code: 'EMP-001',
   email: 'hadijafari.official@gmail.com',
   mobile: '+91 98765 43210',
-  full_name: 'Hadi Jafari',
+  full_name: 'Nipun jha2',
   photo: 'https://i.pravatar.cc/300?img=12',
   designation: 'Product Designer',
   location: 'Madrid, Spain',
@@ -41,13 +41,15 @@ const ProfilePattern = () => (
 
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
-  const user = dummyProfile; 
+  
   const [loading, setLoading] = useState(false);
   const [showFullEmail, setShowFullEmail] = useState(false);
-  
+  const { data: profileData } = useSelector((state: any) => state.profile);
+  console.log("Profile Data from Redux:", profileData);
+  const user =  profileData?.data?.user; 
   // --- Editable State ---
   const [mobile, setMobile] = useState(user.mobile);
-  const [photo, setPhoto] = useState(user.photo);
+  const [photo, setPhoto] = useState(user.photo?user.photo : 'https://i.pravatar.cc/300?img=12');
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
@@ -57,11 +59,7 @@ const ProfileScreen = ({ navigation }) => {
     const year = date.getFullYear();
     return `${day}-${month}-${year}`;
   };
-
-  const toggleShowFullEmail = () => {
-    setShowFullEmail(!showFullEmail);
-  };
-
+ 
   const handleEditPhoto = () => {
     console.log("Open Image Picker");
     // Implement Image Picker logic here
@@ -165,22 +163,20 @@ const ProfileScreen = ({ navigation }) => {
                 <View style={styles.profileCard}>
                     
                     {/* Editable Avatar */}
-                    <TouchableOpacity style={styles.avatarContainer} onPress={handleEditPhoto} activeOpacity={0.8}>
-                        {photo ? (
-                            <Image source={{ uri: photo }} style={styles.avatarImage} resizeMode="cover" />
+                    <View style={styles.avatarContainer} >
+                        {user.gender === 'male' ? (
+                            <Image source={require('../../assets/profileman.png')} style={styles.avatarImage} resizeMode="cover" />
                         ) : (
-                            <View style={[styles.avatarImage, styles.avatarPlaceholder]}>
-                                <Text style={styles.avatarInitials}>{user.full_name?.charAt(0)}</Text>
-                            </View>
+                             <Image source={require('../../assets/profilewomen.png')} style={styles.avatarImage} resizeMode="cover" />
                         )}
                         {/* Camera Badge Overlay */}
-                        <View style={styles.cameraBadge}>
+                        {/* <View style={styles.cameraBadge}>
                             <Svg width={wp(4)} height={wp(4)} viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                                 <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                                 <Circle cx="12" cy="13" r="4" />
                             </Svg>
-                        </View>
-                    </TouchableOpacity>
+                        </View> */}
+                    </View>
 
                     {/* User Info */}
                     <Text style={styles.userName}>{user.full_name}</Text>
@@ -203,8 +199,8 @@ const ProfileScreen = ({ navigation }) => {
                             label="Mobile" 
                             value={mobile} 
                             Icon={PhoneIcon}
-                            isEditable={true}
-                            onChangeText={(text) => setMobile(text)}
+                            // isEditable={true}
+                            // onChangeText={(text) => setMobile(text)}
                         />
 
                         <InfoItem 
@@ -233,7 +229,7 @@ const ProfileScreen = ({ navigation }) => {
                     <MenuItem 
                         title="Contact Us" 
                         Icon={ContactIcon}
-                        onPress={() => navigation.navigate('Contactus')}
+                        onPress={() => navigation.navigate('Webrendering',{url: 'contact',label: 'Contact Us'})}
                     />
                         <MenuItem 
                         title="Reset Password" 
@@ -253,17 +249,17 @@ const ProfileScreen = ({ navigation }) => {
 
                 {/* --- 5. FOOTER LINKS (Text Only) --- */}
                 <View style={styles.footerLinksContainer}>
-                    <TouchableOpacity onPress={() => navigation.navigate('About')}>
+                    <TouchableOpacity onPress={() => navigation.navigate('Webrendering',{url: 'about',label: 'About Us'})}>
                         <Text style={styles.footerLinkText}>About Us</Text>
                     </TouchableOpacity>
                     <Text style={styles.footerSeparator}>|</Text>
                     
-                    <TouchableOpacity onPress={() => navigation.navigate('TermsOfUse')}>
+                    <TouchableOpacity onPress={() => navigation.navigate('Webrendering',{url: 'terms-and-conditions',label: 'Terms of Use'})}>
                         <Text style={styles.footerLinkText}>Terms of Use</Text>
                     </TouchableOpacity>
                     <Text style={styles.footerSeparator}>|</Text>
 
-                    <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')}>
+                    <TouchableOpacity onPress={() => navigation.navigate('Webrendering',{url: 'privacy-policy',label: 'Privacy Policy'})}>
                         <Text style={styles.footerLinkText}>Privacy Policy</Text>
                     </TouchableOpacity>
                 </View>
@@ -405,12 +401,26 @@ const styles = StyleSheet.create({
     elevation: 8,
     position: 'relative', 
   },
-  avatarImage: {
-    width: wp(25), // approx 100
-    height: wp(25),
-    borderRadius: wp(12.5), // approx 50
+ avatarImage: {
+  width: wp(25),
+  height: wp(25),
+  borderRadius: wp(12.5),
+  backgroundColor: '#fff', // 1. Essential for shadows to show
+  // borderColor: '#934790',
+  // borderWidth: 1, // Optional: add back if you want a visible ring
+
+  // iOS Shadows
+  shadowColor: '#000',
+  shadowOffset: { 
+    width: 0, 
+    height: 4 // 2. Move shadow down slightly
   },
-  cameraBadge: {
+  shadowOpacity: 0.2, // 3. Increased for visibility
+  shadowRadius: 5,    // 4. Smaller radius = tighter shadow; larger = softer
+
+  // Android Shadow
+  elevation: 5, // 5. Higher number = deeper shadow
+},eraBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,

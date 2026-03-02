@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,42 +13,133 @@ import {
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient'; 
 import DependantModal from '../component/Adddependentmodal';
-import { wp, hp } from '../utilites/Dimension'; // Ensure hp is imported
+import { wp, hp } from '../utilites/Dimension'; 
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchDependence } from './Epicfiles/MainEpic';
 
 const { width, height } = Dimensions.get('window');
 
-// Mock Data
-const DEPENDANTS_DATA = [
-  {
-    id: 1,
-    name: 'Arav Kumar',
-    relation: 'Child',
-    gender: 'Male',
-    dob: '2024-10-30',
-    status: 'Pending',
-    avatarUrl: 'https://img.freepik.com/free-psd/3d-illustration-person-with-sunglasses_23-2149436188.jpg', 
-  },
-  {
-    id: 2,
-    name: 'Priya Sharma',
-    relation: 'Spouse',
-    gender: 'Female',
-    dob: '1995-05-15',
-    status: 'Approved',
-    avatarUrl: 'https://img.freepik.com/free-psd/3d-illustration-person-with-pink-hair_23-2149436186.jpg',
-  },
-];
+// --- HELPER FUNCTIONS ---
 
-const NaturaAddition = ({ navigation }) => {
+// 1. Calculate Age from DOB
+const calculateAge = (dobString) => {
+  if (!dobString) return 0;
+  const today = new Date();
+  const birthDate = new Date(dobString);
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+// 2. Get Avatar based on Logic
+const getSmartAvatar = (relation, gender, dob) => {
+  const age = calculateAge(dob);
+  const rel = relation ? relation.toLowerCase() : '';
+  const gen = gender ? gender.toLowerCase() : '';
+
+  // --- CHILD LOGIC ---
+  if (rel.includes('child') || rel.includes('son') || rel.includes('daughter') || rel.includes('baby')) {
+    if (age < 3) {
+      return require('./../../assets/baby.png');
+    } else {
+      if (gen === 'male' || gen === 'm') {
+        return require('./../../assets/boy.png'); 
+      } else {
+        return require('./../../assets/girl.png'); 
+      }
+    }
+  }
+
+  // --- ADULT MALE LOGIC ---
+  if (gen === 'male' || gen === 'm') {
+    if (age > 40) {
+      return require('./../../assets/oldman.png');
+    } else {
+      return require('./../../assets/man.png');
+    }
+  }
+
+  // --- ADULT FEMALE LOGIC ---
+  if (gen === 'female' || gen === 'f') {
+    if (age > 40) {
+      return require('./../../assets/oldlady.png');
+    } else {
+      return require('./../../assets/women.png');
+    }
+  }
+
+  return require('./../../assets/man.png'); 
+};
+
+// 3. Get Status Configuration (0, 1, 2)
+const getStatusConfig = (statusCode) => {
+  const code = parseInt(statusCode);
+
+  switch (code) {
+    case 0:
+      return {
+        text: 'Pending',
+        textColor: '#d97706',
+        bgColor: '#fff7ed',   
+        borderColor: '#f59e0b' 
+      };
+    case 1:
+    return {
+        text: 'Approved',
+        textColor: '#059669', 
+        bgColor: '#ecfdf5',   
+        borderColor: '#10b981' 
+      };
+    case 2:
+      return {
+        text: 'Rejected',
+        textColor: '#dc2626', 
+        bgColor: '#fef2f2',   
+        borderColor: '#ef4444' 
+      };
+    default:
+      return {
+        text: 'Unknown',
+        textColor: '#64748b',
+        bgColor: '#f1f5f9',
+        borderColor: '#cbd5e1'
+      };
+  }
+};
+
+const NaturaAddition = ({ navigation,route }) => {
+  const [isEdit,setIsedit]=useState(false); 
+  const {policyid}=route.params;
   const [modalVisible, setModalVisible] = useState(false);
+  const [editableData,setEditableData]=useState(null);
+  const dispatch = useDispatch();
+ console.log("policyid in natura",policyid)
+  useEffect(()=>{
+    dispatch(fetchDependence({policyid:policyid}));
+  }, []);
+const Edit=(data)=>{ 
+  setIsedit(true);
+  setEditableData(data);
+  setModalVisible(true);
+ }
+ const Add=()=>{ 
+  setIsedit(false);
+ 
+  setModalVisible(true);
+ }
+ // Debug log to check state before opening modal
+  const {data} = useSelector(state => state.dependence);
+  const listData = Array.isArray(data) ? data : [];
 
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8fafc" />
-      
       <BackgroundBubbles />
 
-      {/* --- 1. Header --- */}
+      {/* --- Header --- */}
       <View style={styles.headerContainer}>
         <TouchableOpacity 
             style={styles.backButton} 
@@ -62,17 +153,16 @@ const NaturaAddition = ({ navigation }) => {
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* --- 2. 3D Gradient Banner --- */}
+        {/* --- Banner --- */}
         <View style={styles.bannerContainer}>
             <LinearGradient 
-                colors={['#894c87ff', '#e235dcff']} 
+                colors={['#885787ff', '#c55cc2ff']} 
                 start={{x: 0, y: 0}} 
                 end={{x: 1, y: 1}}
                 style={styles.bannerCard}
             >
               <View style={styles.bannerCard1}>
                  <View style={styles.bannerGloss} />
-                
                 <View style={styles.bannerContent}>
                     <View style={styles.bannerTextContainer}>
                         <View style={styles.bannerBadge}>
@@ -81,7 +171,7 @@ const NaturaAddition = ({ navigation }) => {
                         </View>
                         <Text style={styles.bannerTitle}>Protect Your Loved Ones</Text>
                         <Text style={styles.bannerDesc}>
-                        Add your spouse or child to your policy instantly. Complete coverage for the whole family.
+                        Add your spouse or child to your policy instantly.
                         </Text>
                     </View>
                     <Image 
@@ -91,7 +181,6 @@ const NaturaAddition = ({ navigation }) => {
                     />
                 </View>
               </View>
-               
             </LinearGradient>
             <View style={styles.bannerShadow} />
         </View>
@@ -100,14 +189,14 @@ const NaturaAddition = ({ navigation }) => {
         <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Your Dependants</Text>
             <View style={styles.countBadge}>
-                <Text style={styles.countText}>{DEPENDANTS_DATA.length}</Text>
+                <Text style={styles.countText}>{listData.length}</Text>
             </View>
         </View>
 
-        {/* --- 3. Large Cards --- */}
+        {/* --- List --- */}
         <View style={styles.cardList}>
-          {DEPENDANTS_DATA.map((item) => (
-            <DependantCard key={item.id} data={item} />
+          {listData.map((item, index) => (
+            <DependantCard key={item.id || index} data={item} openModal={Edit}  />
           ))}
         </View>
 
@@ -118,10 +207,10 @@ const NaturaAddition = ({ navigation }) => {
         <TouchableOpacity 
             style={styles.addButton} 
             activeOpacity={0.9} 
-            onPress={() => setModalVisible(true)}
+            onPress={() => Add()}
         >
             <LinearGradient
-                colors={['#894c87ff', '#d726d1ff']}
+                colors={['#885787ff', '#c55cc2ff']}
                 style={styles.addButtonGradient}
                 start={{x: 0, y: 0}} end={{x: 1, y: 0}}
             >
@@ -129,20 +218,56 @@ const NaturaAddition = ({ navigation }) => {
                   <Icon name="plus" size={hp(3.2)} color="#fff" style={{ marginRight: wp(2) }} />
                 <Text style={styles.addButtonText}>Add New Dependant</Text>
               </View>
-              
             </LinearGradient>
         </TouchableOpacity>
       </View>
 
       <DependantModal
-        visible={modalVisible} 
+        visible={modalVisible}
+        data={isEdit ?editableData : null}
+        policyId={policyid}
         onClose={() => setModalVisible(false)} 
       />
     </SafeAreaView>
   );
 };
 
-const DependantCard = ({ data }) => {
+// --- Pattern for inside the Dependant Card ---
+const CardBubblePattern = () => (
+  <View style={StyleSheet.absoluteFill} pointerEvents="none">
+    <View style={{
+      position: 'absolute',
+      top: hp(15),
+      right: -wp(15),
+      width: wp(25),
+      height: wp(25),
+      borderRadius: wp(17.5),
+      backgroundColor: '#fff2fe', 
+      opacity: 0.6,
+      borderWidth: 15,
+      borderColor: '#ffecfb',
+    }} />
+    
+    <View style={{
+      position: 'absolute',
+      bottom: -hp(2),
+      left: -wp(5),
+      width: wp(20),
+      height: wp(20),
+      borderRadius: wp(10),
+      backgroundColor: '#fff2fe', 
+      borderWidth: 10,
+      borderColor: '#ffecfb',
+      opacity: 0.5,
+    }} />
+  </View>
+);
+
+const DependantCard = ({ data ,openModal}) => {
+  const statusConfig = getStatusConfig(data.status);
+  const avatarSource = getSmartAvatar(data.relation, data.gender, data.dob);
+  const age = calculateAge(data.dob);
+
   return (
     <View style={styles.cardContainer}>
       <LinearGradient 
@@ -150,45 +275,71 @@ const DependantCard = ({ data }) => {
         style={styles.card3D}
       >
         <View style={styles.card3D1}>
-            <View style={[
-          styles.statusBadge, 
-          { backgroundColor: data.status === 'Pending' ? '#fff7ed' : '#ecfdf5' }
-        ]}>
-          <Text style={[
-            styles.statusText, 
-            { color: data.status === 'Pending' ? '#d97706' : '#059669' }
+          
+          <CardBubblePattern />
+          
+          <View style={[
+            styles.statusBadge, 
+            { backgroundColor: statusConfig.bgColor, borderColor: statusConfig.borderColor }
           ]}>
-            {data.status}
-          </Text>
-        </View>
+            <Text style={[styles.statusText, { color: statusConfig.textColor }]}>
+              {statusConfig.text}
+            </Text>
+          </View>
 
-        <View style={styles.cardContent}>
-          <View style={styles.avatarContainer}>
-            <View style={styles.avatarFrame}>
-                <Image 
-                    source={{ uri: data.avatarUrl }} 
-                    style={styles.avatarImage}
-                    resizeMode="cover"
-                />
+          <View style={styles.cardContent}>
+            {/* Avatar Section */}
+            <View style={styles.avatarContainer}>
+              <View style={styles.avatarFrame}>
+                  <Image 
+                      source={ avatarSource } 
+                      style={styles.avatarImage}
+                      resizeMode="cover"
+                  />
+              </View>
+              <Text style={styles.ageTag}>{age} Yrs</Text>
+            </View>
+
+            {/* Details Section */}
+            <View style={styles.detailsColumn}>
+              <Text style={styles.nameText}>{data.insured_name}</Text>
+              <View style={styles.divider} />
+
+              <InfoRow label="Relation" value={data.relation} icon="account-heart" />
+              <InfoRow label="Gender" value={data.gender} icon="gender-male-female" />
+              <InfoRow label="DOB" value={data.dob} icon="calendar-month" />
+              
+              {/* --- ACTION BUTTONS ROW --- */}
+              <View style={styles.actionRow}>
+                <TouchableOpacity style={styles.docButton}>
+                    <Icon name="file-document-outline" size={hp(2)} color="#2563eb" style={{marginRight: wp(1)}}/>
+                    <Text style={styles.docButtonText}>View Docs</Text>
+                </TouchableOpacity>
+              {(data.status === "2")&& (
+                <TouchableOpacity style={styles.editButton}
+                 onPress={() => openModal(data)}
+                >
+                    <Icon name="pencil-outline" size={hp(2)} color="#934790" style={{marginRight: wp(1)}}/>
+                    <Text style={styles.editButtonText}>Edit</Text>
+                </TouchableOpacity>
+              )}
+               
+              </View>
+
+              {/* --- REASON TEXT (Shows if there is a reason/remark) --- */}
+              {/* Replace `data.reason` with your API's actual key (e.g., `data.remark` or `data.rejection_reason`) */}
+              {(data.reason || data.status === 2 || data.status === "2") && (
+                <View style={styles.reasonContainer}>
+                  <Text style={styles.reasonLabel}>Reason:</Text>
+                  <Text style={styles.reasonText}>
+                    {data.reason ? data.reason : "Invalid document attached. Please re-upload valid proof."}
+                  </Text>
+                </View>
+              )}
+
             </View>
           </View>
-
-          <View style={styles.detailsColumn}>
-            <Text style={styles.nameText}>{data.name}</Text>
-            <View style={styles.divider} />
-
-            <InfoRow label="Relation" value={data.relation} icon="account-heart" />
-            <InfoRow label="Gender" value={data.gender} icon="gender-male-female" />
-            <InfoRow label="DOB" value={data.dob} icon="calendar-month" />
-            
-            <TouchableOpacity style={styles.docButton}>
-                <Text style={styles.docButtonText}>View Documents</Text>
-                <Icon name="chevron-right" size={hp(2.2)} color="#2563eb" />
-            </TouchableOpacity>
-          </View>
         </View>
-        </View>
-      
       </LinearGradient>
     </View>
   );
@@ -212,6 +363,7 @@ const BackgroundBubbles = () => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    marginTop: StatusBar.currentHeight || 0,
     backgroundColor: '#f8fafc',
   },
   
@@ -315,13 +467,13 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   bannerTitle: {
-    fontSize: hp(2.5),
+    fontSize: hp(2.2),
     fontWeight: '800',
     color: '#fff',
     marginBottom: hp(1),
   },
   bannerDesc: {
-    fontSize: hp(1.6),
+    fontSize: hp(1.4),
     color: '#e0f2fe',
     lineHeight: hp(2.4),
     fontWeight: '500',
@@ -340,7 +492,7 @@ const styles = StyleSheet.create({
     marginBottom: hp(2),
   },
   sectionTitle: {
-    fontSize: hp(2.4),
+    fontSize: hp(2.1),
     fontWeight: '700',
     color: '#1e293b',
     marginRight: wp(2.5),
@@ -361,7 +513,7 @@ const styles = StyleSheet.create({
   cardList: {
     paddingHorizontal: wp(5),
     gap: hp(2.5),
-    paddingBottom: hp(15), // Space for footer
+    paddingBottom: hp(15), 
   },
   cardContainer: {
     borderRadius: wp(6),
@@ -373,44 +525,45 @@ const styles = StyleSheet.create({
   },
   card3D: {
     borderRadius: wp(6),
-   
-
   },
   card3D1: {
     borderRadius: wp(6),
-    padding: wp(5),
+    padding: wp(2),
     borderWidth: 1,
     borderColor: '#fff',
+    overflow: 'hidden', 
   },
   statusBadge: {
     position: 'absolute',
     top: 0,
     right: 0,
     paddingHorizontal: wp(3),
-    paddingVertical: hp(0.8),
+    paddingVertical: hp(0.6),
     borderBottomLeftRadius: wp(4),
-    borderTopRightRadius: wp(6),
     zIndex: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
   },
   statusText: {
-    fontSize: hp(1.4),
+    fontSize: hp(1.2),
     fontWeight: '700',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
-  
   cardContent: {
     flexDirection: 'row',
-    marginTop: hp(1.2),
+    marginTop: hp(2.5), 
+    paddingLeft: wp(2),
+    paddingBottom: wp(2),
   },
-  // Avatar Styles
   avatarContainer: {
     marginRight: wp(4),
     alignItems: 'center',
   },
   avatarFrame: {
-    width: wp(22),
-    height: hp(12),
-    borderRadius: wp(4),
+    width: wp(19),
+    height: hp(10),
+    borderRadius: wp(10),
     overflow: 'hidden',
     backgroundColor: '#f1f5f9',
     borderWidth: 3,
@@ -425,14 +578,23 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-  
-  // Details Styles
+  ageTag: {
+    marginTop: hp(1),
+    fontSize: hp(1.3),
+    fontWeight: '700',
+    color: '#64748b',
+    backgroundColor: '#f1f5f9',
+    paddingHorizontal: wp(2),
+    paddingVertical: hp(0.2),
+    borderRadius: wp(2),
+    overflow: 'hidden',
+  },
   detailsColumn: {
     flex: 1,
     justifyContent: 'center',
   },
   nameText: {
-    fontSize: hp(2.2),
+    fontSize: hp(2.0),
     fontWeight: '800',
     color: '#1e293b',
     marginBottom: hp(1),
@@ -449,33 +611,71 @@ const styles = StyleSheet.create({
     marginBottom: hp(1),
   },
   infoLabel: {
-    fontSize: hp(1.6),
+    fontSize: hp(1.3),
     color: '#64748b',
     fontWeight: '500',
     width: wp(16),
   },
   infoValue: {
-    fontSize: hp(1.75),
+    fontSize: hp(1.4),
     fontWeight: '600',
     color: '#334155',
   },
   
-  // Document Button
-  docButton: {
-    marginTop: hp(1.5),
+  // --- New Action Row Buttons ---
+  actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff',
-    paddingVertical: hp(1.2),
+    marginTop: hp(1.5),
+    flexWrap: 'wrap', // Prevents overflow on smaller devices
+  },
+  docButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff', // Light Blue
+    paddingVertical: hp(1),
     paddingHorizontal: wp(3),
     borderRadius: wp(2.5),
-    alignSelf: 'flex-start',
+    marginRight: wp(2),
   },
   docButtonText: {
-    fontSize: hp(1.6),
+    fontSize: hp(1.3),
     fontWeight: '700',
     color: '#2563eb',
-    marginRight: wp(1),
+  },
+  editButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fdf4fd', // Light Brand Purple
+    paddingVertical: hp(1),
+    paddingHorizontal: wp(4),
+    borderRadius: wp(2.5),
+  },
+  editButtonText: {
+    fontSize: hp(1.3),
+    fontWeight: '700',
+    color: '#934790',
+  },
+
+  // --- New Reason Text ---
+  reasonContainer: {
+    marginTop: hp(1.5),
+    padding: wp(2.5),
+    backgroundColor: '#fef2f2', // Light Red for emphasis
+    borderRadius: wp(2),
+    borderLeftWidth: 3,
+    borderLeftColor: '#ef4444', // Red border
+  },
+  reasonLabel: {
+    fontSize: hp(1.3),
+    fontWeight: '700',
+    color: '#b91c1c',
+    marginBottom: hp(0.3),
+  },
+  reasonText: {
+    fontSize: hp(1.3),
+    color: '#991b1b',
+    lineHeight: hp(1.8),
   },
 
   // --- Footer ---

@@ -14,12 +14,15 @@ import {
   Platform,
   LayoutAnimation,
   UIManager,
+  ActivityIndicator, // Added
+  ToastAndroid,      // Added
 } from 'react-native';
 
 import React, { useState, useRef, useEffect } from 'react';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import { wp, hp } from '../utilites/Dimension'; // Adjusted import path based on context
+import { wp, hp } from '../utilites/Dimension'; 
+import { useLoginmobileMutation } from '../redux/service/user/user'; // Added API Hook
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -27,9 +30,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 // --- CONSTANTS ---
-// Adjusted to ensure the card sits in the vertical center
 const START_HEIGHT = hp(50); 
-const OVERLAP = hp(25); // Large overlap to pull card up into center
+const OVERLAP = hp(25); 
 
 // --- THEME COLORS ---
 const COLORS = {
@@ -46,124 +48,60 @@ const COLORS = {
   inputDisabled: '#F5F5F5',
 };
 
-// --- HEADER PATTERN COMPONENT ---
+// ... (ExactShardPattern and CardPattern remain unchanged, assuming they are above) ...
 const ExactShardPattern = () => {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
-      <LinearGradient
-        colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)']}
-        start={{ x: 1, y: 1 }} end={{ x: 0, y: 0 }}
-        style={{ 
-          position: 'absolute', 
-          bottom: -hp(10), 
-          right: -wp(20), 
-          width: wp(150), 
-          height: wp(150), 
-          transform: [{ rotate: '-35deg' }] 
-        }}
-      />
-      <LinearGradient
-        colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.0)']}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-        style={{ 
-          position: 'absolute', 
-          top: -hp(10), 
-          left: -wp(20), 
-          width: wp(120), 
-          height: wp(120), 
-          transform: [{ rotate: '25deg' }] 
-        }}
-      />
-      <View style={{ 
-        position: 'absolute', 
-        top: hp(10), 
-        left: -wp(12), 
-        width: wp(150), 
-        height: hp(25), 
-        backgroundColor: 'rgba(0,0,0,0.05)', 
-        transform: [{ rotate: '-15deg' }] 
-      }} />
+      <LinearGradient colors={['rgba(255,255,255,0.15)', 'rgba(255,255,255,0.02)']} start={{ x: 1, y: 1 }} end={{ x: 0, y: 0 }} style={{ position: 'absolute', bottom: -hp(10), right: -wp(20), width: wp(150), height: wp(150), transform: [{ rotate: '-35deg' }] }} />
+      <LinearGradient colors={['rgba(255,255,255,0.12)', 'rgba(255,255,255,0.0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{ position: 'absolute', top: -hp(10), left: -wp(20), width: wp(120), height: wp(120), transform: [{ rotate: '25deg' }] }} />
+      <View style={{ position: 'absolute', top: hp(10), left: -wp(12), width: wp(150), height: hp(25), backgroundColor: 'rgba(0,0,0,0.05)', transform: [{ rotate: '-15deg' }] }} />
     </View>
   );
 };
 
-// --- CARD PATTERN COMPONENT ---
 const CardPattern = () => {
   return (
     <View style={[StyleSheet.absoluteFill, { borderRadius: wp(6), overflow: 'hidden' }]} pointerEvents="none">
-       <LinearGradient
-          colors={['rgba(147,71,144,0.03)', 'rgba(255,255,255,0)']}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
-       <LinearGradient
-          colors={['rgba(147,71,144,0.04)', 'transparent']}
-          start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }}
-          style={{ 
-            position: 'absolute', 
-            top: -hp(12), 
-            right: -wp(25), 
-            width: wp(60), 
-            height: wp(60), 
-            transform: [{ rotate: '-45deg' }] 
-          }}
-        />
+       <LinearGradient colors={['rgba(147,71,144,0.03)', 'rgba(255,255,255,0)']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
+       <LinearGradient colors={['rgba(147,71,144,0.04)', 'transparent']} start={{ x: 1, y: 0 }} end={{ x: 0, y: 1 }} style={{ position: 'absolute', top: -hp(12), right: -wp(25), width: wp(60), height: wp(60), transform: [{ rotate: '-45deg' }] }} />
     </View>
   );
 };
 
-const RegisterScreen = ({ navigation }) => {
+const RegisterScreen = ({ navigation, route }) => {
+  const { user, firstLogin, mode } = route.params;
+  console.log("RegisterScreen received params:", { user, firstLogin, mode });
+  const userData = user ? user : null;
+
   // --- STATE ---
   const [currentStep, setCurrentStep] = useState(1); 
-
-  // Page 1 Data
-  const userData = {
-    name: 'Brijesh Chaubey',
-    email: 'email@example.com',
-    code: '00UNH72089',
-    gender: 'Male'
-  };
-
-  // Page 2 Data
   const [mobilenumber, setMobilenumber] = useState('');
-  const [dp, setDP] = useState(null);
+  const [loading, setLoading] = useState(false); // Added Loading State
+
+  // --- API MUTATION ---
+  const [Mobilelogin] = useLoginmobileMutation(); 
 
   // --- ANIMATIONS ---
   const keyboardOffset = useRef(new Animated.Value(0)).current;
   const topSectionHeightAnim = useRef(new Animated.Value(START_HEIGHT)).current;
 
-  // --- KEYBOARD HANDLING ---
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
     const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
     const onShow = (e) => {
       const h = e?.endCoordinates?.height ?? 0;
-      Animated.timing(keyboardOffset, {
-        toValue: -Math.max(0, h * 0.15), 
-        duration: 250,
-        useNativeDriver: false,
-      }).start();
+      Animated.timing(keyboardOffset, { toValue: -Math.max(0, h * 0.15), duration: 250, useNativeDriver: false }).start();
     };
-
     const onHide = () => {
-      Animated.timing(keyboardOffset, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: false,
-      }).start();
+      Animated.timing(keyboardOffset, { toValue: 0, duration: 250, useNativeDriver: false }).start();
     };
 
     const subShow = Keyboard.addListener(showEvent, onShow);
     const subHide = Keyboard.addListener(hideEvent, onHide);
-
-    return () => {
-      subShow.remove();
-      subHide.remove();
-    };
+    return () => { subShow.remove(); subHide.remove(); };
   }, [keyboardOffset]);
 
-  // Handle Step Transition
   const goToStep2 = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setCurrentStep(2);
@@ -174,68 +112,77 @@ const RegisterScreen = ({ navigation }) => {
     setCurrentStep(1);
   };
 
+  // --- API LOGIC ---
+  const handleSendOtp = async (targetMobile) => {
+    if (!targetMobile || targetMobile.length < 10) {
+      ToastAndroid.show('Please enter a valid mobile number', ToastAndroid.SHORT);
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const response = await Mobilelogin({ mobile: targetMobile }).unwrap();
+      console.log('Mobile Login Response:', response);  
+      
+      if (response && (response.success || response.token || response.status === 'success')) {
+        // Navigates to OTP with the target mobile number
+        navigation.navigate('FirstloginOtp', { data: targetMobile, firstLogin: true, mode: 'phone' });
+      } else {
+        ToastAndroid.show(response?.message || 'Failed to send OTP', ToastAndroid.SHORT);
+      }
+    } catch (error) {
+      ToastAndroid.show(error?.data?.message || 'Something went wrong', ToastAndroid.SHORT);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 1 Button Action
+  const onStep1Submit = () => {
+    if (mode === 'phone') {
+      // Skips Step 2 and immediately calls API with existing number
+      const userMobile = userData?.mobile || userData?.phone_number; 
+              navigation.navigate('NonResetPassword',{firstLogin: firstLogin, data: userMobile, mode: mode});
+
+      // handleSendOtp(userMobile);
+    } else {
+      goToStep2();
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
       <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
         <View style={styles.container}>
 
-          {/* --- TOP SECTION --- */}
           <Animated.View style={[styles.topSection, { height: topSectionHeightAnim, zIndex: 1 }]}>
-            <LinearGradient
-              colors={[COLORS.primaryDark, COLORS.primary, COLORS.primaryLight]}
-              start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }}
-              style={StyleSheet.absoluteFill}
-            />
+            <LinearGradient colors={[COLORS.primaryDark, COLORS.primary, COLORS.primaryLight]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
             <ExactShardPattern />
-
-            {/* Back Button */}
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonAbsolute}>
                <Text style={styles.backText}>‹ Back</Text>
             </TouchableOpacity>
-
-            {/* Logo */}
             <View style={styles.topLogoWrap}>
-              <Image
-                source={require('../../assets/WhiteNewZoomConnectlogo.png')}
-                style={styles.topLogo}
-                resizeMode="contain"
-              />
+              <Image source={require('../../assets/WhiteNewZoomConnectlogo.png')} style={styles.topLogo} resizeMode="contain" />
             </View>
           </Animated.View>
 
-          {/* --- BOTTOM SECTION (Floating Card) --- */}
-          <Animated.View
-            style={[
-              styles.floatingCard,
-              {
-                top: Animated.subtract(topSectionHeightAnim, OVERLAP),
-                transform: [{ translateY: keyboardOffset }],
-                zIndex: 10,
-              },
-            ]}
-          >
-            {/* Pattern inside card */}
+          <Animated.View style={[styles.floatingCard, { top: Animated.subtract(topSectionHeightAnim, OVERLAP), transform: [{ translateY: keyboardOffset }], zIndex: 10 }]}>
             <CardPattern />
 
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.scrollContent}
-              bounces={false}
-            >
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} bounces={false}>
               
-              {/* Header: Avatar & Title */}
               <View style={styles.headerGroup}>
                  <View style={{flex: 1}}>
                     <Text style={styles.cardTitle}>Verify Details</Text>
-                    <Text style={styles.cardSubtitle}>Step {currentStep} of 2</Text>
+                    {/* Dynamic Step Counter based on Mode */}
+                    <Text style={styles.cardSubtitle}>
+                      Step {currentStep} of {mode === 'number' ? 1 : 2}
+                    </Text>
                  </View>
                  
                  <View style={styles.avatarWrapper}>
-                    <Image
-                      source={dp ? { uri: dp } : require('../../assets/user.png')}
-                      style={styles.avatar}
-                    />
+                    <Image source={userData?.gender === 'male' ? require('../../assets/profileman.png') : require('../../assets/profilewomen.png')} style={styles.avatar} />
                     {currentStep === 2 && (
                         <TouchableOpacity style={styles.editIconBadge} activeOpacity={0.8}>
                         <Icon name="camera" size={hp(1.8)} color={COLORS.white} />
@@ -244,101 +191,58 @@ const RegisterScreen = ({ navigation }) => {
                  </View>
               </View>
 
-              {/* --- STEP 1: READ ONLY TEXT ROWS --- */}
+              {/* --- STEP 1 --- */}
               {currentStep === 1 && (
                 <View style={styles.infoContainer}>
-                  
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Name:</Text>
-                    <Text style={styles.infoValue}>{userData.name}</Text>
-                  </View>
+                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Name:</Text><Text style={styles.infoValue}>{userData?.first_name}</Text></View>
+                  <View style={styles.divider} />
+                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Email:</Text><Text style={styles.infoValue}>{userData?.email}</Text></View>
+                  <View style={styles.divider} />
+                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Employee Code:</Text><Text style={styles.infoValue}>{userData?.employee_code}</Text></View>
+                  <View style={styles.divider} />
+                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Gender:</Text><Text style={styles.infoValue}>{userData?.gender}</Text></View>
                   <View style={styles.divider} />
 
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Email:</Text>
-                    <Text style={styles.infoValue}>{userData.email}</Text>
-                  </View>
-                  <View style={styles.divider} />
-
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Employee Code:</Text>
-                    <Text style={styles.infoValue}>{userData.code}</Text>
-                  </View>
-                  <View style={styles.divider} />
-
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Gender:</Text>
-                    <Text style={styles.infoValue}>{userData.gender}</Text>
-                  </View>
-                  <View style={styles.divider} />
-
-                  {/* Next Button */}
-                  <TouchableOpacity 
-                    activeOpacity={0.8}
-                    onPress={goToStep2}
-                    style={styles.buttonShadow}
-                  >
-                    <LinearGradient
-                      colors={[COLORS.primary, COLORS.primaryLight]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.submitBtn}
-                    >
-                      <Text style={styles.submitBtnText}>Next</Text>
-                      <Icon name="arrow-right" size={hp(2.5)} color={COLORS.white} style={{marginLeft: wp(2)}} />
+                  <TouchableOpacity activeOpacity={0.8} onPress={loading ? null : onStep1Submit} style={styles.buttonShadow} disabled={loading}>
+                    <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
+                      {loading ? (
+                        <ActivityIndicator color={COLORS.white} />
+                      ) : (
+                        <>
+                          {/* Button text adapts based on mode */}
+                          <Text style={styles.submitBtnText}>{mode === 'number' ? 'Get OTP' : 'Next'}</Text>
+                          {mode !== 'number' && <Icon name="arrow-right" size={hp(2.5)} color={COLORS.white} style={{marginLeft: wp(2)}} />}
+                        </>
+                      )}
                     </LinearGradient>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* --- STEP 2: MOBILE INPUT ONLY --- */}
+              {/* --- STEP 2 --- */}
               {currentStep === 2 && (
                 <View>
-                  {/* Mobile Number Input */}
                   <View style={styles.inputGroup}>
                     <Text style={styles.label}>Mobile Number</Text>
                     <View style={styles.inputContainer}>
-                      <TextInput
-                        placeholder="Enter mobile number"
-                        placeholderTextColor="#BBB"
-                        onChangeText={setMobilenumber}
-                        value={mobilenumber}
-                        keyboardType="numeric"
-                        style={styles.input}
-                        autoFocus={true}
-                      />
+                      <TextInput placeholder="Enter mobile number" placeholderTextColor="#BBB" onChangeText={setMobilenumber} value={mobilenumber} keyboardType="numeric" style={styles.input} autoFocus={true} />
                     </View>
                   </View>
 
-                  {/* Get OTP Button */}
-                  <TouchableOpacity 
-                    activeOpacity={0.8}
-                    onPress={() => navigation.navigate('Otp')}
-                    style={styles.buttonShadow}
-                  >
-                    <LinearGradient
-                      colors={[COLORS.primary, COLORS.primaryLight]}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.submitBtn}
-                    >
-                      <Text style={styles.submitBtnText}>Get OTP</Text>
+                  <TouchableOpacity activeOpacity={0.8} onPress={() => !loading && handleSendOtp(mobilenumber)} style={styles.buttonShadow} disabled={loading}>
+                    <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.submitBtn}>
+                      {loading ? <ActivityIndicator color={COLORS.white} /> : <Text style={styles.submitBtnText}>Get OTP</Text>}
                     </LinearGradient>
                   </TouchableOpacity>
 
-                  {/* Back to Step 1 */}
-                  <TouchableOpacity onPress={goToStep1} style={styles.prevStepButton}>
+                  <TouchableOpacity onPress={goToStep1} style={styles.prevStepButton} disabled={loading}>
                     <Icon name="arrow-left" size={hp(2)} color={COLORS.primary} />
                     <Text style={styles.prevStepText}>Previous Step</Text>
                   </TouchableOpacity>
                 </View>
               )}
 
-              {/* Footer */}
-              <View style={styles.footerContainer}>
-                 <Text style={styles.poweredByText}>Powered by Novel Healthtech</Text>
-              </View>
-              
+              <View style={styles.footerContainer}><Text style={styles.poweredByText}>Powered by Novel Healthtech</Text></View>
               <View style={{ height: hp(2.5) }} />
             </ScrollView>
           </Animated.View>
@@ -348,6 +252,10 @@ const RegisterScreen = ({ navigation }) => {
     </SafeAreaView>
   );
 };
+
+export default RegisterScreen;
+
+// ... (Your exact styles remain unchanged here)
 
 export default RegisterScreen;
 
@@ -461,7 +369,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: hp(1.5), // approx 12
+    paddingVertical: hp(1), // approx 12
   },
   infoLabel: {
     fontSize: hp(1.5), // approx 15

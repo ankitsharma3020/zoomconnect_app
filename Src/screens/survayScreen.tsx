@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, use } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -14,11 +14,11 @@ import {
   Easing,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-
-
 import LinearGradient from 'react-native-linear-gradient';
-import { wp, hp } from '../utilites/Dimension'; // Adjusted import path
+import { wp, hp } from '../utilites/Dimension'; 
 import { useNavigation } from '@react-navigation/native';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchSurveys } from './Epicfiles/MainEpic';
 
 const { height, width } = Dimensions.get('window');
 
@@ -29,73 +29,22 @@ const COLORS = {
   textLight: '#636E72',
   white: '#FFFFFF',
   
-  // Section Header
   headerGradStart: '#774196ff',
   headerGradEnd: '#9c16b4ff',
 
-  // Card Styling
   cardBgStart: 'rgba(255, 255, 255, 0.95)', 
   cardBgEnd: 'rgba(245, 247, 250, 0.9)',    
   cardBorder: 'rgba(255, 255, 255, 0.6)',
   shadowColor: '#1e022e', 
 
-  // Button Colors
   btnActiveStart: '#6f4d83ff',
   btnActiveEnd: '#a235b3ff',
   btnDisabledBg: '#DFE6E9',
   btnTextDisabled: '#B2BEC3',
+  
+  // Added for Submitted State
+  submittedText: '#27ae60', 
 };
-
-// --- DUMMY DATA ---
-const SURVEY_SECTIONS = [
-  {
-    title: 'Active Surveys',
-    data: [
-      {
-        id: '1',
-        title: 'Employee Satisfaction 2025',
-        desc: 'Share your thoughts in our annual quick survey!',
-        dateRange: '24 Oct - 24 Nov 2025',
-        status: 'active',
-        // Darker pastel gradient for image background
-        gradient: ['#cab0acff', '#deb0e2ff'], // Pastel Red/Pink
-        icon: require('../../assets/empsu.png')  
-      },
-      {
-        id: '2',
-        title: 'Workplace Wellness Check',
-        desc: 'Help us improve the office environment.',
-        dateRange: '01 Nov - 15 Nov 2025',
-        status: 'active',
-        gradient: ['#B5EAD7', '#C7CEEA'], // Pastel Green/Blue
-        icon: require('../../assets/empsu1.png') 
-      },
-    ]
-  },
-  {
-    title: 'Upcoming Surveys',
-    data: [
-      {
-        id: '3',
-        title: 'Q4 Performance Review',
-        desc: 'Self-evaluation and peer feedback period.',
-        dateRange: 'Starts 01 Dec 2025',
-        status: 'upcoming',
-        gradient: ['#FFDAC1', '#FF9AA2'], // Pastel Peach/Pink
-        icon: require('../../assets/empsu.png')
-      },
-      {
-        id: '4',
-        title: 'Cafeteria Menu Feedback',
-        desc: 'Vote on the new lunch options for 2026.',
-        dateRange: 'Starts 10 Dec 2025',
-        status: 'upcoming',
-        gradient: ['#E2F0CB', '#B5EAD7'], // Pastel Green
-        icon: require('../../assets/empsu1.png')
-      },
-    ]
-  }
-];
 
 // --- BACKGROUND PATTERN ---
 const BackgroundPattern = () => (
@@ -151,76 +100,103 @@ const ShimmerCard = () => {
 
 const SurveyListScreen = () => {
   const [loading, setLoading] = useState(true);
-  const navigation=useNavigation();
-  // --- Animation State for List Items ---
-  // We need a way to trigger animations for items. 
-  // Since SectionList renders items lazily, we can animate them in the renderItem.
-  // Using a map to store animated values for each item ID would be ideal, 
-  // but for simplicity in this example, we'll animate them as they mount.
+  const navigation = useNavigation();
+  const dispatch = useDispatch();
+  
+  // Select data from Redux
+  const { data, isLoading, error } = useSelector((state) => state.surveys);
 
   useEffect(() => {
-    // Simulate loading data
-    const timer = setTimeout(() => {
-      setLoading(false);
-    }, 2000);
-    return () => clearTimeout(timer);
+    dispatch(fetchSurveys());
   }, []);
 
+  useEffect(() => {
+    // If Redux is loading, show shimmer
+    setLoading(isLoading);
+  }, [isLoading]);
+
+  // --- TRANSFORM API DATA TO UI SECTIONS ---
+  const sections = useMemo(() => {
+    if (!data?.surveys || data.surveys.length === 0) return [];
+
+    // Map API object to UI object
+    const mappedSurveys = data.surveys.map((survey, index) => ({
+        id: survey.id || index.toString(),
+        title: survey.name,
+        // Using static description as requested not to break UI, or use data from API if available later
+        desc: 'Share your thoughts and feedback with us.', 
+        dateRange: `${survey.survey_start_date} - ${survey.survey_end_date}`,
+        status: survey.is_active === 1 ? 'active' : 'inactive',
+        is_submit: survey.is_submit, // 1 = Submitted, 0/null = Not Submitted
+        survayid: survey?.survey_id,
+      
+        // Cosmetic properties (Alternating colors for visual appeal)
+        gradient: index % 2 === 0 ? ['#cab0acff', '#deb0e2ff'] : ['#B5EAD7', '#C7CEEA'],
+        icon: index % 2 === 0 ? require('../../assets/empsu.png') : require('../../assets/empsu1.png')
+    }));
+
+    return [
+        {
+            title: 'Active Surveys',
+            data: mappedSurveys
+        }
+    ];
+  }, [data]);
+
+
   const handlePress = (item) => {
-    if (item.status === 'active') {
-     navigation.navigate('SurvayDetails');
+    // Only navigate if active AND NOT submitted
+    if (item.status === 'active' && item.is_submit !== 1) {
+       navigation.navigate('SurvayDetails', { surveyId: item.survayid, surveyData: item });
     }
   };
 
   // --- RENDER SINGLE BANNER ITEM ---
-  const renderBanner = ({ item, index, section }) => {
-    // Simple fade-in and slide-up animation on mount
+  const renderBanner = ({ item, index }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(20)).current;
 
     useEffect(() => {
         if (!loading) {
-            // Stagger based on index slightly if possible, or just animate on mount
-            // For true staggering across sections, complex logic is needed.
-            // Here we animate when the component mounts after loading is false.
             Animated.parallel([
                 Animated.timing(fadeAnim, {
-                    toValue: 1,
-                    duration: 500,
-                    delay: index * 100, // Simple delay based on index within section
-                    useNativeDriver: true,
+                    toValue: 1, duration: 500, delay: index * 100, useNativeDriver: true,
                 }),
                 Animated.timing(slideAnim, {
-                    toValue: 0,
-                    duration: 500,
-                    delay: index * 100,
-                    useNativeDriver: true,
+                    toValue: 0, duration: 500, delay: index * 100, useNativeDriver: true,
                 })
             ]).start();
         }
     }, [loading]);
 
-    if (loading) return null; // Don't render real items while loading
+    if (loading) return null;
 
     const isActive = item.status === 'active';
+    const isSubmitted = item.is_submit === 1;
+
+    // --- BUTTON TEXT LOGIC ---
+    const getButtonText = () => {
+        if (isSubmitted) return 'Submitted';
+        if (isActive) return 'Start Survey';
+        return 'Upcoming';
+    };
 
     const ButtonContent = () => (
         <Text style={[
             styles.btnText, 
-            isActive ? { color: COLORS.white } : { color: COLORS.btnTextDisabled }
+            (isActive && !isSubmitted) ? { color: COLORS.white } : { color: COLORS.btnTextDisabled }
         ]}>
-            {isActive ? 'Take Survey' : 'Upcoming'}
+            {getButtonText()}
         </Text>
     );
 
     return (
       <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
           <TouchableOpacity 
-            activeOpacity={isActive ? 0.9 : 1}
-            onPress={() => isActive && handlePress(item)}
+            activeOpacity={(isActive && !isSubmitted) ? 0.9 : 1}
+            onPress={() => handlePress(item)}
             style={styles.cardOuterShadow}
           >
-            {/* Main Card Body Gradient (Subtle Glass effect) */}
             <LinearGradient
                 colors={[COLORS.cardBgStart, COLORS.cardBgEnd]}
                 style={styles.cardMainBody}
@@ -238,8 +214,9 @@ const SurveyListScreen = () => {
                     <Text style={styles.cardDesc} numberOfLines={2}>{item.desc}</Text>
                 </View>
 
-                {/* Action Button */}
-                {isActive ? (
+                {/* --- ACTION BUTTON LOGIC --- */}
+                {isActive && !isSubmitted ? (
+                    // CASE 1: Active & Not Submitted -> Show Gradient Button
                     <LinearGradient
                         colors={[COLORS.btnActiveStart, COLORS.btnActiveEnd]}
                         start={{x: 0, y: 0}} end={{x: 1, y: 0}}
@@ -248,7 +225,11 @@ const SurveyListScreen = () => {
                         <ButtonContent />
                     </LinearGradient>
                 ) : (
+                    // CASE 2: Submitted OR Inactive -> Show Grey Button
                     <View style={[styles.actionBtnGradient, { backgroundColor: COLORS.btnDisabledBg }]}>
+                        {isSubmitted && (
+                             <Icon name="check-circle" size={14} color={COLORS.btnTextDisabled} style={{marginRight: 6}} />
+                        )}
                         <ButtonContent />
                     </View>
                 )}
@@ -265,7 +246,7 @@ const SurveyListScreen = () => {
                  <Image
                     source={item.icon}
                     style={styles.graphicIcon}
-                    resizeMode="cover" // Changed to contain for better fit inside the graphic area
+                    resizeMode="contain" 
                  />
               </LinearGradient>
 
@@ -275,7 +256,6 @@ const SurveyListScreen = () => {
     );
   };
 
-  // --- RENDER SECTION HEADER ---
   const renderSectionHeader = ({ section: { title } }) => {
       if (loading) return null;
       return (
@@ -298,29 +278,31 @@ const SurveyListScreen = () => {
       
       <SafeAreaView style={{ flex: 1 }}>
           <TouchableOpacity style={styles.topBar} onPress={()=>navigation.goBack()} >
-                        <Icon name="arrow-left" size={hp(3.2)} color={COLORS.textDark} />
-                         <Text style={styles.screenTitle}>Surveys</Text>
-                    </TouchableOpacity>
+                <Icon name="arrow-left" size={hp(3.2)} color={COLORS.text} />
+                <Text style={styles.screenTitle}>Surveys</Text>
+          </TouchableOpacity>
      
 
         {loading ? (
             <View style={{ paddingHorizontal: 0, paddingTop: 20 }}>
-                {/* Render Shimmer Cards */}
                 <View style={{paddingHorizontal: wp(5.5), paddingBottom: 15}}><View style={[styles.sectionHeaderGradient, {width: 120, height: 30, backgroundColor: '#E0E0E0'}]} /></View>
                 <ShimmerCard />
-                <ShimmerCard />
-                <View style={{paddingHorizontal: wp(5.5), paddingBottom: 15, paddingTop: 20}}><View style={[styles.sectionHeaderGradient, {width: 120, height: 30, backgroundColor: '#E0E0E0'}]} /></View>
                 <ShimmerCard />
             </View>
         ) : (
             <SectionList
-              sections={SURVEY_SECTIONS}
+              sections={sections} 
               keyExtractor={(item) => item.id}
               renderItem={renderBanner}
               renderSectionHeader={renderSectionHeader}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
               stickySectionHeadersEnabled={false}
+              ListEmptyComponent={
+                  <View style={{alignItems: 'center', marginTop: hp(10)}}>
+                      <Text style={{color: COLORS.textLight, fontFamily: 'Montserrat-Regular'}}>No active surveys found.</Text>
+                  </View>
+              }
             />
         )}
       </SafeAreaView>
@@ -333,59 +315,51 @@ export default SurveyListScreen;
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: COLORS.bg },
 
-  // --- TOP BAR ---
   topBar: {
     flexDirection: 'row',
-    // justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: Platform.OS === 'android' ? hp(2) : 0,
-    paddingHorizontal: wp(5.5), // approx 22
-    paddingVertical: hp(1.8), // approx 15
+    paddingHorizontal: wp(5.5), 
+    paddingVertical: hp(1.8),
   },
   screenTitle: {
-    fontSize: hp(3.5), // approx 28
-    marginLeft: wp(3), // approx 12
-    fontFamily: 'Montserrat-Bold', // Font
+    fontSize: hp(3),
+    marginLeft: wp(3), 
+    fontFamily: 'Montserrat-Bold', 
     color: COLORS.text,
     letterSpacing: 0.5,
   },
 
-  // --- LIST ---
   listContent: {
-    paddingBottom: hp(5), // approx 40
+    paddingBottom: hp(5), 
   },
   
-  // --- SECTION HEADER ---
   sectionHeaderContainer: {
-    paddingHorizontal: wp(5.5), // approx 22
-    paddingTop: hp(3), // approx 25
-    paddingBottom: hp(1.8), // approx 15
+    paddingHorizontal: wp(5.5), 
+    paddingTop: hp(3), 
+    paddingBottom: hp(1.8),
   },
   sectionHeaderGradient: {
-    paddingVertical: hp(1), // approx 8
-    paddingHorizontal: wp(4), // approx 16
-    borderRadius: wp(3), // approx 12
+    paddingVertical: hp(1), 
+    paddingHorizontal: wp(4), 
+    borderRadius: wp(3), 
     alignSelf: 'flex-start',
     shadowColor: COLORS.headerGradStart,
     shadowOffset: { width: 0, height: hp(0.375) }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 6,
   },
   sectionHeaderText: {
-    fontSize: hp(1.6), // approx 13
-    fontFamily: 'Montserrat-Bold', // Font
+    fontSize: hp(1.6), 
+    fontFamily: 'Montserrat-Bold', 
     color: COLORS.white,
     letterSpacing: 0.5,
     textTransform: 'uppercase',
   },
 
-  // --- NEW CARD STYLES ---
-  
-  // 1. Outer Container for deep shadow
   cardOuterShadow: {
-    marginHorizontal: wp(5.5), // approx 22
-    marginBottom: hp(2.25), // approx 18
-    borderRadius: wp(5), // approx 20
+    marginHorizontal: wp(5.5), 
+    marginBottom: hp(2.25), 
+    borderRadius: wp(5), 
     backgroundColor: 'transparent',
-    // Deeper, softer shadow
     shadowColor: COLORS.shadowColor,
     shadowOffset: { width: 0, height: hp(1) },
     shadowOpacity: 0.15,
@@ -393,94 +367,92 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
 
-  // 2. Main Card Body with Subtle Gradient & Border
   cardMainBody: {
     flexDirection: 'row',
-    borderRadius: wp(5), // approx 20
+    borderRadius: wp(5), 
     overflow: 'hidden', 
     borderWidth: 1,
     borderColor: COLORS.cardBorder, 
-    minHeight: hp(18.75), // approx 150
-    padding: wp(1), // approx 6
+    minHeight: hp(18.75), 
+    padding: wp(1),
   },
 
-  // Left Side Content
   cardContent: {
     flex: 1,
-    padding: wp(2), // approx 12
-    paddingLeft: wp(1.5), // approx 14
+    padding: wp(2), 
+    paddingLeft: wp(1.5), 
     justifyContent: 'space-between',
   },
-  // New Status Badge
   statusBadge: {
     alignSelf: 'flex-start',
-    paddingVertical: hp(0.5), // approx 4
-    paddingHorizontal: wp(2), // approx 8
-    borderRadius: wp(1.5), // approx 6
-    marginBottom: hp(1), // approx 8
+    paddingVertical: hp(0.5), 
+    paddingHorizontal: wp(2), 
+    borderRadius: wp(1.5), 
+    marginBottom: hp(1), 
   },
   statusActive: { backgroundColor: 'rgba(30, 220, 130, 0.1)' },
   statusUpcoming: { backgroundColor: 'rgba(99, 110, 114, 0.1)' },
 
   dateText: {
-    fontSize: hp(1.15), // approx 10
-    fontFamily: 'Montserrat-Bold', // Font
+    fontSize: hp(1.15), 
+    fontFamily: 'Montserrat-Bold', 
     color: COLORS.textLight,
     textTransform: 'uppercase',
   },
   cardTitle: {
-    fontSize: hp(1.5), // approx 17
-    fontFamily: 'Montserrat-Bold', // Font
+    fontSize: hp(1.5), 
+    fontFamily: 'Montserrat-Bold', 
     color: COLORS.text,
-    marginBottom: hp(0.15), // approx 6
-    lineHeight: hp(2.75), // approx 22
+    marginBottom: hp(0.15), 
+    lineHeight: hp(2.75), 
   },
   cardDesc: {
-    fontSize: hp(1.2), // approx 13
+    fontSize: hp(1.2), 
     color: COLORS.textLight,
-    lineHeight: hp(1.65), // approx 18
-    fontFamily: 'Montserrat-SemiBold', // Font
+    lineHeight: hp(1.65), 
+    fontFamily: 'Montserrat-SemiBold', 
   },
   
-  // Button Style (Now a Gradient container)
   actionBtnGradient: {
-    marginTop: hp(1.75), // approx 14
-    paddingVertical: hp(1.25), // approx 10
-    paddingHorizontal: wp(5), // approx 20
-    borderRadius: wp(3), // approx 12
+    marginTop: hp(1.75), 
+    paddingVertical: hp(1.25), 
+    paddingHorizontal: wp(5), 
+    borderRadius: wp(3), 
     alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center'
   },
   btnText: {
-    fontSize: hp(1.4), // approx 13
-    fontFamily: 'Montserrat-Bold', // Font
+    fontSize: hp(1.4), 
+    fontFamily: 'Montserrat-Bold', 
   },
 
-  // RIGHT SIDE: Floating Graphic Pill
   floatingGraphic: {
-    width: wp(28.5), // approx 110
-    borderRadius: wp(4), // approx 16
+    width: wp(28.5), 
+    borderRadius: wp(4), 
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
-    marginLeft: wp(1), // approx 4
+    marginLeft: wp(1), 
   },
   graphicIcon: {
-    height: hp(12), // approx 72
-    width: wp(22), // approx 72
+    height: hp(10), 
+    width: wp(20), 
     zIndex: 2,
   },
   graphicCircle1: {
     position: 'absolute',
-    top: -hp(2.5), right: -wp(5), // approx -20
-    width: wp(22.5), height: wp(22.5), // approx 90
-    borderRadius: wp(11.25), // approx 45
+    top: -hp(2.5), right: -wp(5), 
+    width: wp(22.5), height: wp(22.5), 
+    borderRadius: wp(11.25), 
     backgroundColor: 'rgba(255,255,255,0.25)',
   },
   graphicCircle2: {
     position: 'absolute',
-    bottom: -hp(3.125), left: -wp(2.5), // approx -25, -10
-    width: wp(17.5), height: wp(17.5), // approx 70
-    borderRadius: wp(8.75), // approx 35
+    bottom: -hp(3.125), left: -wp(2.5), 
+    width: wp(17.5), height: wp(17.5), 
+    borderRadius: wp(8.75), 
     backgroundColor: 'rgba(255,255,255,0.15)',
   },
 });

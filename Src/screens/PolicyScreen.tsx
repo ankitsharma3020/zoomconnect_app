@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
 import {
   View,
   Text,
@@ -28,14 +28,17 @@ import SurveyModal from '../component/Survaymodal';
 import Header from '../component/header';
 import { useGetNewProfileQuery } from '../redux/service/user/user';
 import { GetApi } from '../component/Apifunctions';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchPolicies, fetchProfile, fetchSurveys, fetchWellness } from './Epicfiles/MainEpic';
 
 const { width, height } = Dimensions.get('window');
 const BOTTOM_TAB_HEIGHT = hp(10); 
 
+const HEADER_HEIGHT = Platform.OS === 'ios' ? hp(14) : hp(13);
+
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
-
 // --- 1. Shimmer Component ---
 const PolicyShimmer = () => {
   const shimmerAnim = useRef(new Animated.Value(0)).current;
@@ -69,50 +72,69 @@ const PolicyShimmer = () => {
   );
 };
 
+  const toggleShowFullEmail = () => {
+    setShowFullEmail(!showFullEmail);
+  };
+  
+
 const PolicyScreen = () => {
   const navigation = useNavigation();
-  
+  const dispatch = useDispatch(); 
   // State
   const [claimExpanded, setClaimExpanded] = useState(false);
   const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
   const [showSurveyModal, setShowSurveyModal] = useState(false);
   const [enrollmentStarted, setEnrollmentStarted] = useState(false);
   const [surveyStarted, setSurveyStarted] = useState(false);
+    const { data:surveylistdata, isLoading, error } = useSelector((state) => state.surveys);
+    console.log("survey list data in policy screen", surveylistdata)
+   const filteredSurveys = useMemo(() => 
+    surveylistdata?.data?.filter(item => item.is_submit !== "1") || [], 
+    [surveylistdata]
+  );
   
   // Policy Data State
-  const [PolicyData, setPolicyData] = useState(null);
-  const [policyLoading, setPolicyLoading] = useState(true); // Added loading state
 
-  const { data, error, isLoading } = useGetNewProfileQuery();
+  const {data:PolicyData, isLoading:policyLoading, error:policyError} = useSelector((state:any)=>state.policy);
+  console.log("policy data in policy screen",PolicyData)
+
+  //   const enrollmentLogic = useMemo(() => {
+  //   if (!enrollmentlistdata) return { shouldShowImage: false };
+    
+  //   const currentDate = new Date();
+  //   const hasValidAssignedDates = enrollmentlistdata?.new_enrolment_assigned?.every(
+  //     item => new Date(item.portal_end_date) >= currentDate
+  //   );
+  //   const hasValidSubmittedDates = enrollmentlistdata?.new_enrolment_submitted?.every(
+  //     item => new Date(item.portal_end_date) >= currentDate
+  //   );
+  //   const hasAssignedData = enrollmentlistdata?.new_enrolment_assigned?.length > 0;
+  //   const hasAssignedsubmittedData = enrollmentlistdata?.new_enrolment_submitted?.length > 0;
+  //   const isEnrollmentListEmpty = enrollmentlistdata?.length === 0;
+  //   const shouldShowImage = !isEnrollmentListEmpty && 
+  //     (hasAssignedData || hasAssignedsubmittedData) && 
+  //     (hasValidAssignedDates || hasValidSubmittedDates);
+
+  //   return { shouldShowImage };
+  // }, [enrollmentlistdata]);
 
   const toggleClaim = () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setClaimExpanded((s) => !s);
   };
   
-  const POLICY_URL = '/employee-policies';
 
-  const fetchPolicy = async () => {
-    try {
-      setPolicyLoading(true); // Start loading
-      const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('No token found');
-      
-      const response = await GetApi(POLICY_URL, {}, token);
-      setPolicyData(response);
-    } catch (error) {
-      console.error('Profile error:', error);
-    } finally {
-      setPolicyLoading(false); // Stop loading regardless of success/fail
-    }
-  };
 
   useEffect(() => {
-    fetchPolicy();
+dispatch(fetchProfile()),
+dispatch (fetchPolicies())
+dispatch(fetchWellness())
+ dispatch(fetchSurveys());
+    // fetchPolicy();
   }, []);
 
   const claimSummary = "Steps to file a medical claim & track status.";
-  const claimFullText = "Learn about the steps to file a medical claim and track its status easily. Our process is designed to be simple, transparent, and quick.";
+  const claimFullText = "During your stay in the hospital, you must pay for your own expenses. The insurance company will reimburse the hospitalisation and post-hospitalization charges.";
 
   const enrollment = {
     title: 'Enrollment is open',
@@ -147,9 +169,12 @@ const PolicyScreen = () => {
           <Rect x={0} y={height * 0.55} width={width} height={height * 0.15} fill="rgba(147,71,144,0.015)" />
           <Rect x={0} y={0} width={width} height={height} fill="url(#diags)" opacity={0.05} />
         </Svg>
+         <View pointerEvents="none" style={styles.fixedFooterWrap}>
+          <Text style={styles.fixedFooterText}>YOUR POLICY</Text>
+        </View>
       </View>
 
-      <SafeAreaView style={styles.safe}>
+      <View style={styles.safe}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
         
         {/* --- FIXED HEADER --- */}
@@ -158,8 +183,12 @@ const PolicyScreen = () => {
         </View>
         
         <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
-          showsVerticalScrollIndicator={false}
+        contentContainerStyle={[
+            styles.scrollContent, 
+            { paddingTop: HEADER_HEIGHT } // <--- FIX APPLIED HERE
+          ]}
+         
+        showsVerticalScrollIndicator={false}
         >
           
           {/* --- Active Policy Header --- */}
@@ -251,7 +280,7 @@ const PolicyScreen = () => {
           )}
 
           {/* --- Survey Card --- */}
-          {!surveyStarted && (
+          {filteredSurveys.length > 0 && (
             <View style={[styles.sectionContainer, { marginTop: hp(3) }]}>
               <TouchableOpacity
                 activeOpacity={0.94}
@@ -328,21 +357,21 @@ const PolicyScreen = () => {
                   <View style={styles.claimLeft}>
                     <Text style={styles.claimTitle}>File a claim or check the process</Text>
                     <Text style={styles.claimSummary} numberOfLines={claimExpanded ? undefined : 2}>
-                      {claimExpanded ? claimFullText : claimSummary}
+                      {claimSummary}
                     </Text>
 
                     <View style={styles.claimBtnContainer}>
-                      <View style={styles.claimButton}>
+                      <TouchableOpacity onPress={() => navigation.navigate('claimProcess')} style={styles.claimButton}>
                         <Text style={styles.claimButtonText}>
-                          {claimExpanded ? 'Show less' : 'View details'}
+                          View Details
                         </Text>
                         <Svg width={wp(4)} height={wp(4)} viewBox="0 0 24 24" fill="none" style={{ marginLeft: wp(1.5) }}>
-                          <Path
+                          {/* <Path
                             d={claimExpanded ? "M18 15L12 9L6 15" : "M6 9L12 15L18 9"}
                             stroke="#BE185D" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"
-                          />
+                          /> */}
                         </Svg>
-                      </View>
+                      </TouchableOpacity>
                     </View>
                   </View>
 
@@ -364,10 +393,8 @@ const PolicyScreen = () => {
         </ScrollView>
 
         {/* --- Fixed Footer Background Text (Watermark) --- */}
-        <View pointerEvents="none" style={styles.fixedFooterWrap}>
-          <Text style={styles.fixedFooterText}>YOUR POLICY</Text>
-        </View>
-      </SafeAreaView>
+       
+      </View>
 
       {/* --- Modals --- */}
       <EnrollmentModal visible={showEnrollmentModal} onClose={() => setShowEnrollmentModal(false)} onStart={() => setEnrollmentStarted(true)} />
@@ -399,22 +426,19 @@ const styles = StyleSheet.create({
   patternWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
   safe: { flex: 1, zIndex: 1 },
   
-  fixedHeaderWrapper: {
-    zIndex: 10,
-    backgroundColor: 'transparent',
-  },
+  fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
 
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(18) },
-  sectionContainer: {  marginBottom: hp(1.2) },
+  sectionContainer: { paddingHorizontal: Platform.OS === 'ios' ? 0 : wp(4), marginBottom: hp(1),marginTop: hp(2) },
 
-  fixedFooterWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: BOTTOM_TAB_HEIGHT + hp(1),
-    alignItems: 'center',
-    zIndex: 0, 
-  },
+ fixedFooterWrap: {
+     position: 'absolute', // <--- IMPORTANT: Ensure this is uncommented
+     left: 0,
+     right: 0,
+     bottom: BOTTOM_TAB_HEIGHT + hp(3.7), // approx 30
+     alignItems: 'center',
+     zIndex: 0, 
+   },
   fixedFooterText: {
     fontSize: hp(4.8),
     fontFamily: 'Montserrat-Bold',

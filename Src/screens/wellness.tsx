@@ -1,18 +1,17 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useRef } from 'react';
 import {
   View,
   Text,
-  SafeAreaView,
   StyleSheet,
   Dimensions,
   TouchableOpacity,
   ScrollView,
   StatusBar,
-  LayoutAnimation,
   Platform,
   UIManager,
   Image,
-  ActivityIndicator
+  Animated,
+  Easing
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { wp, hp } from '../utilites/Dimension'; 
@@ -20,21 +19,19 @@ import { wp, hp } from '../utilites/Dimension';
 // --- CUSTOM IMPORTS ---
 import Header from '../component/header';
 import ActivePolicyHeader from '../component/activpolicy';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GetApi } from '../component/Apifunctions';
+import { useSelector } from 'react-redux';
 
 const { width } = Dimensions.get('window');
 const BOTTOM_TAB_HEIGHT = hp(10); 
-
-// Domain for appending to relative image paths
+const HEADER_HEIGHT = Platform.OS === 'ios' ? hp(14) : hp(13);
 const IMAGE_BASE_URL = 'https://portal.zoomconnect.co.in'; 
 
-// Enable LayoutAnimation
+// Enable LayoutAnimation (Only if needed for other parts, but NOT for tabs)
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// --- 1. DEFINE COLOR THEMES ---
+// --- THEMES CONFIG ---
 const THEMES = {
   BLUE: {
     gradient: ['#dbeafe', '#bfdbfe'], 
@@ -78,74 +75,89 @@ const THEMES = {
   }
 };
 
-// --- 2. HELPER TO ASSIGN THEMES BASED ON CATEGORY ---
 const getThemeByCategory = (categoryName) => {
   if (!categoryName) return THEMES.DEFAULT;
-  
   const normalized = categoryName.toLowerCase();
-  
   if (normalized.includes('doctor') || normalized.includes('consultation')) return THEMES.BLUE;
   if (normalized.includes('lab') || normalized.includes('test') || normalized.includes('checkup')) return THEMES.ORANGE;
   if (normalized.includes('pharmacy') || normalized.includes('medicine')) return THEMES.GREEN;
   if (normalized.includes('maternity') || normalized.includes('surgery') || normalized.includes('care')) return THEMES.PURPLE;
-
   return THEMES.DEFAULT;
 };
 
-// --- MAIN COMPONENT ---
-
-const WellnessScreen = ({ navigation }: any) => {
-  const [selectedTab, setSelectedTab] = useState('All');
-  const [wellnessData, setWellnessData] = useState([]); // Store raw API list
-  const [tabs, setTabs] = useState(['All']); // Dynamic tabs
-  const [loading, setLoading] = useState(true);
-
-  const WELLNESS_URL = '/wellness-services';
-
-  // --- FETCH DATA ---
-  const fetchWellness = async () => {
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('token');
-      if (!token) throw new Error('No token found');
-      
-      const response = await GetApi(WELLNESS_URL, {}, token);
-      
-      // Assuming response is the array provided in prompt. 
-      // If response is { data: [...] }, change to response.data
-      const data = response || []; 
-      
-      setWellnessData(data?.data?.services);
-
-      // --- EXTRACT UNIQUE CATEGORIES FOR TABS ---
-      const uniqueCategories = [
-        'All', 
-        ...new Set(data?.data?.services.map(item => item.category?.category_name).filter(Boolean))
-      ];
-      setTabs(uniqueCategories);
-
-    } catch (error) {
-      console.error('Wellness fetch error:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+// --- NEW COMPONENT: SHIMMER CARD ---
+const ShimmerCard = () => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    fetchWellness();
+    Animated.loop(
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
   }, []);
 
+  const translateX = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-width, width], 
+  });
+
+  return (
+    <View style={styles.shimmerWrapper}>
+      <View style={styles.shimmerContainer}>
+        {/* Background Base Color */}
+        <View style={styles.shimmerBackground} />
+        
+        {/* Moving Gradient "Shine" */}
+        <Animated.View
+          style={[
+            StyleSheet.absoluteFill,
+            { transform: [{ translateX }] }
+          ]}
+        >
+          <LinearGradient
+            colors={['transparent', 'rgba(255,255,255,0.5)', 'transparent']}
+            start={{ x: 0, y: 0.5 }}
+            end={{ x: 1, y: 0.5 }}
+            style={{ flex: 1 }}
+          />
+        </Animated.View>
+      </View>
+    </View>
+  );
+};
+
+// --- COMPONENT: SHIMMER GRID WRAPPER ---
+const WellnessShimmer = () => {
+  // Render 6 dummy cards
+  return (
+    <View style={styles.cardsGrid}>
+      {[1, 2, 3, 4, 5, 6].map((key) => (
+        <ShimmerCard key={key} />
+      ))}
+    </View>
+  );
+};
+
+// --- MAIN SCREEN COMPONENT ---
+const WellnessScreen = ({ navigation }: any) => {
+  const [selectedTab, setSelectedTab] = useState('All');
+  
+  const { data: wellnessData, isLoading: loading } = useSelector((state: any) => state.wellness);
+  
+  const uniqueCategories = [
+    'All', 
+    ...new Set(wellnessData?.map(item => item.category?.category_name).filter(Boolean))
+  ];
+
   const handleTabPress = (tab: string) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // ❌ REMOVED LayoutAnimation here to fix the flickering/light color issue
     setSelectedTab(tab);
   };
 
-  const handleCardPress = (item: any) => {
-    console.log('Navigate to service:', item.wellness_name);
-    // navigation.navigate('ServiceDetails', { serviceData: item });
-  };
-
-  // --- FILTER DATA BASED ON TAB ---
   const filteredData = useMemo(() => {
     if (selectedTab === 'All') {
       return wellnessData;
@@ -153,11 +165,20 @@ const WellnessScreen = ({ navigation }: any) => {
     return wellnessData.filter(item => item.category?.category_name === selectedTab);
   }, [selectedTab, wellnessData]);
 
+  const handleCardPress = (item: any) => {
+    console.log('Navigate to service:', item.wellness_name);
+  };
+
   return (
     <View style={styles.screenWrap}>
       <View style={styles.backgroundFill} />
+      
+      {/* Footer Text in Background */}
+      <View pointerEvents="none" style={styles.fixedFooterWrap}>
+        <Text style={styles.fixedFooterText}>WELLNESS</Text>
+      </View>
 
-      <SafeAreaView style={styles.safe}>
+      <View style={styles.safe}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8F9FD" translucent={false} />
         
         <View style={styles.fixedHeaderWrapper}>
@@ -165,7 +186,10 @@ const WellnessScreen = ({ navigation }: any) => {
         </View>
         
         <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+          contentContainerStyle={[
+            styles.scrollContent, 
+            { paddingTop: HEADER_HEIGHT }
+          ]}
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.sectionContainer}>
@@ -177,22 +201,23 @@ const WellnessScreen = ({ navigation }: any) => {
             />
           </View>
 
-          {/* --- DYNAMIC TABS --- */}
-          {tabs.length > 0 && (
+          {/* --- TABS --- */}
+          {uniqueCategories.length > 0 && (
             <View style={styles.tabWrapper}>
               <ScrollView 
                 horizontal 
                 showsHorizontalScrollIndicator={false} 
                 contentContainerStyle={styles.tabContainer}
               >
-                {tabs.map((tab) => {
+                {uniqueCategories.map((tab) => {
                   const isSelected = selectedTab === tab;
                   return (
                     <TouchableOpacity 
                       key={tab} 
+                      // Removed unnecessary layout props
                       style={[styles.tabButton, isSelected && styles.tabButtonSelected]}
                       onPress={() => handleTabPress(tab)}
-                      activeOpacity={0.7}
+                      activeOpacity={0.8}
                     >
                       <Text style={[styles.tabText, isSelected && styles.tabTextSelected]}>
                         {tab}
@@ -208,24 +233,18 @@ const WellnessScreen = ({ navigation }: any) => {
             <Text style={styles.sectionTitle}>Available Services</Text>
           </View>
           
-          {/* --- LOADING STATE --- */}
+          {/* --- CONDITIONAL RENDERING: SHIMMER VS DATA --- */}
           {loading ? (
-            <ActivityIndicator size="large" color="#934790" style={{marginTop: 20}} />
+            <WellnessShimmer />
           ) : (
-            /* --- CARD GRID --- */
             <View style={styles.cardsGrid}>
               {filteredData?.map((item, index) => {
-                
-                // Get Theme based on Category Name
                 const theme = getThemeByCategory(item.category?.category_name);
                 
-                // Construct Image URL (Handle relative paths)
                 let imageUrl = item.icon_url;
                 if (imageUrl && !imageUrl.startsWith('http')) {
                   imageUrl = `${IMAGE_BASE_URL}${imageUrl}`;
                 }
-
-                // Construct Vendor Logo URL
                 let vendorLogo = item.vendor?.logo_url;
 
                 return (
@@ -244,60 +263,56 @@ const WellnessScreen = ({ navigation }: any) => {
                         <View style={styles.cardGradient1}>
                            <View style={styles.cardInner}>
 
-                          {/* ----- Discount Tag (Description field) ----- */}
-                          {item.description && (
-                            <View style={[
-                              styles.tagContainer,
-                              { backgroundColor: theme.tagBgColor }
-                            ]}>
-                              <Text style={[
-                                styles.tagText,
-                                { color: theme.tagTextColor }
+                            {/* Discount Tag */}
+                            {item.description && (
+                              <View style={[
+                                styles.tagContainer,
+                                { backgroundColor: theme.tagBgColor }
                               ]}>
-                                {item.description}
+                                <Text style={[
+                                  styles.tagText,
+                                  { color: theme.tagTextColor }
+                                ]}>
+                                  {item.description}
+                                </Text>
+                              </View>
+                            )}
+
+                            {/* Top-Left Content */}
+                            <View style={styles.topLeftContainer}>
+                              {vendorLogo ? (
+                                <View style={styles.logoBox}>
+                                  <Image
+                                    source={{ uri: vendorLogo }}
+                                    style={styles.companyLogo}
+                                    resizeMode="contain"
+                                  />
+                                </View>
+                              ) : null}
+
+                              <Text style={[styles.categoryLabel, { color: theme.subTextColor }]}>
+                                {item.category?.category_name}
+                              </Text>
+
+                              <Text
+                                style={[styles.cardTitle, { color: theme.textColor }]}
+                                numberOfLines={3}
+                              >
+                                {item.wellness_name}
                               </Text>
                             </View>
-                          )}
 
-                          {/* Top-Left: Logo & Text */}
-                          <View style={styles.topLeftContainer}>
-                            {/* Vendor Logo */}
-                            {vendorLogo ? (
-                               <View style={styles.logoBox}>
-                                 <Image
-                                   source={{ uri: vendorLogo }}
-                                   style={styles.companyLogo}
-                                   resizeMode="contain" // Changed to contain for logos
-                                 />
-                               </View>
+                            {/* Bottom-Right Image */}
+                            {imageUrl ? (
+                              <Image
+                                source={{ uri: imageUrl }}
+                                style={styles.bottomRightImage}
+                                resizeMode="cover"
+                              />
                             ) : null}
 
-                            {/* Category Name */}
-                            <Text style={[styles.categoryLabel, { color: theme.subTextColor }]}>
-                              {item.category?.category_name}
-                            </Text>
-
-                            {/* Service Name */}
-                            <Text
-                              style={[styles.cardTitle, { color: theme.textColor }]}
-                              numberOfLines={3}
-                            >
-                              {item.wellness_name}
-                            </Text>
                           </View>
-
-                          {/* Bottom-Right: Service Illustration */}
-                          {imageUrl ? (
-                             <Image
-                               source={{ uri: imageUrl }}
-                               style={styles.bottomRightImage}
-                               resizeMode="cover"
-                             />
-                          ) : null}
-
                         </View>
-                        </View>
-                       
                       </LinearGradient>
                     </TouchableOpacity>
                   </View>
@@ -307,11 +322,7 @@ const WellnessScreen = ({ navigation }: any) => {
           )}
 
         </ScrollView>
-
-        <View pointerEvents="none" style={styles.fixedFooterWrap}>
-          <Text style={styles.fixedFooterText}>WELLNESS</Text>
-        </View>
-      </SafeAreaView>
+      </View>
     </View>
   );
 };
@@ -320,11 +331,20 @@ const styles = StyleSheet.create({
   screenWrap: { flex: 1, backgroundColor: '#F8F9FD' },
   backgroundFill: { ...StyleSheet.absoluteFillObject, backgroundColor: '#F8F9FD' },
   safe: { flex: 1, zIndex: 1 },
-  fixedHeaderWrapper: { zIndex: 10, backgroundColor: '#F8F9FD' },
+  
+  fixedHeaderWrapper: {
+    position: 'absolute', 
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100, 
+    elevation: 10, 
+    backgroundColor: '#F8F9FD' 
+  },
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(6.25) }, 
-  sectionContainer: { paddingHorizontal: Platform.OS === 'ios' ? 0 : wp(4), marginBottom: hp(1.2) },
+  sectionContainer: { paddingHorizontal: Platform.OS === 'ios' ? 0 : wp(4), marginBottom: hp(2.2) ,marginTop: hp(2) },
 
-  // Tabs
+  // --- TABS ---
   tabWrapper: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(1.2) },
   tabContainer: { paddingHorizontal: wp(6), paddingVertical: hp(2), alignItems: 'center' },
   tabButton: {
@@ -335,6 +355,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    // Removed Elevation/Shadow from default state to reduce flicker
   },
   tabButtonSelected: {
     backgroundColor: '#934790',
@@ -355,14 +376,13 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold'
   },
 
-  // Grid
+  // --- GRID ---
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: wp(6), marginBottom: hp(2) },
   sectionTitle: { 
     fontSize: hp(2.2),
     fontFamily: 'Montserrat-Bold',
     color: '#334155' 
   },
-  
   cardsGrid: {
     paddingHorizontal: wp(4),
     flexDirection: 'row',
@@ -374,7 +394,7 @@ const styles = StyleSheet.create({
     marginBottom: hp(2),
   },
 
-  // Cards
+  // --- CARDS ---
   mainCardContainer: {
     height: hp(23.75),
     borderRadius: wp(5),
@@ -386,7 +406,6 @@ const styles = StyleSheet.create({
   cardGradient: {
     flex: 1,
     borderRadius: wp(5),
-    
   },
   cardGradient1: {
     flex: 1,
@@ -398,7 +417,6 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   
-  // Top Left Layout
   topLeftContainer: {
     alignItems: 'flex-start',
     width: '70%', 
@@ -409,7 +427,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: wp(1.5),
     paddingVertical: hp(0.25),
     marginBottom: hp(1),
-    height: hp(3), // Fixed height for logo container
+    height: hp(3), 
     justifyContent: 'center'
   },
   companyLogo: {
@@ -429,8 +447,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold',
     lineHeight: hp(2),
   },
-
-  // Bottom Right Image
   bottomRightImage: {
     position: 'absolute',
     bottom: -hp(0.6),
@@ -438,24 +454,6 @@ const styles = StyleSheet.create({
     width: wp(28),
     height: hp(12),
   },
-
-  fixedFooterWrap: {
-    marginTop: hp(3),
-    left: 0,
-    right: 0,
-    bottom: BOTTOM_TAB_HEIGHT + hp(1.5),
-    alignItems: 'center',
-    zIndex: 0, 
-  },
-  fixedFooterText: {
-    fontSize: hp(5.5),
-    fontFamily: 'Montserrat-Bold',
-    color: 'rgba(15,17,32,0.04)',
-    textTransform: 'uppercase',
-    letterSpacing: 3,
-    textAlign: 'center',
-  },
-
   tagContainer: {
     position: 'absolute', 
     top: -hp(0.25),
@@ -475,6 +473,41 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
+  },
+
+  // --- SHIMMER STYLES ---
+  shimmerWrapper: {
+    width: (width - wp(12)) / 2,
+    marginBottom: hp(2),
+  },
+  shimmerContainer: {
+    height: hp(23.75),
+    borderRadius: wp(5),
+    overflow: 'hidden', // Essential for masking the gradient
+    backgroundColor: '#E2E8F0', // Base gray color
+    position: 'relative',
+  },
+  shimmerBackground: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#E2E8F0',
+  },
+
+  // --- FOOTER ---
+  fixedFooterWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: BOTTOM_TAB_HEIGHT + hp(3.7),
+    alignItems: 'center',
+    zIndex: 0, 
+  },
+  fixedFooterText: {
+    fontSize: hp(5.5),
+    fontFamily: 'Montserrat-Bold',
+    color: 'rgba(15,17,32,0.04)',
+    textTransform: 'uppercase',
+    letterSpacing: 3,
+    textAlign: 'center',
   },
 });
 

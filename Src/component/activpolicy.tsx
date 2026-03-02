@@ -12,7 +12,7 @@ import Svg, { Circle, Path } from 'react-native-svg';
 import { wp, hp } from '../utilites/Dimension';
 
 const { width } = Dimensions.get('window');
-const HEADER_HEIGHT = hp(10.5);
+const HEADER_HEIGHT = hp(8.5);
 
 type Props = {
   title?: string;
@@ -80,21 +80,23 @@ export default function ActivePolicyHeader({
 const styles = StyleSheet.create({
   // FIX 1: Dedicated Shadow Container
   shadowContainer: {
-    // width: '105%', // Use 100% instead of 104%
-    height: HEADER_HEIGHT,
-    marginTop: hp(1.2),
-    // Remove 'right' property
-    backgroundColor: 'transparent', // Important for iOS shadow
-    
-    // iOS Shadow Props
-    shadowColor: '#A5B4FC',
-    shadowOffset: { width: 0, height: 4 }, // Adjusted for cleaner look
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    
-    // Android Elevation
-    elevation: 6,
-  },
+  width: '100%',
+  height: HEADER_HEIGHT,
+  marginTop: hp(1.2),
+
+  backgroundColor: '#fff',   // REQUIRED for Android shadows
+
+  // iOS shadow
+  shadowColor: '#A5B4FC',
+  shadowOffset: { width: 0, height: 4 },
+  shadowOpacity: 0.25,
+  shadowRadius: 8,
+
+  // Android shadow
+  elevation: 10,
+
+  borderRadius: 26, // optional
+},
   // FIX 2: Inner Container for Clipping
   innerContainer: {
     flex: 1, // Fill the shadow container
@@ -117,7 +119,7 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   title: {
-    fontSize: hp(2.4),
+    fontSize: hp(2),
     // Ensure this font name is the exact 'PostScript Name' on iOS
     fontFamily: 'Montserrat-Bold', 
     fontWeight: Platform.select({ ios: '700', android: undefined }), // Fallback weight
@@ -126,14 +128,14 @@ const styles = StyleSheet.create({
     marginBottom: hp(0.5),
   },
   subtitle: {
-    fontSize: hp(1.4),
+    fontSize: hp(1.2),
     color: '#6366F1', 
     fontFamily: 'Montserrat-SemiBold', 
     fontWeight: Platform.select({ ios: '600', android: undefined }), // Fallback weight
     lineHeight: hp(2.2),
   },
   imageWrapper: {
-    width: wp(25),
+    width: wp(20),
     height: '100%', // Changed from 120% to avoid layout breaks
     justifyContent: 'center',
     alignItems: 'center',

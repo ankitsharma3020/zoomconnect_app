@@ -8,6 +8,8 @@ import {
   Dimensions,
   Platform,
   UIManager,
+  TouchableWithoutFeedback,
+  LayoutAnimation,
 } from 'react-native';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient';
@@ -68,11 +70,17 @@ const samplePolicies = [
 ];
 
 const PolicyCard = ({ p, onViewDetails, remainingCount, onShowMore }) => {
+  console.log('PolicyCard rendering with policy:', onShowMore);
+   const [expanded, setExpanded] = useState(false);
     const navigation = useNavigation(); 
   // Floating bubbles animation
   const floatA = useRef(new Animated.Value(0)).current;
   const floatB = useRef(new Animated.Value(0)).current;
   const floatC = useRef(new Animated.Value(0)).current;
+   const toggleExpand = () => {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setExpanded(!expanded);
+    };
 
   useEffect(() => {
     const loopAnim = (anim, distance, duration) => {
@@ -94,7 +102,7 @@ const PolicyCard = ({ p, onViewDetails, remainingCount, onShowMore }) => {
       {remainingCount > 0 && (
         <TouchableOpacity 
           style={styles.moreBadgeOutside} 
-          onPress={onShowMore}
+          onPress={()=>onShowMore()}
           activeOpacity={0.7}
         >
           <Text style={styles.moreBadgeTextHighlight}>View {remainingCount} more</Text>
@@ -105,7 +113,7 @@ const PolicyCard = ({ p, onViewDetails, remainingCount, onShowMore }) => {
       <View style={styles.cardOuter}>
         <View style={styles.cardClip}>
           <LinearGradient
-            colors={p.gradient}
+            colors={['#F9FAFB', '#E9E6F5']}
             style={styles.cardGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -121,50 +129,60 @@ const PolicyCard = ({ p, onViewDetails, remainingCount, onShowMore }) => {
             <View style={styles.cardContent}>
               <View style={styles.textBlock}>
                 <Text numberOfLines={1} style={styles.title}>
-                  {p.title}
+                  {p.corporate_policy_name}
                 </Text>
 
                 <View style={styles.rowTwoCol}>
                   <View style={styles.colItem}>
                     <Text style={styles.colLabel}>Base SI</Text>
-                    <Text style={styles.colValue}>{p.baseSi}</Text>
+                    <Text style={styles.colValue}>{p.cover_string.total_base_sum_insured}</Text>
                   </View>
                   <View style={styles.colItem}>
                     <Text style={styles.colLabel}>Top-up</Text>
-                    <Text style={styles.colValue}>{p.topup}</Text>
+                    <Text style={styles.colValue}>{p.cover_string.total_topup_sum_insured}</Text>
                   </View>
                 </View>
 
                 <Text style={styles.policyNumber}>
-                  Policy No: <Text style={{ fontFamily: 'Montserrat-Bold' }}>{p.policyNumber}</Text>
+                  Policy No: <Text style={{ fontFamily: 'Montserrat-Bold' }}>{p.policy_number}</Text>
                 </Text>
 
                 <View style={[styles.rowTwoCol, { marginTop: hp(1.2) }]}>
                   <View style={styles.colItem}>
                     <Text style={styles.colLabel}>Insured by</Text>
-                    <Text style={styles.colValue}>{p.insuredBy}</Text>
+                         <TouchableWithoutFeedback onPress={toggleExpand}>
+                       <Text 
+                         numberOfLines={expanded ? undefined : 1} 
+                                          style={styles.colValue}
+                                        >{p.insurance_company_name}</Text>
+                                        </TouchableWithoutFeedback>
                   </View>
                   <View style={styles.colItem}>
                     <Text style={styles.colLabel}>TPA</Text>
-                    <Text style={styles.colValue}>{p.tpa}</Text>
+                    <TouchableWithoutFeedback onPress={toggleExpand}>
+                       <Text 
+                                          numberOfLines={expanded ? undefined : 1} 
+                                          style={styles.colValue}
+                                        >{p.tpa_company_name}</Text>
+                    </TouchableWithoutFeedback>
                   </View>
                 </View>
 
                 <TouchableOpacity
                   style={styles.cta}
-                   onPress={() => navigation.navigate('policydetails')}
+                   onPress={() => navigation.navigate('policydetails',{ policyid: p?.id })}
                 >
                   <Text style={styles.ctaText}>View Details</Text>
                 </TouchableOpacity>
               </View>
 
-              <View style={styles.downloadIconWrap}>
+              {/* <View style={styles.downloadIconWrap}>
                 <MaterialCommunityIcons
                   name="download"
                   size={hp(2.8)}
                   color="#934790"
                 />
-              </View>
+              </View> */}
             </View>
             </View>
             
@@ -176,18 +194,19 @@ const PolicyCard = ({ p, onViewDetails, remainingCount, onShowMore }) => {
 };
 
 export default function PolicysCardList({
-  policies = samplePolicies,
+
+ onNavigate,
+ policydata,
   onViewDetails = () => {},
 }) {
-  const navigation = useNavigation();
+  console.log('Policies in PolicysCardList:',policydata);
+  // const navigation = useNavigation();
+ const policies=policydata?.data?.policy_details
 
   const visiblePolicy = policies[0];
   const remainingCount = Math.max(0, policies.length - 1);
 
-  const handleShowMore = () => {
-    navigation.navigate('AllPoliciesScreen', { policies }); 
-    console.log("Navigating to all policies...");
-  };
+
 
   if (!visiblePolicy) return null;
 
@@ -198,7 +217,7 @@ export default function PolicysCardList({
             p={visiblePolicy} 
             onViewDetails={onViewDetails} 
             remainingCount={remainingCount}
-            onShowMore={handleShowMore}
+            onShowMore={onNavigate}
         />
       </View>
     </View>

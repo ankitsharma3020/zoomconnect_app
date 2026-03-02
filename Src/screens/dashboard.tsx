@@ -33,9 +33,12 @@ import PromoCarousel2 from '../component/promocorsol2';
 import PromoCarousel3 from '../component/policycorosol3';
 import HealthCarousel from '../component/healthCorosol';
 import { wp, hp } from '../utilites/Dimension'; // Added import for dynamic dimensions
+import { useNavigation } from '@react-navigation/native';
+import { useSelector } from 'react-redux';
 
 const { width, height } = Dimensions.get('window');
 const BOTTOM_TAB_HEIGHT = hp(10); // approx 80
+const HEADER_HEIGHT = Platform.OS === 'ios' ? hp(14) : hp(13);
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
@@ -74,7 +77,9 @@ const SupportIcon = () => (
 );
 
 
-const Dashboard = ({ navigation }) => {
+const Dashboard = () => {
+const navigation = useNavigation(); 
+  const {data:PolicyData, isLoading:policyLoading, error:policyError} = useSelector((state:any)=>state.policy);
 
   // --- QUICK ACTIONS DATA ---
   const quickActions = [
@@ -87,17 +92,22 @@ const Dashboard = ({ navigation }) => {
 
   return (
     <View style={styles.screenWrap}>
-      <View pointerEvents="none" style={styles.patternWrap}>
-        <LinearGradient
-          colors={['#F6F7FB', '#F0ECF8']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+    <View pointerEvents="none" style={styles.patternWrap}>
+      <LinearGradient
+        colors={['#F6F7FB', '#F0ECF8']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
       
+      {/* --- MOVED HERE: Now it is part of the background --- */}
+      <View style={styles.fixedFooterWrap}>
+        <Text style={styles.fixedFooterText}>HOME</Text>
       </View>
+    </View>
 
-      <SafeAreaView style={styles.safe}>
+  
+      <View style={styles.safe}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
         
         <View style={styles.fixedHeaderWrapper}>
@@ -105,7 +115,10 @@ const Dashboard = ({ navigation }) => {
         </View>
         
         <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+           contentContainerStyle={[
+            styles.scrollContent, 
+            { paddingTop: HEADER_HEIGHT } // <--- FIX APPLIED HERE
+          ]}
           showsVerticalScrollIndicator={false}
         >
           
@@ -143,7 +156,7 @@ const Dashboard = ({ navigation }) => {
           <View style={styles.sectionHeaderContainer}>
              <Text style={styles.sectionTitle}>Active Policy Details</Text>
           </View>
-          <PolicysCardList/>
+          <PolicysCardList onNavigate={() =>  navigation.navigate('Policy')} policydata={PolicyData}/>
            {/* <View style={styles.sectionHeaderContainer}>
              <Text style={styles.sectionTitle}>Featured Offers</Text>
           </View> */}
@@ -153,15 +166,14 @@ const Dashboard = ({ navigation }) => {
             {/* <View style={styles.sectionHeaderContainer}>
              <Text style={styles.sectionTitle}>Featured Offers</Text>
           </View> */}
-          <PromoCarousel3/>
+          {/* <PromoCarousel3/>
          
-          <PromoCarousel3/>
-        </ScrollView>
+          <PromoCarousel3/> */}
 
-        <View pointerEvents="none" style={styles.fixedFooterWrap}>
-          <Text style={styles.fixedFooterText}>HOME</Text>
-        </View>
-      </SafeAreaView>
+        </ScrollView>
+      
+
+      </View>
     </View>
   );
 };
@@ -174,13 +186,10 @@ const styles = StyleSheet.create({
   patternWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
   safe: { flex: 1, zIndex: 1 },
   
-  fixedHeaderWrapper: {
-    zIndex: 10,
-    backgroundColor: 'transparent', 
-  },
+    fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
 
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(18) }, // approx 150
-  sectionContainer: { paddingHorizontal: Platform.OS === 'ios' ? wp(0) : wp(4), marginBottom: hp(1.2) }, // approx 16, 10
+  sectionContainer: { paddingHorizontal: Platform.OS === 'ios' ? wp(0) : wp(4), marginBottom: hp(1.2) ,marginTop: hp(2) }, // approx 16, 10
 
   // --- Quick Actions Styles ---
   quickActionsContainer: {
@@ -231,8 +240,8 @@ const styles = StyleSheet.create({
   },
 
   // --- Fixed Footer ---
-  fixedFooterWrap: {
-    position: 'absolute',
+fixedFooterWrap: {
+    position: 'absolute', // <--- IMPORTANT: Ensure this is uncommented
     left: 0,
     right: 0,
     bottom: BOTTOM_TAB_HEIGHT + hp(3.7), // approx 30

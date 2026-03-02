@@ -1,15 +1,27 @@
-import React, { useState } from 'react';
-import { View, TouchableOpacity, Text, StyleSheet, Dimensions, SafeAreaView, ScrollView } from 'react-native';
+import React from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+} from 'react-native';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg';
-import PolicyScreen from '../screens/PolicyScreen';
-import claimScreen from '../screens/claims';
-import wellness from '../screens/wellness';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // <-- Added Import
+
+// Import screens
 import Dashboard from '../screens/dashboard';
+import claimScreen from '../screens/claims';
+import PolicyScreen from '../screens/PolicyScreen';
+import wellness from '../screens/wellness';
 import Help from '../screens/Help';
 import { hp } from '../utilites/Dimension';
 
 const { width } = Dimensions.get('window');
+const Tab = createBottomTabNavigator();
 
+// --- ICONS ---
 const HomeIcon = ({ size = 24, color = '#8E9AAF', filled = false }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     {filled ? (
@@ -63,7 +75,7 @@ const WellnessIcon = ({ size = 24, color = '#8E9AAF', filled = false }) => (
   </Svg>
 );
 
-const HelpIcon = ({ size = 20, color = '#5B6EF5', filled = false }) => (
+const HelpIcon = ({ size = 20, color = '#8E9AAF', filled = false }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     {filled ? (
       <>
@@ -80,271 +92,154 @@ const HelpIcon = ({ size = 20, color = '#5B6EF5', filled = false }) => (
 );
 
 
+// --- CUSTOM TAB BAR COMPONENT ---
+const CustomTabBar = ({ state, descriptors, navigation }) => {
+  // 1. Get the insets here
+  const insets = useSafeAreaInsets();
+  
+  // 2. Calculate dynamic heights based on the system gesture bar
+  const baseSvgHeight = hp(11); // Base height for the SVG wave
+  const dynamicSvgHeight = baseSvgHeight + insets.bottom;
+  const dynamicContainerHeight = hp(5) + insets.bottom;
+  const dynamicPaddingBottom = hp(0.9) + insets.bottom;
 
-
-
-
-
-
-const BottomTabBar = () => {
-  const [activeTab, setActiveTab] = useState('Policy');
-
-  const tabs = [
-    { name: 'Home', icon: HomeIcon, screen: Dashboard },
-    { name: 'Claims', icon: ClaimsIcon, screen: claimScreen },
-    { name: 'Policy', icon: PolicyIcon, screen: PolicyScreen },
-    { name: 'Wellness', icon: WellnessIcon, screen: wellness },
-    { name: 'Help', icon: HelpIcon, screen: Help },
-  ];
-
-  const centerIndex = Math.floor(tabs.length / 2);
-  const ActiveScreen = tabs.find(tab => tab.name === activeTab)?.screen || PolicyScreen;
+  const getIcon = (routeName, focused) => {
+    switch (routeName) {
+      case 'Home': return <HomeIcon size={24} color={focused ? '#934790' : '#8E9AAF'} filled={focused} />;
+      case 'Claims': return <ClaimsIcon size={24} color={focused ? '#934790' : '#8E9AAF'} filled={focused} />;
+      case 'Policy': return <PolicyIcon size={28} color="#ffffff" />; 
+      case 'Wellness': return <WellnessIcon size={24} color={focused ? '#934790' : '#8E9AAF'} filled={focused} />;
+      case 'Help': return <HelpIcon size={20} color={focused ? '#934790' : '#8E9AAF'} filled={focused} />;
+      default: return null;
+    }
+  };
 
   return (
-    <View style={styles.safeArea}>
-      <View style={styles.content}>
-     <ScrollView contentContainerStyle={styles.scrollContent}>
-       
-          {tabs.map((tab) => {
-            const ScreenComponent = tab.screen;
-            const isActive = activeTab === tab.name;
-            
-            return (
-              <View 
-                key={tab.name} 
-                style={{ 
-                  // If active, show it. If not, hide it but keep it in memory.
-                  display: isActive ? 'flex' : 'none',
-                  flex: 1 
-                }}
-              >
-                <ScreenComponent />
-              </View>
-            );
-          })}
-        </ScrollView>
-      </View>
+    <View style={styles.container}>
+      {/* 3. Apply the dynamic height to SVG and the Path rendering down to `dynamicSvgHeight` */}
+      <Svg height={dynamicSvgHeight} width={width} style={styles.wave}>
+        <Defs>
+          <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0" stopColor="#ffffff" stopOpacity="1" />
+            <Stop offset="1" stopColor="#f8f9fa" stopOpacity="1" />
+          </LinearGradient>
+        </Defs>
+        <Path
+          d={`
+            M 0 25
+            L 0 ${dynamicSvgHeight}
+            L ${width} ${dynamicSvgHeight}
+            L ${width} 25
+            Q ${width * 0.625} 25 ${width * 0.575} 12
+            Q ${width * 0.5} -5 ${width * 0.425} 12
+            Q ${width * 0.375} 25 0 25
+            Z
+          `}
+          fill="url(#grad)"
+          stroke="#e0e0e0"
+          strokeWidth="0.5"
+        />
+      </Svg>
 
-      <View style={styles.container}>
-        <Svg
-          height="100"
-          width={width}
-          style={styles.wave}
-        >
-          <Defs>
-            <LinearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-              <Stop offset="0" stopColor="#ffffff" stopOpacity="1" />
-              <Stop offset="1" stopColor="#f8f9fa" stopOpacity="1" />
-            </LinearGradient>
-          </Defs>
-          <Path
-            d={`
-              M 0 25
-              L 0 100
-              L ${width} 100
-              L ${width} 25
-              Q ${width * 0.625} 25 ${width * 0.575} 12
-              Q ${width * 0.5} -5 ${width * 0.425} 12
-              Q ${width * 0.375} 25 0 25
-              Z
-            `}
-            fill="url(#grad)"
-            stroke="#e0e0e0"
-            strokeWidth="0.5"
-          />
-        </Svg>
+      {/* 4. Apply dynamic height and padding to Tab Container */}
+      <View style={[styles.tabContainer, { height: dynamicContainerHeight, paddingBottom: dynamicPaddingBottom }]}>
+        {state.routes.map((route, index) => {
+          const { options } = descriptors[route.key];
+          const label = options.tabBarLabel !== undefined
+            ? options.tabBarLabel
+            : options.title !== undefined
+            ? options.title
+            : route.name;
 
-        <View style={styles.tabContainer}>
-          {tabs.map((tab, index) => {
-            const isCenter = index === centerIndex;
-            const isActive = activeTab === tab.name;
-            const IconComponent = tab.icon;
+          const isFocused = state.index === index;
+          const isCenter = route.name === 'Policy'; 
 
-            if (isCenter) {
-              return (
-                <TouchableOpacity
-                  key={tab.name}
-                  style={styles.centerTabWrapper}
-                  onPress={() => setActiveTab(tab.name)}
-                  activeOpacity={0.8}
-                >
-                  <View style={[
-                    styles.centerButton,
-                    isActive && styles.centerButtonActive
-                  ]}>
-                    <View style={[
-                      styles.centerButtonInner,
-                      styles.centerButtonInnerActive
-                    ]}>
-                      <IconComponent 
-                        size={28} 
-                        color="#ffffff"
-                      />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              );
+          const onPress = () => {
+            const event = navigation.emit({
+              type: 'tabPress',
+              target: route.key,
+              canPreventDefault: true,
+            });
+
+            if (!isFocused && !event.defaultPrevented) {
+              navigation.navigate(route.name);
             }
+          };
 
+          if (isCenter) {
             return (
               <TouchableOpacity
-                key={tab.name}
-                style={styles.tab}
-                onPress={() => setActiveTab(tab.name)}
-                activeOpacity={0.7}
+                key={route.key}
+                style={styles.centerTabWrapper}
+                onPress={onPress}
+                activeOpacity={0.8}
               >
-                <View style={[
-                  styles.iconWrapper,
-                  isActive && styles.iconWrapperActive
-                ]}>
-                  <IconComponent 
-                    size={24} 
-                    color={isActive ? '#934790' : '#8E9AAF'}
-                    filled={isActive}
-                  />
+                <View style={[styles.centerButton, isFocused && styles.centerButtonActive]}>
+                  <View style={[styles.centerButtonInner, styles.centerButtonInnerActive]}>
+                    {getIcon(route.name, isFocused)}
+                  </View>
                 </View>
-                <Text style={[
-                  styles.tabLabel,
-                  isActive && styles.tabLabelActive
-                ]}>
-                  {tab.name}
-                </Text>
               </TouchableOpacity>
             );
-          })}
-        </View>
+          }
+
+          return (
+            <TouchableOpacity
+              key={route.key}
+              style={styles.tab}
+              onPress={onPress}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.iconWrapper, isFocused && styles.iconWrapperActive]}>
+                 {getIcon(route.name, isFocused)}
+              </View>
+              <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
+                {label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </View>
     </View>
   );
 };
 
+// --- MAIN NAVIGATOR ---
+const MainTabs = () => {
+  return (
+    <Tab.Navigator
+      tabBar={props => <CustomTabBar {...props} />}
+      initialRouteName="Policy"
+      screenOptions={{ headerShown: false }}
+    >
+      <Tab.Screen name="Home" component={Dashboard} />
+      <Tab.Screen name="Claims" component={claimScreen} />
+      <Tab.Screen name="Policy" component={PolicyScreen} />
+      <Tab.Screen name="Wellness" component={wellness} />
+      <Tab.Screen name="Help" component={Help} />
+    </Tab.Navigator>
+  );
+};
+
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    // height:-hp('9'),
-    // backgroundColor: 'red',
-  },
-  content: {
-    flex: 1,
-  },
-  scrollContent: {
-    // flexGrow: 1,
-  },
-  screenContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-  },
-  screenTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: hp(9),
-  },
-  screenText: {
-    fontSize: 24,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
-  },
-  screenSubtext: {
-    fontSize: 16,
-    color: '#666',
-    marginBottom: 20,
-  },
-  screenDescription: {
-    fontSize: 14,
-    color: '#999',
-    textAlign: 'center',
-  },
-  container: {
-    position: 'relative',
-   
-    // backgroundColor: 'red',
-  },
-  wave: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-  },
+  // Base container styles (Height logic moved to inline styles for dynamic rendering)
+  container: { position: 'absolute', bottom: 0, left: 0, right: 0, elevation: 0 },
+  wave: { position: 'absolute', bottom: 0, left: 0 },
   tabContainer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 100,
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    paddingBottom: 12,
+    flexDirection: 'row', 
+    alignItems: 'flex-end', 
+    backgroundColor: 'transparent' 
   },
-  tab: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-  },
-  iconWrapper: {
-    marginBottom: 4,
-  },
-  iconWrapperActive: {
-    transform: [{ scale: 1.1 }, { translateY: -2 }],
-  },
-  tabLabel: {
-    fontSize: 11,
-    color: '#8E9AAF',
-    fontWeight: '500',
-  },
-  tabLabelActive: {
-    color: '#934790',
-    fontWeight: '600',
-  },
-  centerTabWrapper: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    position: 'relative',
-    top: -30,
-  },
-  centerButton: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#d0d0d0',
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 8,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 12,
-    elevation: 12,
-  },
-  centerButtonActive: {
-    backgroundColor: '#934790',
-    transform: [{ scale: 1.05 }],
-    shadowColor: '#934790',
-    shadowOffset: {
-      width: 0,
-      height: 12,
-    },
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    elevation: 16,
-  },
-  centerButtonInner: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#e8e8e8',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  centerButtonInnerActive: {
-    backgroundColor: '#934790',
-  },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: 10 },
+  iconWrapper: { marginBottom: 4 },
+  iconWrapperActive: { transform: [{ scale: 1.1 }, { translateY: -2 }] },
+  tabLabel: { fontSize: 11, color: '#8E9AAF', fontWeight: '500' },
+  tabLabelActive: { color: '#934790', fontWeight: '600' },
+  centerTabWrapper: { flex: 1, alignItems: 'center', justifyContent: 'flex-start', position: 'relative', top: -35 },
+  centerButton: { width: 68, height: 68, borderRadius: 34, backgroundColor: '#d0d0d0', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 12, elevation: 12 },
+  centerButtonActive: { backgroundColor: '#934790', transform: [{ scale: 1.05 }], shadowColor: '#934790', shadowOffset: { width: 0, height: 12 }, shadowOpacity: 0.4, shadowRadius: 16, elevation: 16 },
+  centerButtonInner: { width: 60, height: 60, borderRadius: 30, backgroundColor: '#e8e8e8', alignItems: 'center', justifyContent: 'center' },
+  centerButtonInnerActive: { backgroundColor: '#934790' },
 });
 
-export default BottomTabBar;
+export default MainTabs;

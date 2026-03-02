@@ -31,6 +31,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const PolicyCard = ({ p, index, scrollX, navigation }) => {
+ 
   const [expanded, setExpanded] = useState(false);
 
   // Animation Refs
@@ -170,19 +171,19 @@ const PolicyCard = ({ p, index, scrollX, navigation }) => {
 
               <TouchableOpacity
                 style={styles.cta}
-                onPress={() => navigation.navigate('policydetails', { policy: p })}
+                onPress={() => navigation.navigate('policydetails', { policyid: p?.id })}
               >
                 <Text style={styles.ctaText}>View Details</Text>
               </TouchableOpacity>
             </View>
 
-            <TouchableOpacity onPress={handleDownload} style={styles.downloadIconWrap}>
+            {/* <TouchableOpacity onPress={handleDownload} style={styles.downloadIconWrap}>
               <MaterialCommunityIcons
                 name="download"
                 size={hp(2.8)}
                 color="#934790"
               />
-            </TouchableOpacity>
+            </TouchableOpacity> */}
           </View>
           </View>
           {/* Background Decorations */}
@@ -275,6 +276,7 @@ const styles = StyleSheet.create({
     borderRadius: wp(4.5),
     overflow: 'hidden', // This cuts off the corners of the gradient
     backgroundColor: '#FAF7FB', // Fallback color
+    elevation:3,
   },
   // 3. The Gradient Background
   fullCardGradient: {
@@ -283,14 +285,14 @@ const styles = StyleSheet.create({
   },
     fullCardGradient1: {
  // CRITICAL: This forces gradient to fill the clipper completely
-   padding: wp(8.5),
+   padding: wp(9.5),
     // width: '100%',
   },
   // 4. Content Padding Wrapper (Inside Gradient)
   contentContainer: {
     flex: 1,
     flexDirection: 'row',
-    padding: wp(4.5), // Padding is applied here, INSIDE the gradient
+    padding: wp(3.5), // Padding is applied here, INSIDE the gradient
   },
   
   // Decorative Elements

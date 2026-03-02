@@ -15,6 +15,7 @@ import NaturaAddition from '../screens/NaturaAddition';
 import chatscreen from '../screens/chatscreen';
 import RegisterScreen from '../screens/firstRegister';
 import ResetPassword from '../screens/resetPassword';
+import FirstLoginOtp from '../screens/firstLoginotp';
 // import PolicyDetailsScreen from '../component/pociynewcard';
 
 const Stack = createNativeStackNavigator();
@@ -31,9 +32,11 @@ export const GuestRoute = () => (
     <Stack.Screen name="Login" component={Login} />
 
     <Stack.Screen name="Otp" component={OTP} />
+    <Stack.Screen name="FirstloginOtp" component={FirstLoginOtp} />
+
     <Stack.Screen name="ForgotPassword" component={Forgetpassword} />
     <Stack.Screen name="FirstRegister" component={RegisterScreen} />
-    <Stack.Screen name="ResetPassword" component={ResetPassword} />
+    <Stack.Screen name="NonResetPassword" component={ResetPassword} />
 
 
 

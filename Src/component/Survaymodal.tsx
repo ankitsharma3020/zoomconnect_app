@@ -29,6 +29,10 @@ type Props = {
 export default function SurveyCardModal({ visible, survey, onClose, onStart }: Props) {
   const scale = useRef(new Animated.Value(0.92)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const Starting=()=>{
+    onStart();
+    onClose()
+  }
 
   useEffect(() => {
     if (visible) {
@@ -110,7 +114,7 @@ export default function SurveyCardModal({ visible, survey, onClose, onStart }: P
             <View style={styles.buttonRow}>
               
               {/* Take Survey Button (Purple) */}
-              <TouchableOpacity activeOpacity={0.8} style={styles.btnPrimary} onPress={onStart}>
+              <TouchableOpacity activeOpacity={0.8} style={styles.btnPrimary} onPress={()=>Starting()}>
                 <Text style={styles.btnPrimaryText}>Take Survey</Text>
               </TouchableOpacity>
 

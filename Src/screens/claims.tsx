@@ -1,8 +1,7 @@
-import React from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
-  SafeAreaView,
   StyleSheet,
   Image,
   Dimensions,
@@ -12,25 +11,29 @@ import {
   Platform,
   UIManager,
   FlatList,
+  Modal,
+  Animated,
+  Easing
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Defs, Pattern, Path, Rect, Circle } from 'react-native-svg';
-import { wp, hp } from '../utilites/Dimension'; // Adjusted import path
+import { wp, hp } from '../utilites/Dimension';
 
 // Components
 import ActivePolicyHeader from '../component/activpolicy';
 import Header from '../component/header';
 import ClaimCard from '../component/claimscard';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useGetClaimdetailsMutation } from '../redux/service/user/user';
 
 const { width, height } = Dimensions.get('window');
-const BOTTOM_TAB_HEIGHT = hp(10); // approx 80
+const HEADER_HEIGHT = Platform.OS === 'ios' ? hp(14) : hp(13);
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// --- 2. Define SVG Icons Components with Dynamic Sizing ---
-
+// --- Icons (Same as before) ---
 const FileClaimIcon = () => (
   <Svg width={wp(7)} height={wp(7)} viewBox="0 0 24 24" fill="none">
     <Path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#7E8CA0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -60,141 +63,193 @@ const RepresentativeIcon = () => (
   </Svg>
 );
 
-const claimScreen = ({ navigation }) => {
+// --- SHIMMER / SKELETON COMPONENT ---
+const ClaimCardSkeleton = () => {
+  const animatedValue = useRef(new Animated.Value(0)).current;
 
-  const myClaimsData = [
-  {
-    id: 'c1',
-    policyType: 'Base Policy',
-    policyNo: '70994070',
-    patientName: 'DATTATRAY JADHAV',
-    patientRelation: 'Self',
-    claimAmount: '₹ 51,400',
-    claimStatus: 'Pending',
-  },
-    {
-    id: 'c2',
-    policyType: 'Base Policy',
-    policyNo: '70994570',
-    patientName: 'DATTATRAY JADHAV',
-    patientRelation: 'Self',
-    claimAmount: '₹ 41,400',
-    claimStatus: 'sucess', 
-  },
-];
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: 1500,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, []);
+
+  const translateX = animatedValue.interpolate({
+    inputRange: [0, 1],
+    outputRange: [-width, width],
+  });
+
+  return (
+    <View style={styles.cardContainerSkeleton}>
+      <View style={styles.skeletonInner}>
+        {/* Moving Shimmer Gradient */}
+        <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX }] }]}>
+          <LinearGradient
+            colors={['transparent', 'rgba(255,255,255,0.6)', 'transparent']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={{ flex: 1 }}
+          />
+        </Animated.View>
+
+        {/* Placeholder Blocks */}
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: hp(2) }}>
+          <View style={{ width: wp(30), height: hp(1.5), backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+          <View style={{ width: wp(20), height: hp(1.5), backgroundColor: '#E0E0E0', borderRadius: 4 }} />
+        </View>
+        
+        <View style={{ width: '100%', height: hp(8), backgroundColor: '#E0E0E0', borderRadius: 8, marginBottom: hp(2) }} />
+
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+          <View style={{ width: wp(25), height: hp(4), backgroundColor: '#E0E0E0', borderRadius: 8 }} />
+          <View style={{ width: wp(25), height: hp(4), backgroundColor: '#E0E0E0', borderRadius: 8 }} />
+        </View>
+      </View>
+    </View>
+  );
+};
+
+
+const ClaimScreen = ({ navigation }) => {
+  const [isModalVisible, setModalVisible] = useState(false);
+  // Destructure isLoading from the mutation hook
+  const [getClaims] = useGetClaimdetailsMutation();
+  const [claimDetails, setClaimDetails] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const getClaimDetails = async () => {
+    setIsLoading(true);
+    const token = await AsyncStorage.getItem('token');
+    try {
+      let res = await getClaims(token);
+      if (res?.data) {
+        setClaimDetails(res?.data?.data?.claims || []);
+      }
+    } catch (error) {
+       setIsLoading(false);
+      console.log("claim details error", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    getClaimDetails();
+  }, []);
 
   const helpOptions = [
-    {
-      id: '1',
-      title: 'How to file a claim?',
-      IconComponent: FileClaimIcon, 
-    },
-    {
-      id: '2',
-      title: 'Know about claim process',
-      IconComponent: ProcessIcon,
-    },
-    {
-      id: '3',
-      title: 'Connect with claim representative',
-      IconComponent: RepresentativeIcon,
-    },
+    { id: '1', title: 'File a claim', screen: 'fileclaim', IconComponent: FileClaimIcon },
+    { id: '2', title: 'Know about claim process', screen: 'claimProcess', IconComponent: ProcessIcon },
+    { id: '3', title: 'Connect with claim representative', isRepresentative: true, IconComponent: RepresentativeIcon },
   ];
 
   const renderItem = ({ item }) => {
-    const Icon = item.IconComponent; 
-    
+    const Icon = item.IconComponent;
     return (
-      <TouchableOpacity style={styles.card1}>
-        <View style={styles.iconContainer}>
-          <Icon />
-        </View>
-
+      <TouchableOpacity 
+        style={styles.card1}
+        onPress={() => item.isRepresentative ? setModalVisible(true) : navigation.navigate(item.screen)}
+      >
+        <View style={styles.iconContainer}><Icon /></View>
         <Text style={styles.cardTitle}>{item.title}</Text>
-
         <Text style={styles.arrowIcon}>→</Text>
       </TouchableOpacity>
     );
   };
 
+  // --- RENDER CONTENT LOGIC ---
+  const renderClaimsContent = () => {
+    if (isLoading) {
+      // Show 3 skeleton cards while loading
+      return (
+        <View>
+          <ClaimCardSkeleton />
+          <ClaimCardSkeleton />
+          <ClaimCardSkeleton />
+        </View>
+      );
+    }
+
+    if (!claimDetails || claimDetails.length === 0) {
+      // Show "No Claims" card if data is empty
+      return (
+        <View style={styles.card}>
+          <Image
+            source={require('../../assets/yoga.png')}
+            style={styles.image}
+            resizeMode="cover"
+          />
+          <View style={styles.textContainer}>
+            <Text style={styles.title}>No claims yet</Text>
+            <Text style={styles.subtitle}>
+              Well that’s a sign of you living a healthy life.
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    // Show List if data exists
+    return (
+      <FlatList
+        data={claimDetails}
+        keyExtractor={(item) => item.id || Math.random().toString()}
+        renderItem={({ item }) => (
+          <ClaimCard
+            item={item}
+            onViewDetails={() => console.log('Details')}
+            onDownload={() => console.log('Download')}
+          />
+        )}
+        scrollEnabled={false}
+      />
+    );
+  };
+
   return (
     <View style={styles.screenWrap}>
-      {/* --- Decorative Global Pattern --- */}
+      {/* Background Patterns */}
       <View pointerEvents="none" style={styles.patternWrap}>
-        <LinearGradient
-          colors={['#F6F7FB', '#F0ECF8']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={StyleSheet.absoluteFill}
-        />
+        <LinearGradient colors={['#F6F7FB', '#F0ECF8']} style={StyleSheet.absoluteFill} />
         <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
           <Defs>
             <Pattern id="diags" patternUnits="userSpaceOnUse" width="20" height="20">
               <Path d="M0 20 L20 0" stroke="rgba(147,71,144,0.02)" strokeWidth="2" />
             </Pattern>
           </Defs>
-          <Rect x={0} y={0} width={width} height={height * 0.35} fill="rgba(147,71,144,0.02)" />
-          <Rect x={0} y={height * 0.55} width={width} height={height * 0.15} fill="rgba(147,71,144,0.015)" />
           <Rect x={0} y={0} width={width} height={height} fill="url(#diags)" opacity={0.05} />
         </Svg>
+        <View style={styles.fixedFooterWrap}>
+          <Text style={styles.fixedFooterText}>YOUR CLAIMS</Text>
+        </View>
       </View>
 
-      <SafeAreaView style={styles.safe}>
-        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
+      <View style={styles.safe}>
+        <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" />
         
-        {/* --- FIXED HEADER --- */}
         <View style={styles.fixedHeaderWrapper}>
           <Header />
         </View>
         
         <ScrollView 
-          contentContainerStyle={styles.scrollContent} 
+          contentContainerStyle={[styles.scrollContent, { paddingTop: HEADER_HEIGHT }]}
           showsVerticalScrollIndicator={false}
         >
-          
-          {/* --- Active Policy Header --- */}
           <View style={styles.sectionContainer}>
             <ActivePolicyHeader
               title="Claims"
               subtitle="Find all your claims here."
-              onBack={() => navigation?.goBack?.()}
+              onBack={() => navigation?.goBack()}
               illustration={require('../../assets/policies.png')}
             />
           </View>
-          
-          {/* --- No Claims Card --- */}
-          <View style={styles.card}>
-            <Image
-              source={require('../../assets/yoga.png')}
-              style={styles.image}
-              resizeMode="cover"
-            />
-            <View style={styles.textContainer}>
-              <Text style={styles.title}>No claims yet</Text>
-              <Text style={styles.subtitle}>
-                Well that’s a sign of you living a healthy life.
-              </Text>
-            </View>
-          </View>
 
-          <FlatList
-            data={myClaimsData}
-            keyExtractor={(item) => item.id}
-            contentContainerStyle={{ paddingVertical: hp(2.5) }} 
-            renderItem={({ item }) => (
-                <ClaimCard
-                item={item}
-                onViewDetails={(claim) => console.log('View details for:', claim.id)}
-                onDownload={(claim) => console.log('Download for:', claim.id)}
-                />
-            )}
-            scrollEnabled={false} // Since it's inside a ScrollView
-          />
-
-          {/* --- Help List --- */}
-          <View style={[styles.sectionContainer,{ marginTop: hp(2) }]}>
+          <View style={[styles.sectionContainer, { marginTop: hp(2) }]}>
             <Text style={styles.headerText}>Need help?</Text>
-              
             <FlatList
               data={helpOptions}
               renderItem={renderItem}
@@ -202,135 +257,189 @@ const claimScreen = ({ navigation }) => {
               scrollEnabled={false} 
             />
           </View>
-      
+          
+          <Text style={[styles.headerText, { marginLeft: wp(6.5), marginTop: hp(2) }]}>Claims</Text>
+          
+          {/* DYNAMIC CONTENT AREA */}
+          {renderClaimsContent()}
+
         </ScrollView>
 
-        {/* --- Fixed Footer Background Text --- */}
-        <View pointerEvents="none" style={styles.fixedFooterWrap}>
-          <Text style={styles.fixedFooterText}>YOUR CLAIMS</Text>
-        </View>
-      </SafeAreaView>
+        {/* --- CUSTOM 3D MODAL --- */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={isModalVisible}
+          onRequestClose={() => setModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <TouchableOpacity 
+                style={styles.closeBtn} 
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.closeText}>✕</Text>
+              </TouchableOpacity>
+
+              <Text style={styles.modalTitle}>Connect with Claim Representative</Text>
+              <Text style={styles.modalSub}>
+                To connect with a claim representative, open your policy details and click <Text style={{fontWeight: '700', color: '#1A3B5D'}}>Connect.</Text>
+              </Text>
+
+              <TouchableOpacity 
+                style={styles.modalActionBtn}
+                onPress={() => {
+                  navigation.navigate('Policy')
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={styles.modalActionText}>Go to Policy Details</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+      </View>
     </View>
   );
 };
 
-export default claimScreen;
-
-/* =========================================================================
-   STYLESHEET
-   ========================================================================= */
-
 const styles = StyleSheet.create({
-  // --- Screen & Global Layout ---
-  screenWrap: { flex: 1, backgroundColor: 'transparent' },
+  screenWrap: { flex: 1 },
   patternWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
   safe: { flex: 1, zIndex: 1 },
-  
-  fixedHeaderWrapper: {
-    zIndex: 10,
-    backgroundColor: 'transparent', 
-  },
-
-  scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(18) }, // approx 150
-  sectionContainer: { paddingHorizontal: Platform.OS === 'ios' ? 0 :  wp(4), marginBottom: hp(1.2) }, // approx 16, 10
-
-  // --- Fixed Footer ---
-  fixedFooterWrap: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: BOTTOM_TAB_HEIGHT + hp(0.7), // approx 30
+  fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
+  scrollContent: { paddingBottom: hp(15) },
+  sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(2),marginBottom: hp(4) },
+  headerText: { fontSize: hp(2), fontFamily: 'Montserrat-Bold', color: '#333', marginBottom: hp(2) },
+  card1: {
+    flexDirection: 'row',
     alignItems: 'center',
-    zIndex: 0, 
+    backgroundColor: '#fff',
+    borderRadius: wp(7.5),
+    paddingVertical: hp(1.5),
+    paddingHorizontal: wp(5),
+    marginBottom: hp(2),
+    borderWidth: 1,
+    borderColor: '#EEEEEE',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: hp(0.25) },
+    shadowOpacity: 0.02,
+    shadowRadius: 5,
+    elevation: 1,
   },
-  fixedFooterText: {
-    fontSize: hp(6.5), // approx 60
+  iconContainer: { width: wp(12), height: wp(12), borderRadius: wp(6), backgroundColor: '#FFF8F5', justifyContent: 'center', alignItems: 'center', marginRight: wp(4) },
+  cardTitle: { flex: 1, fontSize: hp(1.7), fontFamily: 'Montserrat-SemiBold', color: '#2D3748' },
+  arrowIcon: { fontSize: hp(2.5), color: '#4A5568' },
+  fixedFooterWrap: { position: 'absolute', bottom: hp(10), width: '100%', alignItems: 'center' },
+  fixedFooterText: { fontSize: hp(6), fontFamily: 'Montserrat-Bold', color: 'rgba(15,17,32,0.04)' },
+
+  // Skeleton Styles
+  cardContainerSkeleton: {
+    marginHorizontal: wp(3),
+    marginBottom: hp(2.5),
+    borderRadius: wp(5),
+    backgroundColor: '#F5F5F5', 
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    overflow: 'hidden',
+  },
+  skeletonInner: {
+    padding: wp(5),
+    backgroundColor: '#F5F5F5',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: wp(6),
+  },
+  modalContent: {
+    width: '100%',
+    backgroundColor: 'white',
+    borderRadius: wp(6),
+    padding: wp(8),
+    alignItems: 'center',
+    elevation: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.2,
+    shadowRadius: 15,
+  },
+  closeBtn: {
+    position: 'absolute',
+    top: wp(4),
+    right: wp(4),
+    padding: 5,
+  },
+  closeText: {
+    fontSize: wp(5),
+    color: '#999',
+  },
+  modalTitle: {
+    fontSize: hp(2.4),
     fontFamily: 'Montserrat-Bold',
-    color: 'rgba(15,17,32,0.06)',
-    textTransform: 'uppercase',
-    letterSpacing: 3,
+    color: '#934790',
     textAlign: 'center',
+    marginBottom: hp(2),
+    marginTop: hp(1),
   },
-  
-  // --- No Claims Card ---
+  modalSub: {
+    fontSize: hp(1.6),
+    fontFamily: 'Montserrat-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: hp(2.6),
+    marginBottom: hp(4),
+  },
+  modalActionBtn: {
+    backgroundColor: '#934790',
+    width: '90%',
+    paddingVertical: hp(1.6),
+    borderRadius: wp(3),
+    alignItems: 'center',
+  },
+  modalActionText: {
+    color: 'white',
+    fontSize: hp(2),
+    fontFamily: 'Montserrat-Bold',
+  },
   card: {
     alignSelf: 'center',
     backgroundColor: 'transparent',
-    borderRadius: wp(6), // approx 24
+    borderRadius: wp(6),
     width: '100%',
-    maxWidth: wp(95), // approx 390
-    paddingVertical: hp(5), // approx 40
-    paddingHorizontal: wp(6), // approx 24
+    maxWidth: wp(95),
+    paddingVertical: hp(5),
+    paddingHorizontal: wp(6),
     alignItems: 'center',
   },
   image: {
-    width: wp(70), // approx 280
-    height: hp(30), // approx 240
-    marginBottom: hp(1), // approx 24
+    width: wp(70),
+    height: hp(30),
+    marginBottom: hp(1),
   },
   textContainer: {
     alignItems: 'center',
   },
   title: {
-    fontSize: hp(2.4), // approx 25
+    fontSize: hp(2.4),
     fontFamily: 'Montserrat-Bold',
     color: '#1A3B5D',
-    marginBottom: hp(1.5), // approx 12
+    marginBottom: hp(1.5),
     textAlign: 'center',
   },
   subtitle: {
-    fontSize: hp(1.8), // approx 18
+    fontSize: hp(1.8),
     color: '#6B7280',
     textAlign: 'center',
-    lineHeight: hp(2), // approx 24
+    lineHeight: hp(2),
     fontFamily: 'Montserrat-Regular',
     maxWidth: '90%',
   },
-
-  // --- Help List Styles ---
-  headerText: {
-    fontSize: hp(2), // approx 20
-    marginLeft: wp(1.5), // approx 4
-    fontFamily: 'Montserrat-Bold',
-    color: '#333',
-    marginBottom: hp(2.5), // approx 20
-  },
-  card1: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: wp(7.5), // approx 30
-    paddingVertical: hp(1.5), // approx 16
-    paddingHorizontal: wp(5), // approx 20
-    marginBottom: hp(2), // approx 16
-    borderWidth: 1,
-    borderColor: '#EEEEEE',
-    // Shadow for iOS
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: hp(0.25) },
-    shadowOpacity: 0.02,
-    shadowRadius: 5,
-    // Elevation for Android
-    elevation: 1,
-  },
-  iconContainer: {
-    width: wp(12.5), // approx 50
-    height: wp(12.5),
-    borderRadius: wp(6.25), // approx 25
-    backgroundColor: '#FFF8F5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: wp(4), // approx 16
-  },
-  cardTitle: {
-    flex: 1,
-    fontSize: hp(1.7), // approx 16
-    fontFamily: 'Montserrat-SemiBold',
-    color: '#2D3748',
-  },
-  arrowIcon: {
-    fontSize: hp(2.5), // approx 20
-    color: '#4A5568',
-    fontFamily: 'Montserrat-Bold',
-  },
 });
+
+export default ClaimScreen;
