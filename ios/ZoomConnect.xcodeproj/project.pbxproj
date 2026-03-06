@@ -12,7 +12,7 @@
 		06915738FABB3BE91003F8FD /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */; };
 		0E299DF4679548FD8EA06F47 /* Montserrat-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = F453E5B842F64BB3B1604340 /* Montserrat-SemiBold.ttf */; };
 		32CF7D00AA3943C2B507B645 /* Montserrat-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 143BB9ACE52844E5B6CB10C8 /* Montserrat-Bold.ttf */; };
-		465F4B786F49F944C1707276 /* libPods-zooomnew.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EF4AC8479F528A4B1B25E672 /* libPods-zooomnew.a */; };
+		465F4B786F49F944C1707276 /* libPods-ZoomConnect.a in Frameworks */ = {isa = PBXBuildFile; fileRef = EF4AC8479F528A4B1B25E672 /* libPods-ZoomConnect.a */; };
 		621E59876E54473997B57109 /* Montserrat-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C54AE3BD95B34BBA9EC5F84C /* Montserrat-Regular.ttf */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
@@ -22,18 +22,18 @@
 /* Begin PBXFileReference section */
 		046FCC102F1624C3004FE304 /* main.jsbundle */ = {isa = PBXFileReference; lastKnownFileType = text; path = main.jsbundle; sourceTree = "<group>"; };
 		04CC8EE32F0F963E002E08AC /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Images.xcassets; sourceTree = "<group>"; };
-		08423B312D5F78526390C661 /* Pods-zooomnew.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-zooomnew.release.xcconfig"; path = "Target Support Files/Pods-zooomnew/Pods-zooomnew.release.xcconfig"; sourceTree = "<group>"; };
+		08423B312D5F78526390C661 /* Pods-ZoomConnect.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ZoomConnect.release.xcconfig"; path = "Target Support Files/Pods-ZoomConnect/Pods-ZoomConnect.release.xcconfig"; sourceTree = "<group>"; };
 		136CA4DA9ACA43D9B2E591EC /* DMSerifDisplay-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "DMSerifDisplay-Regular.ttf"; path = "../assets/fonts/DMSerifDisplay-Regular.ttf"; sourceTree = "<group>"; };
-		13B07F961A680F5B00A75B9A /* zooomnew.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = zooomnew.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = zooomnew/Info.plist; sourceTree = "<group>"; };
-		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = zooomnew/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		13B07F961A680F5B00A75B9A /* ZoomConnect.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "ZoomConnect.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = "ZoomConnect/Info.plist"; sourceTree = "<group>"; };
+		13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = PrivacyInfo.xcprivacy; path = ZoomConnect/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		143BB9ACE52844E5B6CB10C8 /* Montserrat-Bold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Montserrat-Bold.ttf"; path = "../assets/fonts/Montserrat-Bold.ttf"; sourceTree = "<group>"; };
-		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = zooomnew/AppDelegate.swift; sourceTree = "<group>"; };
-		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = zooomnew/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		9EFD44579966A33C9DFC3FA7 /* Pods-zooomnew.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-zooomnew.debug.xcconfig"; path = "Target Support Files/Pods-zooomnew/Pods-zooomnew.debug.xcconfig"; sourceTree = "<group>"; };
+		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = ZoomConnect/AppDelegate.swift; sourceTree = "<group>"; };
+		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = "ZoomConnect/LaunchScreen.storyboard"; sourceTree = "<group>"; };
+		9EFD44579966A33C9DFC3FA7 /* Pods-ZoomConnect.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-ZoomConnect.debug.xcconfig"; path = "Target Support Files/Pods-ZoomConnect/Pods-ZoomConnect.debug.xcconfig"; sourceTree = "<group>"; };
 		C54AE3BD95B34BBA9EC5F84C /* Montserrat-Regular.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Montserrat-Regular.ttf"; path = "../assets/fonts/Montserrat-Regular.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
-		EF4AC8479F528A4B1B25E672 /* libPods-zooomnew.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-zooomnew.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		EF4AC8479F528A4B1B25E672 /* libPods-ZoomConnect.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-ZoomConnect.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F453E5B842F64BB3B1604340 /* Montserrat-SemiBold.ttf */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = "Montserrat-SemiBold.ttf"; path = "../assets/fonts/Montserrat-SemiBold.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -42,14 +42,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				465F4B786F49F944C1707276 /* libPods-zooomnew.a in Frameworks */,
+				465F4B786F49F944C1707276 /* libPods-ZoomConnect.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		13B07FAE1A68108700A75B9A /* zooomnew */ = {
+		13B07FAE1A68108700A75B9A /* ZoomConnect */ = {
 			isa = PBXGroup;
 			children = (
 				046FCC102F1624C3004FE304 /* main.jsbundle */,
@@ -59,7 +59,7 @@
 				81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */,
 				13B07FB81A68108700A75B9A /* PrivacyInfo.xcprivacy */,
 			);
-			name = zooomnew;
+			name = "ZoomConnect";
 			sourceTree = "<group>";
 		};
 		2310F0816A724A50B72783C3 /* Resources */ = {
@@ -77,7 +77,7 @@
 			isa = PBXGroup;
 			children = (
 				ED297162215061F000B7C4FE /* JavaScriptCore.framework */,
-				EF4AC8479F528A4B1B25E672 /* libPods-zooomnew.a */,
+				EF4AC8479F528A4B1B25E672 /* libPods-ZoomConnect.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -92,7 +92,7 @@
 		83CBB9F61A601CBA00E9B192 = {
 			isa = PBXGroup;
 			children = (
-				13B07FAE1A68108700A75B9A /* zooomnew */,
+				13B07FAE1A68108700A75B9A /* ZoomConnect */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
@@ -107,7 +107,7 @@
 		83CBBA001A601CBA00E9B192 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				13B07F961A680F5B00A75B9A /* zooomnew.app */,
+				13B07F961A680F5B00A75B9A /* ZoomConnect.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -115,8 +115,8 @@
 		BBD78D7AC51CEA395F1C20DB /* Pods */ = {
 			isa = PBXGroup;
 			children = (
-				9EFD44579966A33C9DFC3FA7 /* Pods-zooomnew.debug.xcconfig */,
-				08423B312D5F78526390C661 /* Pods-zooomnew.release.xcconfig */,
+				9EFD44579966A33C9DFC3FA7 /* Pods-ZoomConnect.debug.xcconfig */,
+				08423B312D5F78526390C661 /* Pods-ZoomConnect.release.xcconfig */,
 			);
 			path = Pods;
 			sourceTree = "<group>";
@@ -124,9 +124,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		13B07F861A680F5B00A75B9A /* zooomnew */ = {
+		13B07F861A680F5B00A75B9A /* ZoomConnect */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "zooomnew" */;
+			buildConfigurationList = 13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ZoomConnect" */;
 			buildPhases = (
 				AB57A381ACB3CDFE45440C06 /* [CP] Check Pods Manifest.lock */,
 				13B07F871A680F5B00A75B9A /* Sources */,
@@ -140,9 +140,9 @@
 			);
 			dependencies = (
 			);
-			name = zooomnew;
-			productName = zooomnew;
-			productReference = 13B07F961A680F5B00A75B9A /* zooomnew.app */;
+			name = "ZoomConnect";
+			productName = "ZoomConnect";
+			productReference = 13B07F961A680F5B00A75B9A /* ZoomConnect.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -158,7 +158,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "zooomnew" */;
+			buildConfigurationList = 83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ZoomConnect" */;
 			compatibilityVersion = "Xcode 12.0";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -171,7 +171,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				13B07F861A680F5B00A75B9A /* zooomnew */,
+				13B07F861A680F5B00A75B9A /* ZoomConnect */,
 			);
 		};
 /* End PBXProject section */
@@ -217,15 +217,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-zooomnew/Pods-zooomnew-resources-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ZoomConnect/Pods-ZoomConnect-resources-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Copy Pods Resources";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-zooomnew/Pods-zooomnew-resources-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ZoomConnect/Pods-ZoomConnect-resources-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-zooomnew/Pods-zooomnew-resources.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ZoomConnect/Pods-ZoomConnect-resources.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 		AB57A381ACB3CDFE45440C06 /* [CP] Check Pods Manifest.lock */ = {
@@ -243,7 +243,7 @@
 			outputFileListPaths = (
 			);
 			outputPaths = (
-				"$(DERIVED_FILE_DIR)/Pods-zooomnew-checkManifestLockResult.txt",
+				"$(DERIVED_FILE_DIR)/Pods-ZoomConnect-checkManifestLockResult.txt",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
@@ -256,15 +256,15 @@
 			files = (
 			);
 			inputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-zooomnew/Pods-zooomnew-frameworks-${CONFIGURATION}-input-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ZoomConnect/Pods-ZoomConnect-frameworks-${CONFIGURATION}-input-files.xcfilelist",
 			);
 			name = "[CP] Embed Pods Frameworks";
 			outputFileListPaths = (
-				"${PODS_ROOT}/Target Support Files/Pods-zooomnew/Pods-zooomnew-frameworks-${CONFIGURATION}-output-files.xcfilelist",
+				"${PODS_ROOT}/Target Support Files/Pods-ZoomConnect/Pods-ZoomConnect-frameworks-${CONFIGURATION}-output-files.xcfilelist",
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-zooomnew/Pods-zooomnew-frameworks.sh\"\n";
+			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-ZoomConnect/Pods-ZoomConnect-frameworks.sh\"\n";
 			showEnvVarsInLog = 0;
 		};
 /* End PBXShellScriptBuildPhase section */
@@ -283,14 +283,15 @@
 /* Begin XCBuildConfiguration section */
 		13B07F941A680F5B00A75B9A /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 9EFD44579966A33C9DFC3FA7 /* Pods-zooomnew.debug.xcconfig */;
+			baseConfigurationReference = 9EFD44579966A33C9DFC3FA7 /* Pods-ZoomConnect.debug.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = J8G3RXRQ93;
 				ENABLE_BITCODE = NO;
-				INFOPLIST_FILE = zooomnew/Info.plist;
+				INFOPLIST_FILE = "ZoomConnect/Info.plist";
+             INFOPLIST_KEY_CFBundleDisplayName = "ZoomConnect";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -302,8 +303,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = zooomnew;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.zoomconnect";
+				PRODUCT_NAME = "ZoomConnect";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
@@ -312,13 +313,14 @@
 		};
 		13B07F951A680F5B00A75B9A /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 08423B312D5F78526390C661 /* Pods-zooomnew.release.xcconfig */;
+			baseConfigurationReference = 08423B312D5F78526390C661 /* Pods-ZoomConnect.release.xcconfig */;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CLANG_ENABLE_MODULES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = J8G3RXRQ93;
-				INFOPLIST_FILE = zooomnew/Info.plist;
+				INFOPLIST_FILE = "ZoomConnect/Info.plist";
+             INFOPLIST_KEY_CFBundleDisplayName = "ZoomConnect";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -330,8 +332,8 @@
 					"-ObjC",
 					"-lc++",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "org.reactjs.native.example.$(PRODUCT_NAME:rfc1034identifier)";
-				PRODUCT_NAME = zooomnew;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.zoomconnect";
+				PRODUCT_NAME = "ZoomConnect";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -484,7 +486,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "zooomnew" */ = {
+		13B07F931A680F5B00A75B9A /* Build configuration list for PBXNativeTarget "ZoomConnect" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				13B07F941A680F5B00A75B9A /* Debug */,
@@ -493,7 +495,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "zooomnew" */ = {
+		83CBB9FA1A601CBA00E9B192 /* Build configuration list for PBXProject "ZoomConnect" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				83CBBA201A601CBA00E9B192 /* Debug */,

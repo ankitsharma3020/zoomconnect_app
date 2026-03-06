@@ -118,6 +118,7 @@ const PolicyDetails = ({ route }) => {
       setSelectedMember(defaultMember);
     }
   }, [data]);
+  console.log('Policy Details Data:', data);
 
   // Toggle Drawer Animation
  const toggleDrawer = (show) => {

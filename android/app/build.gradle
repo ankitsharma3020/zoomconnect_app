@@ -79,13 +79,20 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.zooomnew"
+    namespace "com.zoomconnect"
     defaultConfig {
-        applicationId "com.zooomnew"
+        applicationId "com.zoomconnect"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
         versionName "1.0"
+
+
+         
+manifestPlaceholders = [
+             appAuthRedirectScheme: 'msauth.com.zoomconnect'
+          
+        ]
     }
     signingConfigs {
         debug {
@@ -113,6 +120,7 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
      implementation(platform("com.google.firebase:firebase-bom:34.8.0"))
+      implementation ('com.google.android.gms:play-services-auth-api-phone:17.4.0')
     implementation ('com.facebook.fresco:animated-gif:3.2.0') // Use the version matching your RN version or just this
 
 

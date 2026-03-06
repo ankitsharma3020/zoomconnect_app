@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   Text,
@@ -7,7 +7,11 @@ import {
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  Platform
+  Platform,
+  Modal,
+  ScrollView,
+  KeyboardAvoidingView,
+  TextInput
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -15,7 +19,9 @@ import { wp, hp } from '../utilites/Dimension';
 
 // Import your custom header (Adjust path if needed)
 import Header from '../component/header'; 
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchTicketChat } from './Epicfiles/MainEpic';
+import TicketModal from '../component/Ticketmodal';
 
 // --- Helper: Calculate Time Ago ---
 const getTimeAgo = (dateString) => {
@@ -34,17 +40,29 @@ const getTimeAgo = (dateString) => {
   return `${diffDays} days ago`;
 };
 
+// --- Ticket Modal Component ---
+
+
+// --- Main Component ---
 const Helpticketlist = () => {
   const navigation = useNavigation();
   const route = useRoute();
   
-  // Get data from navigation params
-  // Default to empty array if undefined
-  // const { ticketdata } = route.params || { ticketdata: [] };
+  // ADDED: Missing State
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const dispatch = useDispatch();
+  
+  // Get data from Redux
   const { data, isLoading } = useSelector((state) => state.tickets);
-const ticketdata = data || [];
-  console.log("Ticket Data Received:", data);
-
+  const ticketdata = data || [];
+  
+  // ADDED: Handler to open modal with specific ticket data
+   const handleTicketClick = (ticket) => {
+        setSelectedTicket(ticket);
+        dispatch(fetchTicketChat({ticketId: ticket?.ticket_id}));
+        setModalVisible(true);
+    };
   const renderTicketItem = ({ item }) => {
     const isClosed = item.status === 'closed' || item.status === 'resolved';
 
@@ -52,7 +70,8 @@ const ticketdata = data || [];
       <TouchableOpacity 
         style={styles.ticketCard} 
         activeOpacity={0.95}
-        onPress={() => navigation.navigate('ChatScreen', { ticketId: item.ticket_id })}
+        // CHANGED: Open modal instead of navigating
+        onPress={() => handleTicketClick(item)}
       >
         <View style={styles.ticketInner}>
           {/* Top Row: ID and Status */}
@@ -88,9 +107,9 @@ const ticketdata = data || [];
               />
             </View>
             <View style={{ flex: 1, justifyContent: 'center' }}>
-               {/* Displaying Status as the main label, similar to previous design */}
-               <Text style={styles.ticketLabel}>Current Status</Text>
-               <Text style={styles.ticketTitle}>{item.status}</Text>
+               <Text style={styles.ticketLabel}>Issue</Text>
+               {/* CHANGED: Show subject instead of status here for better context */}
+               <Text style={styles.ticketTitle} numberOfLines={1}>{item.subject || item.status}</Text>
             </View>
           </View>
 
@@ -118,14 +137,14 @@ const ticketdata = data || [];
         <Header
           showBack={true} 
           onBack={() => navigation.goBack()} 
-          title="Support Tickets" // Changed title to match context
+          title="Support Tickets" 
         />
       </View>
 
       <View style={styles.contentContainer}>
         <FlatList
           data={ticketdata}
-          keyExtractor={(item) => item.ticket_id}
+          keyExtractor={(item) => item.ticket_id ? item.ticket_id.toString() : Math.random().toString()}
           renderItem={renderTicketItem}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
@@ -137,12 +156,21 @@ const ticketdata = data || [];
           }
         />
       </View>
+      
+      {/* ADDED: Connected state to Modal */}
+         <TicketModal
+        visible={modalVisible} 
+        onClose={() => setModalVisible(false)} 
+        ticket={selectedTicket}
+        onReplySuccess={() => dispatch(fetchTicketChat({ticketId: selectedTicket?.ticket_id}))} 
+      />
     </View>
   );
 };
 
 export default Helpticketlist;
 
+// --- STYLES ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -165,7 +193,7 @@ const styles = StyleSheet.create({
   ticketCard: { 
     backgroundColor: '#fff', 
     borderRadius: wp(4), 
-    marginBottom: hp(2), // Spacing between cards
+    marginBottom: hp(2), 
     borderWidth: 1, 
     borderColor: '#f1f5f9', 
     shadowColor: '#64748b', 
@@ -277,3 +305,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Medium',
   }
 });
+

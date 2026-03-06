@@ -15,9 +15,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-               BuildableName = "zooomnew.app"
-               BlueprintName = "zooomnew"
-               ReferencedContainer = "container:zooomnew.xcodeproj">
+               BuildableName = "ZoomConnect.app"
+               BlueprintName = "ZoomConnect"
+               ReferencedContainer = "container:ZoomConnect.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -33,9 +33,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "00E356ED1AD99517003FC87E"
-               BuildableName = "zooomnewTests.xctest"
-               BlueprintName = "zooomnewTests"
-               ReferencedContainer = "container:zooomnew.xcodeproj">
+               BuildableName = "ZoomConnectTests.xctest"
+               BlueprintName = "ZoomConnectTests"
+               ReferencedContainer = "container:ZoomConnect.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -55,9 +55,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "zooomnew.app"
-            BlueprintName = "zooomnew"
-            ReferencedContainer = "container:zooomnew.xcodeproj">
+            BuildableName = "ZoomConnect.app"
+            BlueprintName = "ZoomConnect"
+            ReferencedContainer = "container:ZoomConnect.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -72,9 +72,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "13B07F861A680F5B00A75B9A"
-            BuildableName = "zooomnew.app"
-            BlueprintName = "zooomnew"
-            ReferencedContainer = "container:zooomnew.xcodeproj">
+            BuildableName = "ZoomConnect.app"
+            BlueprintName = "ZoomConnect"
+            ReferencedContainer = "container:ZoomConnect.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

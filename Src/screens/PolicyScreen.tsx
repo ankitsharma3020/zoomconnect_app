@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useRef, useState, useEffect, useMemo } from 'react';
+import React, { useRef, useState, useEffect, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -16,6 +16,7 @@ import {
   Animated,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
+import messaging from '@react-native-firebase/messaging';
 import Svg, { Defs, Pattern, Path, Rect, Circle } from 'react-native-svg';
 import { useNavigation } from '@react-navigation/native';
 import { wp, hp } from '../utilites/Dimension';
@@ -26,7 +27,7 @@ import ActivePolicyHeader from '../component/activpolicy';
 import EnrollmentModal from '../component/Enrollmodal';
 import SurveyModal from '../component/Survaymodal';
 import Header from '../component/header';
-import { useGetNewProfileQuery } from '../redux/service/user/user';
+import { useGetNewProfileQuery, useSaveTokenMutation } from '../redux/service/user/user';
 import { GetApi } from '../component/Apifunctions';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPolicies, fetchProfile, fetchSurveys, fetchWellness } from './Epicfiles/MainEpic';
@@ -85,6 +86,7 @@ const PolicyScreen = () => {
   const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
   const [showSurveyModal, setShowSurveyModal] = useState(false);
   const [enrollmentStarted, setEnrollmentStarted] = useState(false);
+  const[Savetoken] = useSaveTokenMutation();
   const [surveyStarted, setSurveyStarted] = useState(false);
     const { data:surveylistdata, isLoading, error } = useSelector((state) => state.surveys);
     console.log("survey list data in policy screen", surveylistdata)
@@ -94,9 +96,35 @@ const PolicyScreen = () => {
   );
   
   // Policy Data State
-
+  const getToken = useCallback(async () => {
+    try {
+      await messaging().registerDeviceForRemoteMessages();
+      const token = await messaging().getToken();
+      console.log('FCM Token:', token);
+      AsyncStorage.setItem('deviceTOKEN', token);
+    } catch (error) { 
+      console.error('Error getting FCM token:', error); 
+      Alert.alert('Error getting FCM token:', error.message); 
+    }
+  }, []);
+    const Savedevicetoken = useCallback(async () => {
+    await getToken();
+   const token = await AsyncStorage.getItem('deviceTOKEN');
+    try {
+      let reqbody = { device_token: token };
+      let res = await Savetoken(reqbody);
+      console.log("device token response", res);
+      if (!res) { 
+        Alert.alert('Error', 'No data present'); 
+      
+      }
+    } catch (error) { 
+    
+      console.log(error, 'errrorrr'); 
+    }
+  }, [getToken, Savetoken]);
   const {data:PolicyData, isLoading:policyLoading, error:policyError} = useSelector((state:any)=>state.policy);
-  console.log("policy data in policy screen",PolicyData)
+  
 
   //   const enrollmentLogic = useMemo(() => {
   //   if (!enrollmentlistdata) return { shouldShowImage: false };
@@ -130,6 +158,7 @@ dispatch(fetchProfile()),
 dispatch (fetchPolicies())
 dispatch(fetchWellness())
  dispatch(fetchSurveys());
+ Savedevicetoken()
     // fetchPolicy();
   }, []);
 

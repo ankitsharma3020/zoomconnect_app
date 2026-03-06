@@ -4,12 +4,14 @@ import { useSelector } from 'react-redux';
 import Splash from '../../splash';
 import { UserRoute } from './userroute';
 import { GuestRoute } from './guestroute';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { height } = Dimensions.get('window');
 
 const RouteManager = () => {
   // 1. Get Login status
   const Login = useSelector((state) => state.user.user);
+  const [isFirstLaunch, setIsFirstLaunch] = useState(null); 
 
   // 2. State to keep Splash visible in background while animation happens
   const [isSplashVisible, setSplashVisible] = useState(true);
@@ -45,7 +47,14 @@ const RouteManager = () => {
     return () => clearTimeout(timer);
   }, [Login]);
 
-
+ useEffect(() => {
+    // Check AsyncStorage to see if the permission screen has run before
+    const checkFirstLaunch = async () => {
+      const hasRequested = await AsyncStorage.getItem('hasRequestedPermissions');
+      setIsFirstLaunch(hasRequested !== 'true');
+    };
+    checkFirstLaunch();
+  }, []);
   // --- RENDER LOGIC ---
 
   // 1. If Guest, just show GuestRoute (No fancy slide needed usually, or add logic if desired)
@@ -73,7 +82,7 @@ const RouteManager = () => {
           { transform: [{ translateY: slideAnim }] } // Bind animation
         ]}
       >
-        <UserRoute />
+        <UserRoute isFirstLaunch={isFirstLaunch} />
       </Animated.View>
 
     </View>

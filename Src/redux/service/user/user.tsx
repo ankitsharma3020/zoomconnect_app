@@ -72,7 +72,7 @@ export const userApi = apiSlice.injectEndpoints({
 
       getNewChat: builder.mutation({
       query: ({...body}) => ({
-        url: '/help/start',
+        url: '/chatbot/start',
         method: 'POST',
         body: body,
       }),
@@ -80,7 +80,7 @@ export const userApi = apiSlice.injectEndpoints({
     }),
       getMessageforChat: builder.mutation({
       query: ({...body}) => ({
-        url: '/help/message',
+        url: '/chatbot/respond',
         method: 'POST',
         body: body,
       }),
@@ -143,8 +143,42 @@ Editdependent: builder.mutation({
   }),
   //   invalidatesTags: [""],
 }),
-
-
+SaveToken: builder.mutation({
+  query: ({...body}) => ({
+    url: '/device-token',
+    method: 'POST',
+    body: body,
+  }),
+  //   invalidatesTags: [""],
+}),
+Addsupportticket: builder.mutation({
+  query: (formData) => ({
+    url: '/support/tickets',
+    method: 'POST',
+    body: formData,
+    // Note: Do NOT set Content-Type header here. 
+    // RTK Query/Fetch will automatically set it to 'multipart/form-data' 
+    // with the correct boundary when it detects a FormData body.
+  }),
+  // invalidatesTags: ["Tickets"], // Good practice to refresh ticket lists
+}),
+   getBanners: builder.mutation({
+      query: ({...body}) => ({
+        url: '/get-banners',
+        method: 'POST',
+        body: body,
+      }),
+      //   invalidatesTags: [""],
+    }),
+ Replytoticket: builder.mutation({
+      // We destructure 'ticketId' for the URL, and group the rest (status, remarks) into 'bodyData'
+      query: ({ ticketId, ...bodyData }) => ({
+        url: `/support/tickets/${ticketId}/message`, // Use backticks ` and ${} for dynamic ID
+        method: 'POST',
+        body: bodyData, // This will contain { status: "resolved", remarks: "..." }
+      }),
+       // invalidatesTags: ['Chat'], // Optional: Uncomment to auto-refetch chat list
+    }),
 //olddddddddddd
    
 
@@ -183,4 +217,8 @@ useLoginemailMutation,
  useEditdependentMutation,
  useLoginemployeeMutation,
  useResetPasswordMutation,
+ useSaveTokenMutation,
+ useAddsupportticketMutation,
+  useGetBannersMutation,
+  useReplytoticketMutation,
 } = userApi;

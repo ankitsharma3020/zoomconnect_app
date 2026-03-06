@@ -11,6 +11,7 @@ import {
   Keyboard,
   Alert,
   Modal,
+  ScrollView,
   Platform,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
@@ -22,14 +23,7 @@ import { fetchhospitalstate } from './Epicfiles/MainEpic';
 import { useGethospitallistMutation } from '../redux/service/user/user';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// --- Mock Data (Updated with specific Pincode field) ---
-const MOCK_HOSPITALS = [
-  { id: '1', name: 'SHAKUNTLA HOSPITAL & RESEARCH CENTRE', address: 'Near Dhamariya Pul, VARANASI', pincode: '221107' },
-  { id: '2', name: 'SAROJINI NAIDU HOSPITAL', address: 'Nai Bazar, Loitja, VARANASI', pincode: '221107' },
-  { id: '3', name: 'APEX MULTISPECIALITY HOSPITAL', address: 'DLW Hydel Road, VARANASI', pincode: '221104' },
-];
-
-const NetworkHospitalScreen = ({ type = 'state', route }) => { 
+const NetworkHospitalScreen = ({ route }) => { 
   
   const id = route?.params?.policyid || ''; 
   const [pincode, setPincode] = useState('');
@@ -41,7 +35,8 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
   const API_RESPONSE = data;
   const [getList] = useGethospitallistMutation();
   const dispatch = useDispatch();
-  const [hospitalList,setHospital]=useState()
+  const [hospitalList, setHospital] = useState();
+  
   // Dropdown States
   const [selectedState, setSelectedState] = useState(null);
   const [selectedCity, setSelectedCity] = useState(null);
@@ -57,14 +52,27 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
     }
   }, [dispatch, id]);
 
-  const GethospitalList = async (stateVal, cityVal) => {
+  // --- Updated API Call Logic ---
+  const GethospitalList = async (stateVal, cityVal, pincodeVal) => {
     const token = await AsyncStorage.getItem('token');
     try {
-        let reqbody = { token: token, policy_id: id, state: stateVal, city: cityVal };
+        let reqbody = { token: token, policy_id: id };
+        
+        // Pass either pincode OR state/city based on what the user filled
+        if (pincodeVal && pincodeVal.length === 6) {
+            reqbody.pincode = pincodeVal;
+        } else {
+            reqbody.state = stateVal;
+            reqbody.city = cityVal;
+        }
+
         const response = await getList(reqbody).unwrap();
-        setHospital(response.data.hospitals)
-        console.log("Hospital API:", response.data.hospitals);
-    } catch (error) { console.error(error); }
+        setHospital(response?.data?.hospitals || []);
+        console.log("Hospital API Response:", response.data.hospitals);
+    } catch (error) { 
+        console.error(error); 
+        Alert.alert("Error", "Failed to fetch hospitals. Please try again.");
+    }
   };
 
   const statesList = useMemo(() => {
@@ -73,8 +81,26 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
   }, [API_RESPONSE]);
 
   const filteredHospitals = hospitalList?.filter((hospital) =>
-    hospital.pincode.includes(localSearch.toLowerCase())
+    hospital.pincode?.includes(localSearch.toLowerCase()) || 
+    hospital.name?.toLowerCase().includes(localSearch.toLowerCase())
   );
+
+  // --- Input Handlers (Mutual Exclusivity) ---
+  const handlePincodeChange = (text) => {
+    setPincode(text);
+    // Clear State/City if user starts typing a pincode
+    if (text.length > 0) {
+        setSelectedState(null);
+        setSelectedCity(null);
+        setAvailableCities([]);
+    }
+  };
+
+  const openStateModal = () => {
+    // Clear Pincode if user decides to search by State/City
+    setPincode('');
+    setStateModalVisible(true);
+  };
 
   const handleStateSelect = (stateName) => {
     setSelectedState(stateName);
@@ -84,6 +110,7 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
     setSelectedCity(null); 
     setStateModalVisible(false);
   };
+
   const handleCitySelect = (cityName) => {
     setSelectedCity(cityName);
     setCityModalVisible(false);
@@ -91,26 +118,21 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
 
   // --- Button Enable Logic ---
   const isButtonEnabled = useMemo(() => {
-    if (type === 'pincode') {
-        return pincode.length === 6;
-    } else {
-        return selectedState !== null && selectedCity !== null;
-    }
-  }, [type, pincode, selectedState, selectedCity]);
+    // Enable if Pincode is 6 digits OR both State and City are selected
+    return (pincode.length === 6) || (selectedState !== null && selectedCity !== null);
+  }, [pincode, selectedState, selectedCity]);
 
   const handleSearch = () => {
     Keyboard.dismiss();
-    if (type === 'pincode') {
-        console.log("Searching Pincode:", pincode);
-    } else {
-        GethospitalList(selectedState, selectedCity);
-    }
+    GethospitalList(selectedState, selectedCity, pincode);
     setHasSearched(true);
   };
 
   const handleReset = () => {
     setHasSearched(false);
     setPincode('');
+    setSelectedState(null);
+    setSelectedCity(null);
     setLocalSearch('');
   };
 
@@ -170,19 +192,16 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
 
   const renderHospitalCard = ({ item }) => (
     <View style={styles.resultCard3D}>
-      {/* Decorative Patterns for 3D card */}
       <View style={styles.cardPatternCircle} />
-      {/* <View style={styles.cardPatternCircleSmall} /> */}
 
       <View style={styles.cardContent}>
-        <Text style={styles.hospitalName}>{item.name?item.name:'SHAKUNTLA HOSPITAL & RESEARCH CENTRE'}</Text>
-        <Text style={styles.hospitalAddress}>{item.address?item?.address:'Near Dhamariya Pul, VARANASI'}</Text>
+        <Text style={styles.hospitalName}>{item.name ? item.name : 'SHAKUNTLA HOSPITAL & RESEARCH CENTRE'}</Text>
+        <Text style={styles.hospitalAddress}>{item.address ? item?.address : 'Near Dhamariya Pul, VARANASI'}</Text>
         
-        {/* Pincode Display - Bold & Highlighted */}
         <View style={styles.pincodeContainer}>
           <MaterialCommunityIcons name="map-marker-radius" size={16} color="#AB47BC" />
           <Text style={styles.pincodeLabel}>Pincode: </Text>
-          <Text style={styles.pincodeValue}>{item.pincode}</Text>
+          <Text style={styles.pincodeValue}>{item.pincode || 'N/A'}</Text>
         </View>
       </View>
 
@@ -218,13 +237,11 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
         </View>
 
         {!hasSearched ? (
-          <View style={styles.mainSearchCard}>
+          <ScrollView style={styles.mainSearchCard} showsVerticalScrollIndicator={false}>
             
-            {/* Background Pattern Circles */}
             <View style={styles.patternCircle1} />
             <View style={styles.patternCircle2} />
 
-            {/* Title */}
             <View style={styles.cardTitleRow}>
                 <View style={styles.iconCircle}>
                     <MaterialIcons name="search" size={20} color="#AB47BC" />
@@ -233,54 +250,59 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
             </View>
             <Text style={styles.cardSubtitle}>Flexible Search</Text>
 
-            {/* Pink Banner */}
             <View style={styles.pinkBanner}>
                 <View style={{flexDirection:'row', alignItems:'center', marginBottom: 4}}>
                     <MaterialCommunityIcons name="target" size={18} color="#AB47BC" />
                     <Text style={styles.bannerTitle}>Flexible Search</Text>
                 </View>
                 <Text style={styles.bannerSubtitle}>
-                    {type === 'pincode' ? 'Search by entering your 6-digit Pincode' : 'Select state and city'}
+                    Search by entering your 6-digit Pincode OR select State and City
                 </Text>
             </View>
 
-            {/* Form Inputs */}
             <View style={styles.formContainer}>
-                {type === 'pincode' ? (
-                    <View style={styles.inputGroup}>
-                        <Text style={styles.inputLabel}>Pincode</Text>
-                        <TextInput
-                            style={styles.inputBox}
-                            placeholder="6-digit code"
-                            placeholderTextColor="#9CA3AF"
-                            keyboardType="numeric"
-                            maxLength={6}
-                            value={pincode}
-                            onChangeText={setPincode}
-                        />
-                    </View>
-                ) : (
-                    <View style={styles.columnInputs}>
-                         <DropdownInput 
-                            label="State"
-                            placeholder="Select State"
-                            value={selectedState} 
-                            icon="map"
-                            onPress={() => setStateModalVisible(true)}
-                        />
-                         <DropdownInput 
-                            label="City" 
-                            placeholder="Select City"
-                            value={selectedCity} 
-                            icon="location-city"
-                            onPress={() => setCityModalVisible(true)} 
-                            disabled={!selectedState}
-                        />
-                    </View>
-                )}
+                
+                {/* 1. Pincode Input */}
+                <View style={styles.inputGroup}>
+                    <Text style={styles.inputLabel}>Pincode</Text>
+                    <TextInput
+                        style={styles.inputBox}
+                        placeholder="Enter 6-digit code"
+                        placeholderTextColor="#9CA3AF"
+                        keyboardType="numeric"
+                        maxLength={6}
+                        value={pincode}
+                        onChangeText={handlePincodeChange}
+                    />
+                </View>
+
+                {/* OR Divider */}
+                <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>OR</Text>
+                    <View style={styles.dividerLine} />
+                </View>
+
+                {/* 2. State & City Inputs */}
+                <View style={styles.columnInputs}>
+                     <DropdownInput 
+                        label="State"
+                        placeholder="Select State"
+                        value={selectedState} 
+                        icon="map"
+                        onPress={openStateModal}
+                    />
+                     <DropdownInput 
+                        label="City" 
+                        placeholder="Select City"
+                        value={selectedCity} 
+                        icon="location-city"
+                        onPress={() => setCityModalVisible(true)} 
+                        disabled={!selectedState}
+                    />
+                </View>
             </View>
 
-            {/* Search Button */}
             <TouchableOpacity 
                 style={[styles.searchButton, { backgroundColor: isButtonEnabled ? '#AB47BC' : '#BDBDBD' }]} 
                 onPress={handleSearch}
@@ -290,13 +312,11 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
                 <Text style={styles.searchButtonText}>Search Hospitals</Text>
             </TouchableOpacity>
 
-          </View>
+            {/* Spacer for bottom scrolling */}
+            <View style={{ height: 40 }} />
+          </ScrollView>
         ) : (
-             
-
-
           <View style={styles.resultsContainer}>
-            {/* Results Header */}
             <View style={styles.resultsHeader}>
                 <TouchableOpacity onPress={handleReset} style={styles.backBtn3D}>
                     <MaterialIcons name="arrow-back" size={24} color="#333" />
@@ -305,19 +325,20 @@ const NetworkHospitalScreen = ({ type = 'state', route }) => {
                      <MaterialIcons name="search" size={20} color="#999" />
                      <TextInput
                         style={styles.resultSearchInput}
-                        placeholder="Filter by hospital name..."
+                        placeholder="Filter by name or pincode..."
                         value={localSearch}
                         onChangeText={setLocalSearch}
                      />
                 </View>
             </View>
-            {/* List */}
+            
             <FlatList
               data={filteredHospitals}
-              keyExtractor={(item) => item.id}
+              keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
               renderItem={renderHospitalCard}
               contentContainerStyle={styles.listContent}
               showsVerticalScrollIndicator={false}
+              ListEmptyComponent={<Text style={{textAlign: 'center', marginTop: 20, color: '#666'}}>No hospitals found.</Text>}
             />
           </View>
         )}
@@ -469,7 +490,7 @@ const styles = StyleSheet.create({
 
   // --- Form & Button ---
   formContainer: { marginBottom: 10 },
-  inputGroup: { marginBottom: 15 },
+  inputGroup: { marginBottom: 5 },
   columnInputs: { flexDirection: 'column' },
   inputLabel: {
     fontSize: hp('1.5%'),
@@ -502,28 +523,42 @@ const styles = StyleSheet.create({
   },
   searchButtonText: { color: '#FFF', fontSize: hp('1.8%'), fontFamily: 'Montserrat-Bold' },
 
+  // --- OR Divider ---
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E5E7EB',
+  },
+  dividerText: {
+    marginHorizontal: 15,
+    color: '#9CA3AF',
+    fontFamily: 'Montserrat-Bold',
+    fontSize: 14,
+  },
+
   // --- 3D Result Card Styles ---
   resultCard3D: {
     flexDirection: 'row',
     backgroundColor: '#FFF',
     borderRadius: 16,
     padding: 16,
-    marginBottom: 16, // Increased margin for 3D separation
-    
-    // 3D Shadow/Elevation
+    marginBottom: 16,
     elevation: 6,
-    shadowColor: '#AB47BC', // Slight purple tint to shadow
+    shadowColor: '#AB47BC', 
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.15,
     shadowRadius: 8,
-    
     position: 'relative',
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#F8F8F8',
   },
   
-  // Card Patterns
   cardPatternCircle: {
     position: 'absolute',
     top: -20,
@@ -531,25 +566,14 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: '#F3E5F5', // Light purple
+    backgroundColor: '#F3E5F5',
     opacity: 0.6,
-  },
-  cardPatternCircleSmall: {
-    position: 'absolute',
-    bottom: -10,
-    left: 40,
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#E1BEE7',
-    opacity: 0.3,
   },
 
   cardContent: { flex: 1, marginRight: 10, zIndex: 1 },
   hospitalName: { fontSize: 15, fontFamily: 'Montserrat-Bold', color: '#333', marginBottom: 4 },
   hospitalAddress: { fontSize: 12, color: '#666', marginBottom: 10, lineHeight: 18 },
   
-  // Pincode Styles
   pincodeContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -567,7 +591,7 @@ const styles = StyleSheet.create({
   },
   pincodeValue: {
     fontSize: 13,
-    color: '#4A148C', // Darker purple
+    color: '#4A148C',
     fontFamily: 'Montserrat-Bold',
   },
 
@@ -613,5 +637,3 @@ const styles = StyleSheet.create({
 });
 
 export default NetworkHospitalScreen;
-
-

@@ -1,4 +1,4 @@
-package com.zooomnew
+package com.zoomconnect
 
 import android.app.Application
 import com.facebook.react.PackageList

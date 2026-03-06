@@ -1,27 +1,16 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Dimensions, Image, Platform, TextInput } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Defs, Pattern, Circle, Rect, Path } from 'react-native-svg';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUser } from '../redux/service/userSlice';
 import { wp, hp } from '../utilites/Dimension'; // Adjusted import path
+import { useSaveTokenMutation } from '../redux/service/user/user';
 
 const { width } = Dimensions.get('window');
 
 // --- DUMMY DATA ---
-const dummyProfile = {
-  id: '12345',
-  employees_code: 'EMP-001',
-  email: 'hadijafari.official@gmail.com',
-  mobile: '+91 98765 43210',
-  full_name: 'Nipun jha2',
-  photo: 'https://i.pravatar.cc/300?img=12',
-  designation: 'Product Designer',
-  location: 'Madrid, Spain',
-  dob: '1990-05-15',
-  date_of_joining: '2018-08-01',
-  comp_name: 'Tech Solutions Pvt. Ltd.',
-};
+
 
 // --- SVG Pattern Component ---
 const ProfilePattern = () => (
@@ -43,14 +32,15 @@ const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   
   const [loading, setLoading] = useState(false);
+   const[Savetoken] = useSaveTokenMutation();
   const [showFullEmail, setShowFullEmail] = useState(false);
   const { data: profileData } = useSelector((state: any) => state.profile);
-  console.log("Profile Data from Redux:", profileData);
+ 
   const user =  profileData?.data?.user; 
+   console.log("Profile Data from Redux:", user);
   // --- Editable State ---
   const [mobile, setMobile] = useState(user.mobile);
-  const [photo, setPhoto] = useState(user.photo?user.photo : 'https://i.pravatar.cc/300?img=12');
-
+ 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -129,7 +119,21 @@ const ProfileScreen = ({ navigation }) => {
       <Path d="M9 18l6-6-6-6" />
     </Svg>
   );
-
+ const handleLogout = useCallback(async () => {
+    try {
+      setLoading(true);
+    
+      
+      const reqbody = { device_token: null,  };
+     let res= await Savetoken(reqbody);
+     console.log("Logout Response:", res);  
+    } catch (error) {
+      console.log('Logout error:', error);
+    } finally {
+      dispatch(setUser(false));
+      setLoading(false);
+    }
+  }, [Savetoken, dispatch]);
   return loading ? (
     <View style={styles.loadingOverlay}>
       <ActivityIndicator size="large" color="#F97316" />
@@ -179,9 +183,11 @@ const ProfileScreen = ({ navigation }) => {
                     </View>
 
                     {/* User Info */}
-                    <Text style={styles.userName}>{user.full_name}</Text>
-                    <Text style={styles.userEmail}>{user.email}</Text>
-                    <Text style={styles.userRole}>{user.designation}  •  {user.location}</Text>
+                    <Text style={styles.userName}>{user?.full_name}</Text>
+                    <Text style={styles.userEmail}>{user?.email}</Text>
+                    <Text style={styles.userRole}>
+  {user?.designation}  •  {user?.location?.branch_name || user?.location?.city || 'N/A'}
+</Text>
 
                     {/* Divider */}
                     <View style={styles.divider} />
@@ -205,7 +211,7 @@ const ProfileScreen = ({ navigation }) => {
 
                         <InfoItem 
                             label="Company" 
-                            value={user.comp_name} 
+                            value={user?.company?.comp_name} 
                             Icon={CompanyIcon}
                         />
                         <InfoItem 
@@ -239,7 +245,8 @@ const ProfileScreen = ({ navigation }) => {
                     <MenuItem 
                         title="Logout" 
                         Icon={LogoutIcon}
-                        onPress={() => dispatch(setUser(false))}
+                        loading={loading}
+                        onPress={() =>handleLogout()}
                         isLast
                         isDestructive
                         showArrow={false}
@@ -299,11 +306,20 @@ const InfoItem = ({ label, value, Icon, isEditable, onChangeText }) => (
     </View>
 );
 
-const MenuItem = ({ title, Icon, onPress, isLast, isDestructive, showArrow = true }) => (
+const MenuItem = ({ 
+    title, 
+    Icon, 
+    onPress, 
+    isLast, 
+    isDestructive, 
+    showArrow = true, 
+    loading = false // New prop
+}) => (
     <TouchableOpacity 
         style={[styles.menuItem, isLast && styles.menuItemLast]} 
         onPress={onPress} 
         activeOpacity={0.7}
+        disabled={loading} // Disable interaction during loading
     >
         <View style={styles.menuLeft}>
             <View style={[styles.iconCircle, isDestructive && { backgroundColor: '#FEE2E2' }]}>
@@ -311,10 +327,30 @@ const MenuItem = ({ title, Icon, onPress, isLast, isDestructive, showArrow = tru
             </View>
             <Text style={[styles.menuText, isDestructive && styles.destructiveText]}>{title}</Text>
         </View>
-        {showArrow && (
-            <Svg width={wp(4)} height={wp(4)} viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" style={{opacity: 0.3}}>
-                <Path d="M9 18l6-6-6-6" />
-            </Svg>
+
+        {/* Logic for Right Side: Loading Spinner OR Arrow */}
+        {loading ? (
+            <ActivityIndicator 
+                size="small" 
+                color={isDestructive ? '#EF4444' : '#374151'} 
+                style={styles.loader} 
+            />
+        ) : (
+            showArrow && (
+                <Svg 
+                    width={wp(4)} 
+                    height={wp(4)} 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="#374151" 
+                    strokeWidth={2} 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round" 
+                    style={{opacity: 0.3}}
+                >
+                    <Path d="M9 18l6-6-6-6" />
+                </Svg>
+            )
         )}
     </TouchableOpacity>
 );

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, use } from 'react';
 import {
   View,
   Text,
@@ -35,6 +35,8 @@ import HealthCarousel from '../component/healthCorosol';
 import { wp, hp } from '../utilites/Dimension'; // Added import for dynamic dimensions
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
+import { useGetBannersMutation } from '../redux/service/user/user';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width, height } = Dimensions.get('window');
 const BOTTOM_TAB_HEIGHT = hp(10); // approx 80
@@ -79,7 +81,9 @@ const SupportIcon = () => (
 
 const Dashboard = () => {
 const navigation = useNavigation(); 
+const [getBannerlist] = useGetBannersMutation();
   const {data:PolicyData, isLoading:policyLoading, error:policyError} = useSelector((state:any)=>state.policy);
+  const [bannerData, setBannerData] = useState([]);
 
   // --- QUICK ACTIONS DATA ---
   const quickActions = [
@@ -88,7 +92,21 @@ const navigation = useNavigation();
     { id: 3, title: 'Download E-Card', icon: ECardIcon, screen: 'ECard' },
     { id: 4, title: 'Help & Support', icon: SupportIcon, screen: 'Support' },
   ];
+const getBanner=async()=>{
+  let token =  AsyncStorage.getItem('token');
+  console.log("Token in Dashboard:", token);
 
+try {
+   let res=await getBannerlist({token:token});
+   setBannerData(res?.data?.data?.banners || []);
+   console.log("Banner List Response:", res?.data?.data?.banners); 
+} catch (error) {
+  console.error("Error fetching banner list:", error);
+}
+}
+useEffect(()=>{ 
+  getBanner();
+},[])
 
   return (
     <View style={styles.screenWrap}>
@@ -161,7 +179,7 @@ const navigation = useNavigation();
              <Text style={styles.sectionTitle}>Featured Offers</Text>
           </View> */}
        
-          <HealthCarousel/>
+          <HealthCarousel bannerData={bannerData}  />
           <PromoCarousel2/>
             {/* <View style={styles.sectionHeaderContainer}>
              <Text style={styles.sectionTitle}>Featured Offers</Text>

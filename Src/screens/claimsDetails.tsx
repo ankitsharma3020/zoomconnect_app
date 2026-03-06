@@ -37,6 +37,7 @@ const ClaimDetailss = ({ navigation, route }) => {
    
 
   const claim = route.params?.item || null;
+  console.log('Claim Details Route Params:', claim);
 const onDownload = route.params?.onDownload || null;
  const statusText = claim?.claim_status || '';
     const isLongText = statusText.length > 15; 

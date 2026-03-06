@@ -28,6 +28,10 @@ import {
 } from '../redux/service/user/user';
 import { GetApi } from '../component/Apifunctions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin,statusCodes } from '@react-native-google-signin/google-signin';
+import { authorize,AppAuth } from 'react-native-app-auth';
+import {jwtDecode} from 'jwt-decode';
+import auth from '@react-native-firebase/auth';
 import { setUser } from '../redux/service/userSlice';
 
 const { height } = Dimensions.get('window');
@@ -58,6 +62,24 @@ const Images = {
   microsoft: require('../../assets/micosoft.png'),
 };
 
+const configs = {
+  identityserver:{
+    issuer: 'https://login.microsoftonline.com/ac7594d5-c933-4baf-b79d-4ccb4aaec90c/v2.0',
+  clientId: '151553b6-39f3-48e4-9982-6dc7d4833e59', // Replace with your microsoft client id
+
+  redirectUrl: Platform.OS=='android'?'msauth.com.zoomconnect://auth':'msauth.com.zoomconnect://auth/'  , // replace with your redirect uri added in microsoft portal
+  additionalParameters:{},
+  scopes: ['openid', 'profile', 'email',]
+  },
+  auth0:{
+    issuer: 'https://login.microsoftonline.com/ac7594d5-c933-4baf-b79d-4ccb4aaec90c/v2.0',
+    clientId: '151553b6-39f3-48e4-9982-6dc7d4833e59', // Replace with your microsoft client id
+   
+    redirectUrl: Platform.OS=='android'?'msauth.com.zoomconnect://auth':'msauth.com.zoomconnect://auth'  , // replace with your redirect uri added in microsoft portal
+    additionalParameters:{},
+    scopes: ['openid', 'profile', 'email',],
+  },
+};
 const Login = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
@@ -88,6 +110,12 @@ const Login = () => {
 
   useEffect(() => {
     GetCompanyList();
+  }, []);
+    useEffect(() => {
+    GoogleSignin.configure({
+      webClientId: '23273467961-vbqo2a5m9a07nm43t8dmafc7pr36ogfg.apps.googleusercontent.com',
+      offlineAccess: true,
+    });
   }, []);
 
   const GetCompanyList = async () => {
@@ -139,7 +167,70 @@ const Login = () => {
     if (loginMode === 'employee') return;
     Animated.timing(toggleAnim, { toValue: loginMode === 'phone' ? 1 : 0, duration: 250, useNativeDriver: false }).start();
   }, [loginMode]);
+const onGoogleButtonPress = async () => {
+  // setLoading(true); // Uncomment if you want to show a spinner
+  try {
+    // 1. Check for Google Play Services
+    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    
+    // 2. Trigger the Google Sign-In prompt
+    const signInResult = await GoogleSignin.signIn();
+    
+    // 3. Extract the token safely (handling newer library versions)
+    const idToken = signInResult?.data?.idToken || signInResult?.idToken; 
+    
+    if (!idToken) { 
+      throw new Error('No ID token found in Google response'); 
+    }
+    
+    // 4. Create a Firebase credential with the token
+    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+    
+    // 5. Sign-in the user with Firebase
+    const userCredential = await auth().signInWithCredential(googleCredential);
+    const email = userCredential?.user?.email;
+    
+    console.log('Google Sign-In successful, user email:', email);
+    
+    // 6. TODO: Call your ZoomConnect backend API here to log the user in
+    // if (email) { 
+    //    const response = await Emaillogin({ email: email, isSSO: true }).unwrap(); 
+    //    // Handle success...
+    // }
 
+  } catch (error) {
+    // setLoading(false);
+    console.error('Google Sign-In Error:', error);
+    
+    // Gracefully handle if the user simply closed the Google popup
+    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+      console.log('User cancelled the login flow');
+      return; 
+    }
+
+    // Pass a STRING to ToastAndroid, not an object
+    const errorMessage = error?.message || 'Google Sign-In failed';
+    ToastAndroid.show(errorMessage, ToastAndroid.SHORT);
+  }
+};
+
+  const handleMicrosoftLogin = async (provider) => {
+    console.log('Starting Microsoft login with provider:', provider);
+    const config = { ...configs[provider] };
+    console.log('Microsoft Login Config:', config);
+
+    try {
+      const res = await authorize(config);
+      console.log('Microsoft Login Response======>:', res);
+      if (res.idToken) {
+        const decodedToken = jwtDecode(res.idToken);
+        const memail = decodedToken.email || decodedToken.preferred_username;
+        console.log('Decoded Microsoft ID Token:', decodedToken);
+        // if (memail) { onSignUp({ memail, microsoft: true }); }
+        // else { console.error("Email not found in decoded token"); }
+      } else { console.error("ID Token not found in response"); }
+    } catch (error) { console.error("Microsoft Login Error:", error); alert(`Login failed`); }
+  };
   const handleSetLoginMode = (mode) => {
     setLoginMode(mode);
     setUsername('');
@@ -165,6 +256,7 @@ const handleLogin = async () => {
     let response;
     if (loginMode === 'email') {
       response = await Emaillogin({ email: username, password }).unwrap();
+     
     } else if (loginMode === 'phone') {
       response = await Mobilelogin({ mobile: username }).unwrap();
     } else if (loginMode === 'employee') {
@@ -174,6 +266,7 @@ const handleLogin = async () => {
         password: password, 
       };
       response = await LoginEmployee(loginBody).unwrap();
+      
     }
 
     let isSuccess = false;
@@ -351,8 +444,8 @@ const handleLogin = async () => {
               </View>
 
               <View style={styles.socialRow}>
-                <TouchableOpacity style={styles.socialBtn}><Image source={Images.gmail} style={styles.socialIcon} /></TouchableOpacity>
-                <TouchableOpacity style={styles.socialBtn}><Image source={Images.microsoft} style={styles.socialIcon} /></TouchableOpacity>
+                <TouchableOpacity style={styles.socialBtn} onPress={onGoogleButtonPress}><Image source={Images.gmail} style={styles.socialIcon} /></TouchableOpacity>
+                <TouchableOpacity style={styles.socialBtn} onPress={() => handleMicrosoftLogin('identityserver')}><Image source={Images.microsoft} style={styles.socialIcon} /></TouchableOpacity>
               </View>
               
               <View style={styles.footerContainer}><Text style={styles.poweredByText}>Powered by Novel Healthtech</Text></View>

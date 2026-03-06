@@ -79,7 +79,7 @@ export const fetchtickets=createAsyncThunk(
         throw new Error('No authentication token found');
       }
 
-      const endpoint = '/help/tickets'; 
+      const endpoint = '/support/tickets'; 
 
       // 2. FIXED: GetApi expects (url, params, token). 
       // We must pass an empty object {} as the second argument.
@@ -141,15 +141,15 @@ export const fetchTicketChat = createAsyncThunk(
       console.log("Fetching chat for Ticket ID:", ticketId);
       // 1. Construct the relative URL
       // BaseURL is .../api/v1, so we just need the rest
-      const endpoint = `/help/chat/${ticketId}`;
+      const endpoint = `/support/tickets/${ticketId}`;
 
       // 2. Call your custom GetApi function
       // Signature: GetApi(url, params, token)
       const response = await GetApi(endpoint, {}, token);
            
-
+       console.log('fetchTicketChat API Response:', JSON.stringify(response, null, 2));
       // 3. Return response (this becomes action.payload in fulfilled case)
-      return response;
+      return response.data;
     } catch (error) {
       // Handle errors safely
       const errorMessage = error.response?.data?.message || error.message || 'Failed to fetch chat';
@@ -177,7 +177,7 @@ export const fetchPolicydetails=createAsyncThunk(
       // Signature: GetApi(url, params, token)
       const response = await GetApi(endpoint, {}, token);
            
-              // console.log('Profile API Response:', JSON.stringify(response, null, 2));
+             
       // 3. Return response (this becomes action.payload in fulfilled case)
       return response.data;
     } catch (error) {
@@ -236,7 +236,7 @@ export const fetchhospitalstate=createAsyncThunk(
       // 2. FIXED: GetApi expects (url, params, token). 
       // We must pass an empty object {} as the second argument.
       const response = await GetApi(endpoint, {}, token);
-        console.log('HospitalstareAPI Response:', JSON.stringify(response, null, 2));
+        // console.log('HospitalstareAPI Response:', JSON.stringify(response, null, 2));
 
       // 3. REQUESTED: Console log the response
 
