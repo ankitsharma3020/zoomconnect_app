@@ -25,6 +25,9 @@ import Header from '../component/header';
 import ClaimCard from '../component/claimscard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGetClaimdetailsMutation } from '../redux/service/user/user';
+import { useSelector } from 'react-redux';
+import Submittedclaimscard from '../component/Submittedclaimscard';
+import FastImage from '@d11/react-native-fast-image';
 
 const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT = Platform.OS === 'ios' ? hp(14) : hp(13);
@@ -33,7 +36,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// --- Icons (Same as before) ---
+// --- Icons ---
 const FileClaimIcon = () => (
   <Svg width={wp(7)} height={wp(7)} viewBox="0 0 24 24" fill="none">
     <Path d="M14 2H6C4.89543 2 4 2.89543 4 4V20C4 21.1046 4.89543 22 6 22H18C19.1046 22 20 21.1046 20 20V8L14 2Z" stroke="#7E8CA0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -63,7 +66,7 @@ const RepresentativeIcon = () => (
   </Svg>
 );
 
-// --- SHIMMER / SKELETON COMPONENT ---
+// --- SHIMMER SKELETON ---
 const ClaimCardSkeleton = () => {
   const animatedValue = useRef(new Animated.Value(0)).current;
 
@@ -86,7 +89,6 @@ const ClaimCardSkeleton = () => {
   return (
     <View style={styles.cardContainerSkeleton}>
       <View style={styles.skeletonInner}>
-        {/* Moving Shimmer Gradient */}
         <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX }] }]}>
           <LinearGradient
             colors={['transparent', 'rgba(255,255,255,0.6)', 'transparent']}
@@ -96,14 +98,11 @@ const ClaimCardSkeleton = () => {
           />
         </Animated.View>
 
-        {/* Placeholder Blocks */}
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: hp(2) }}>
           <View style={{ width: wp(30), height: hp(1.5), backgroundColor: '#E0E0E0', borderRadius: 4 }} />
           <View style={{ width: wp(20), height: hp(1.5), backgroundColor: '#E0E0E0', borderRadius: 4 }} />
         </View>
-        
         <View style={{ width: '100%', height: hp(8), backgroundColor: '#E0E0E0', borderRadius: 8, marginBottom: hp(2) }} />
-
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <View style={{ width: wp(25), height: hp(4), backgroundColor: '#E0E0E0', borderRadius: 8 }} />
           <View style={{ width: wp(25), height: hp(4), backgroundColor: '#E0E0E0', borderRadius: 8 }} />
@@ -116,9 +115,12 @@ const ClaimCardSkeleton = () => {
 
 const ClaimScreen = ({ navigation }) => {
   const [isModalVisible, setModalVisible] = useState(false);
-  // Destructure isLoading from the mutation hook
   const [getClaims] = useGetClaimdetailsMutation();
-  const [claimDetails, setClaimDetails] = useState([]);
+  const {data:PolicyData} = useSelector((state) => state.policy);
+  
+  // States
+  const [claimDetails, setClaimDetails] = useState([]);      // Processed
+  const [Submitedaims, setSubmitedaimsc] = useState([]);     // Submitted
   const [isLoading, setIsLoading] = useState(true);
 
   const getClaimDetails = async () => {
@@ -126,11 +128,13 @@ const ClaimScreen = ({ navigation }) => {
     const token = await AsyncStorage.getItem('token');
     try {
       let res = await getClaims(token);
+      console.log("claim details res", res);
+      
       if (res?.data) {
-        setClaimDetails(res?.data?.data?.claims || []);
+        setClaimDetails(res?.data?.data?.claims || []); // PROCESSED
+        setSubmitedaimsc(res?.data?.data?.submitted_claims || []); // SUBMITTED 
       }
     } catch (error) {
-       setIsLoading(false);
       console.log("claim details error", error);
     } finally {
       setIsLoading(false);
@@ -141,11 +145,26 @@ const ClaimScreen = ({ navigation }) => {
     getClaimDetails();
   }, []);
 
-  const helpOptions = [
-    { id: '1', title: 'File a claim', screen: 'fileclaim', IconComponent: FileClaimIcon },
-    { id: '2', title: 'Know about claim process', screen: 'claimProcess', IconComponent: ProcessIcon },
-    { id: '3', title: 'Connect with claim representative', isRepresentative: true, IconComponent: RepresentativeIcon },
-  ];
+  let helpOptions = [];
+  let hasActivePolicies = false;
+  
+  if (PolicyData && PolicyData.data && PolicyData.data.policy_details) {
+      if (PolicyData.data.policy_details.length > 0) {
+          hasActivePolicies = true;
+      }
+  }
+
+  if (hasActivePolicies) {
+      helpOptions = [
+          { id: '1', title: 'File a claim', screen: 'fileclaim', IconComponent: FileClaimIcon },
+          { id: '2', title: 'Know about claim process', screen: 'claimProcess', IconComponent: ProcessIcon },
+          { id: '3', title: 'Connect with claim representative', isRepresentative: true, IconComponent: RepresentativeIcon }
+      ];
+  } else {
+      helpOptions = [
+          { id: '2', title: 'Know about claim process', screen: 'claimProcess', IconComponent: ProcessIcon }
+      ];
+  }
 
   const renderItem = ({ item }) => {
     const Icon = item.IconComponent;
@@ -161,52 +180,94 @@ const ClaimScreen = ({ navigation }) => {
     );
   };
 
-  // --- RENDER CONTENT LOGIC ---
+  // --- RENDER CLAIMS LOGIC ---
   const renderClaimsContent = () => {
     if (isLoading) {
-      // Show 3 skeleton cards while loading
       return (
         <View>
-          <ClaimCardSkeleton />
           <ClaimCardSkeleton />
           <ClaimCardSkeleton />
         </View>
       );
     }
 
-    if (!claimDetails || claimDetails.length === 0) {
-      // Show "No Claims" card if data is empty
+    // Dono array empty hone par
+    if (claimDetails.length === 0 && Submitedaims.length === 0) {
       return (
         <View style={styles.card}>
-          <Image
-            source={require('../../assets/yoga.png')}
-            style={styles.image}
-            resizeMode="cover"
-          />
+          <FastImage source={require('../../assets/yoga.png')} style={styles.image} resizeMode="cover" />
           <View style={styles.textContainer}>
             <Text style={styles.title}>No claims yet</Text>
-            <Text style={styles.subtitle}>
-              Well that’s a sign of you living a healthy life.
-            </Text>
+            <Text style={styles.subtitle}>Well that’s a sign of you living a healthy life.</Text>
           </View>
         </View>
       );
     }
 
-    // Show List if data exists
     return (
-      <FlatList
-        data={claimDetails}
-        keyExtractor={(item) => item.id || Math.random().toString()}
-        renderItem={({ item }) => (
-          <ClaimCard
-            item={item}
-            onViewDetails={() => console.log('Details')}
-            onDownload={() => console.log('Download')}
-          />
+      <View>
+        {/* SUBMITTED SECTION */}
+        {Submitedaims && Submitedaims.length > 0 && (
+          <View style={styles.claimSection}>
+            <Text style={styles.headerText}>Submitted Claims</Text>
+            
+            {/* Pehla Card - Added isSubmitted prop */}
+            <Submittedclaimscard
+              item={Submitedaims[0]}
+              isSubmitted={true}
+              onViewDetails={() => console.log('Details', Submitedaims[0].id)}
+              onDownload={() => console.log('Download')}
+            />
+
+            {/* Doosra Card (Agar exist karta hai) - Added isSubmitted prop */}
+            {/* {Submitedaims.length > 1 && (
+              <Submittedclaimscard
+                item={Submitedaims[1]}
+                isSubmitted={true}
+                onViewDetails={() => console.log('Details', Submitedaims[1].id)}
+                onDownload={() => console.log('Download')}
+              />
+            )} */}
+
+            {/* View More Button */}
+            {Submitedaims.length > 1 && (
+              <TouchableOpacity 
+                style={styles.viewMoreBtn}
+                onPress={() => navigation.navigate('ClaimList', { type: 'Submitted', data: Submitedaims })}
+              >
+                <Text style={styles.viewMoreText}>View More</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         )}
-        scrollEnabled={false}
-      />
+
+        {/* PROCESSED SECTION */}
+        {claimDetails && claimDetails.length > 0 && (
+          <View style={styles.claimSection}>
+            <Text style={styles.headerText}>Processed Claims</Text>
+            
+            {/* Pehla Card (Defaults to purple theme) */}
+            <ClaimCard
+              item={claimDetails[0]}
+              onViewDetails={() => console.log('Details', claimDetails[0].id)}
+              onDownload={() => console.log('Download')}
+            />
+
+            {/* Doosra Card (Agar exist karta hai) */}
+          
+
+            {/* View More Button */}
+            {claimDetails.length > 1 && (
+              <TouchableOpacity 
+                style={styles.viewMoreBtn}
+                onPress={() => navigation.navigate('ClaimList', { type: 'Processed', data: claimDetails })}
+              >
+                <Text style={styles.viewMoreText}>View More</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
+      </View>
     );
   };
 
@@ -244,28 +305,30 @@ const ClaimScreen = ({ navigation }) => {
               title="Claims"
               subtitle="Find all your claims here."
               onBack={() => navigation?.goBack()}
-              illustration={require('../../assets/policies.png')}
+              illustration={require('../../assets/claimshead.png')}
             />
           </View>
 
-          <View style={[styles.sectionContainer, { marginTop: hp(2) }]}>
-            <Text style={styles.headerText}>Need help?</Text>
-            <FlatList
-              data={helpOptions}
-              renderItem={renderItem}
-              keyExtractor={item => item.id}
-              scrollEnabled={false} 
-            />
+          {/* DYNAMIC CONTENT AREA */}
+          <View style={styles.claimsWrapper}>
+            {renderClaimsContent()}
           </View>
           
-          <Text style={[styles.headerText, { marginLeft: wp(6.5), marginTop: hp(2) }]}>Claims</Text>
-          
-          {/* DYNAMIC CONTENT AREA */}
-          {renderClaimsContent()}
+          <View style={[styles.sectionContainer, { marginTop: hp(1) }]}>
+            <Text style={styles.headerText}>Need help?</Text>
+            {/* Pure Loop for Help Options to avoid .map() or FlatList inside ScrollView */}
+            {(() => {
+               let helpViews = [];
+               for(let i=0; i<helpOptions.length; i++) {
+                 helpViews.push(<View key={helpOptions[i].id}>{renderItem({item: helpOptions[i]})}</View>);
+               }
+               return helpViews;
+            })()}
+          </View>
 
         </ScrollView>
 
-        {/* --- CUSTOM 3D MODAL --- */}
+        {/* --- MODAL --- */}
         <Modal
           animationType="fade"
           transparent={true}
@@ -274,18 +337,13 @@ const ClaimScreen = ({ navigation }) => {
         >
           <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
-              <TouchableOpacity 
-                style={styles.closeBtn} 
-                onPress={() => setModalVisible(false)}
-              >
+              <TouchableOpacity style={styles.closeBtn} onPress={() => setModalVisible(false)}>
                 <Text style={styles.closeText}>✕</Text>
               </TouchableOpacity>
-
               <Text style={styles.modalTitle}>Connect with Claim Representative</Text>
               <Text style={styles.modalSub}>
                 To connect with a claim representative, open your policy details and click <Text style={{fontWeight: '700', color: '#1A3B5D'}}>Connect.</Text>
               </Text>
-
               <TouchableOpacity 
                 style={styles.modalActionBtn}
                 onPress={() => {
@@ -310,16 +368,24 @@ const styles = StyleSheet.create({
   safe: { flex: 1, zIndex: 1 },
   fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
   scrollContent: { paddingBottom: hp(15) },
-  sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(2),marginBottom: hp(4) },
+  sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(1),marginBottom: hp(3) },
   headerText: { fontSize: hp(2), fontFamily: 'Montserrat-Bold', color: '#333', marginBottom: hp(2) },
+  
+  claimsWrapper: {
+    paddingHorizontal: wp(4),
+  },
+  claimSection: {
+    marginBottom: hp(2),
+  },
+
   card1: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#fff',
     borderRadius: wp(7.5),
-    paddingVertical: hp(1.5),
+    paddingVertical: hp(1),
     paddingHorizontal: wp(5),
-    marginBottom: hp(2),
+    marginBottom: hp(1.5),
     borderWidth: 1,
     borderColor: '#EEEEEE',
     shadowColor: '#000',
@@ -334,9 +400,7 @@ const styles = StyleSheet.create({
   fixedFooterWrap: { position: 'absolute', bottom: hp(10), width: '100%', alignItems: 'center' },
   fixedFooterText: { fontSize: hp(6), fontFamily: 'Montserrat-Bold', color: 'rgba(15,17,32,0.04)' },
 
-  // Skeleton Styles
   cardContainerSkeleton: {
-    marginHorizontal: wp(3),
     marginBottom: hp(2.5),
     borderRadius: wp(5),
     backgroundColor: '#F5F5F5', 
@@ -349,7 +413,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F5F5F5',
   },
 
-  // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.5)',
@@ -413,13 +476,13 @@ const styles = StyleSheet.create({
     borderRadius: wp(6),
     width: '100%',
     maxWidth: wp(95),
-    paddingVertical: hp(5),
+    paddingVertical: hp(2),
     paddingHorizontal: wp(6),
     alignItems: 'center',
   },
   image: {
-    width: wp(70),
-    height: hp(30),
+    width: wp(60),
+    height: hp(25),
     marginBottom: hp(1),
   },
   textContainer: {
@@ -439,6 +502,18 @@ const styles = StyleSheet.create({
     lineHeight: hp(2),
     fontFamily: 'Montserrat-Regular',
     maxWidth: '90%',
+  },
+  viewMoreBtn: {
+    alignSelf: 'center',
+    marginTop: hp(0.5),
+    paddingVertical: hp(1),
+    paddingHorizontal: wp(5),
+  },
+  viewMoreText: {
+    color: '#934790',
+    fontFamily: 'Montserrat-Bold',
+    fontSize: hp(1.6),
+    textDecorationLine: 'underline',
   },
 });
 

@@ -13,7 +13,8 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
-  ToastAndroid
+  ToastAndroid,
+  Linking // <-- Linking import kiya gaya hai
 } from 'react-native';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -94,6 +95,9 @@ const Otp = ({ route }) => {
   const [status, setStatus] = useState('idle');
   const [timer, setTimer] = useState(30);
   const [isResendDisabled, setIsResendDisabled] = useState(true);
+  
+  // <-- Checkbox ke liye naya state add kiya -->
+  const [isChecked, setIsChecked] = useState(false); 
 
   const textInputRef = useRef(null);
   const keyboardOffset = useRef(new Animated.Value(0)).current;
@@ -105,8 +109,6 @@ const Otp = ({ route }) => {
     let focusTimeout = null;
     let timeToWait = 500;
     
-    // Pure loop delay alternative to setTimeout if strictly desired, 
-    // but React requires asynchronous timeouts for rendering.
     focusTimeout = setTimeout(() => {
       if (textInputRef.current) {
         textInputRef.current.focus();
@@ -159,6 +161,13 @@ const Otp = ({ route }) => {
     };
   }, [keyboardOffset]);
 
+  const handleLinkPress = () => {
+    Linking.openURL('https://zoomconnect.co.in/terms-and-conditions');
+  };
+  const handleLinkPress2 = () => {
+    Linking.openURL('https://zoomconnect.co.in/privacy-policy');
+  };
+
   useEffect(() => {
     if (!isResendDisabled || timer === 0) {
       if (timer === 0) setIsResendDisabled(false);
@@ -177,7 +186,6 @@ const Otp = ({ route }) => {
   };
 
   const handleVerifyOTP = async () => {
-    // Dynamic validation based on mode length
     if (otp.length < otpLength) {
       triggerShake();
       setStatus('error');
@@ -205,6 +213,7 @@ const Otp = ({ route }) => {
       if (isSuccess) {
         if (response.data && response.data.token) {
             await AsyncStorage.setItem('token', response.data.token);
+            await AsyncStorage.setItem('Enablebio', 'true');
         }
         setStatus('success');
 
@@ -216,7 +225,6 @@ const Otp = ({ route }) => {
         if (isFirstLogin) {
           navigation.navigate('FirstRegister', { user: response.data.user, firstLogin: true, mode: mode }); 
         } else {
-       
          dispatch(setUser(true));
         }
        
@@ -238,7 +246,6 @@ const handleResendotp = async () => {
     return;
   }
 
-  // Set UI states for loading and timer
   setIsResendDisabled(true);
   setTimer(30);
   setLoading(true);
@@ -257,7 +264,6 @@ const handleResendotp = async () => {
     }
 
     if (isSuccess) {
-      // Safely extract user
       let userData = null;
       if (response.data && response.data.user) {
           userData = response.data.user;
@@ -265,7 +271,6 @@ const handleResendotp = async () => {
       
       console.log('Resend OTP successful, user data:', userData);
 
-      // Safely store token if provided on resend
       if (response.data && response.data.token) {
         await AsyncStorage.setItem('token', response.data.token);
         console.log('Token stored from response.data.token');
@@ -286,7 +291,6 @@ const handleResendotp = async () => {
       }
       ToastAndroid.show(errorMsg, ToastAndroid.SHORT);
       
-      // Re-enable button if API fails
       setIsResendDisabled(false);
       setTimer(0);
     }
@@ -297,7 +301,6 @@ const handleResendotp = async () => {
     }
     ToastAndroid.show(catchMsg, ToastAndroid.SHORT);
     
-    // Re-enable button if network/server crashes
     setIsResendDisabled(false);
     setTimer(0);
   } finally {
@@ -314,7 +317,6 @@ const handleResendotp = async () => {
     ]).start();
   };
 
-  // Pure loop to generate OTP boxes dynamically based on otpLength
   let otpBoxElements = [];
   for (let i = 0; i < otpLength; i++) {
     let isFilled = false;
@@ -338,6 +340,15 @@ const handleResendotp = async () => {
         <Text style={styles.otpText}>{otp[i] || ''}</Text>
       </View>
     );
+  }
+
+  // Pure logic for disabled button state
+  let isButtonDisabled = false;
+  if (loading) {
+      isButtonDisabled = true;
+  }
+  if (!isChecked) {
+      isButtonDisabled = true;
   }
 
   return (
@@ -376,7 +387,6 @@ const handleResendotp = async () => {
                 <View style={styles.inputGroup}>
                   <Animated.View style={[styles.otpContainer, { transform: [{ translateX: shakeAnimation }] }]}>
                     <TouchableOpacity style={styles.pressableContainer} onPress={handleOnPress} activeOpacity={1}>
-                      {/* Render dynamically generated boxes */}
                       {otpBoxElements}
                     </TouchableOpacity>
                   </Animated.View>
@@ -393,8 +403,33 @@ const handleResendotp = async () => {
                   />
                 </View>
 
-                <TouchableOpacity onPress={loading ? undefined : handleVerifyOTP} style={styles.buttonShadow} activeOpacity={0.8} disabled={loading}>
-                  <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} style={styles.loginBtn}>
+                {/* <-- Naya Checkbox Section Yahan Add Kiya Hai --> */}
+                <View style={styles.checkboxWrapper}>
+                  <TouchableOpacity onPress={() => setIsChecked(!isChecked)} style={styles.checkboxIcon}>
+                    <Icon 
+                       name={isChecked ? "checkbox-marked" : "checkbox-blank-outline"} 
+                       size={24} 
+                       color={isChecked ? COLORS.primary : '#888'} 
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.checkboxText}>
+                    I acknowledge that I have read and accept your{' '}
+                    <Text style={styles.link} onPress={handleLinkPress}>Terms & Condition</Text> and{' '}
+                    <Text style={styles.link} onPress={handleLinkPress2}>Privacy Policy</Text>
+                  </Text>
+                </View>
+
+                {/* Button logic updated */}
+                <TouchableOpacity 
+                   onPress={isButtonDisabled ? undefined : handleVerifyOTP} 
+                   style={styles.buttonShadow} 
+                   activeOpacity={0.8} 
+                   disabled={isButtonDisabled}
+                >
+                  <LinearGradient 
+                    colors={isButtonDisabled ? ['#cccccc', '#b3b3b3'] : [COLORS.primary, COLORS.primaryLight]} 
+                    style={styles.loginBtn}
+                  >
                     <View style={styles.loginBtn1}>
                       {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Verify OTP</Text>}
                     </View>
@@ -443,6 +478,13 @@ const styles = StyleSheet.create({
   otpBoxError: { borderColor: COLORS.error, borderBottomColor: '#B71C1C' },
   otpText: { fontSize: hp(2.2), fontFamily: 'Montserrat-Bold', color: '#333' },
   hiddenTextInput: { position: 'absolute', opacity: 0.01, width: '100%', height: '100%' },
+  
+  // <-- Naye styles checkbox ke liye add kiye gaye hain -->
+  checkboxWrapper: { flexDirection: 'row', alignItems: 'center', marginTop: hp(1), marginBottom: hp(2), paddingHorizontal: wp(1) },
+  checkboxIcon: { marginRight: wp(2) },
+  checkboxText: { flex: 1, fontSize: hp(1.4), color: '#666', fontFamily: 'Montserrat-Regular', lineHeight: hp(2) },
+  link: { color: COLORS.primary, fontFamily: 'Montserrat-Bold' },
+
   buttonShadow: { marginTop: hp(1.5), elevation: 6 },
   loginBtn: { borderRadius: wp(6) },
   loginBtn1: { paddingVertical: hp(1.5), alignItems: 'center' },

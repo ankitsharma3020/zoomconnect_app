@@ -31,6 +31,8 @@ import { useGetNewProfileQuery, useSaveTokenMutation } from '../redux/service/us
 import { GetApi } from '../component/Apifunctions';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPolicies, fetchProfile, fetchSurveys, fetchWellness } from './Epicfiles/MainEpic';
+import { combineReducers } from 'redux';
+import FastImage from '@d11/react-native-fast-image';
 
 const { width, height } = Dimensions.get('window');
 const BOTTOM_TAB_HEIGHT = hp(10); 
@@ -89,7 +91,7 @@ const PolicyScreen = () => {
   const[Savetoken] = useSaveTokenMutation();
   const [surveyStarted, setSurveyStarted] = useState(false);
     const { data:surveylistdata, isLoading, error } = useSelector((state) => state.surveys);
-    console.log("survey list data in policy screen", surveylistdata)
+  
    const filteredSurveys = useMemo(() => 
     surveylistdata?.data?.filter(item => item.is_submit !== "1") || [], 
     [surveylistdata]
@@ -124,8 +126,32 @@ const PolicyScreen = () => {
     }
   }, [getToken, Savetoken]);
   const {data:PolicyData, isLoading:policyLoading, error:policyError} = useSelector((state:any)=>state.policy);
-  
 
+  console.log("Policy data in policy screen", PolicyData);
+
+
+let enrollmentlistdata = PolicyData?.data?.enrolment;
+
+const enrollmentLogic = useMemo(() => {
+    if (!enrollmentlistdata) return { shouldShowImage: false };
+    
+    const currentDate = new Date();
+    const hasValidAssignedDates = enrollmentlistdata?.new_enrolment_assigned?.every(
+      item => new Date(item.portal_end_date) >= currentDate
+    );
+    const hasValidSubmittedDates = enrollmentlistdata?.new_enrolment_submitted?.every(
+      item => new Date(item.portal_end_date) >= currentDate
+    );
+    const hasAssignedData = enrollmentlistdata?.new_enrolment_assigned?.length > 0;
+    const hasAssignedsubmittedData = enrollmentlistdata?.new_enrolment_submitted?.length > 0;
+    const isEnrollmentListEmpty = enrollmentlistdata?.length === 0;
+    const shouldShowImage = !isEnrollmentListEmpty && 
+      (hasAssignedData || hasAssignedsubmittedData) && 
+      (hasValidAssignedDates || hasValidSubmittedDates);
+
+    return { shouldShowImage };
+  }, [enrollmentlistdata]);
+ 
   //   const enrollmentLogic = useMemo(() => {
   //   if (!enrollmentlistdata) return { shouldShowImage: false };
     
@@ -241,7 +267,7 @@ dispatch(fetchWellness())
             ) : (
               // Case 3: No Data -> Show "No Policies" Card
               <View style={styles.card}>
-                <Image
+                <FastImage
                   source={require('../../assets/policynotfound.png')}
                   style={styles.image}
                   resizeMode="cover"
@@ -255,14 +281,17 @@ dispatch(fetchWellness())
               </View>
             )}
           </View>
-
+ 
           {/* --- Enrollment Card --- */}
-          {!enrollmentStarted && (
+          {enrollmentLogic.shouldShowImage && (
             <View style={[styles.sectionContainer, { marginTop: hp(3) }]}>
               <TouchableOpacity
                 activeOpacity={0.92}
                 style={styles.banner3DContainer}
-                onPress={() => setShowEnrollmentModal(true)}
+                  onPress={() => navigation.navigate('Webrendering', { 
+                  // name: 'Enrollment', 
+                  url: enrollmentlistdata?.url
+                })}
               >
                 <LinearGradient
                   colors={['#9680c9ff', '#5d5ea3ff', '#6c63c8ff']}
@@ -458,7 +487,7 @@ const styles = StyleSheet.create({
   fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
 
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(18) },
-  sectionContainer: { paddingHorizontal: Platform.OS === 'ios' ? 0 : wp(4), marginBottom: hp(1),marginTop: hp(2) },
+    sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(2),marginBottom: hp(4) },
 
  fixedFooterWrap: {
      position: 'absolute', // <--- IMPORTANT: Ensure this is uncommented

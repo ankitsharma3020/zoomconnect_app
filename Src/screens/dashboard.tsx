@@ -81,9 +81,11 @@ const SupportIcon = () => (
 
 const Dashboard = () => {
 const navigation = useNavigation(); 
+const [PromobannerData, setPromobannerData] = useState([]); 
 const [getBannerlist] = useGetBannersMutation();
   const {data:PolicyData, isLoading:policyLoading, error:policyError} = useSelector((state:any)=>state.policy);
   const [bannerData, setBannerData] = useState([]);
+  console.log("Policy Data in Dashboard:", PolicyData);
 
   // --- QUICK ACTIONS DATA ---
   const quickActions = [
@@ -99,7 +101,8 @@ const getBanner=async()=>{
 try {
    let res=await getBannerlist({token:token});
    setBannerData(res?.data?.data?.banners || []);
-   console.log("Banner List Response:", res?.data?.data?.banners); 
+   setPromobannerData(res?.data?.data?.promos || []);
+   console.log("Banner List Response:", res?.data?.data?.promos); 
 } catch (error) {
   console.error("Error fetching banner list:", error);
 }
@@ -143,9 +146,9 @@ useEffect(()=>{
           <View style={styles.sectionContainer}>
             <ActivePolicyHeader
               title="Home"
-              subtitle="Find all your claims here."
+              subtitle="Start your insurance journey."
               onBack={() => navigation?.goBack?.()}
-              illustration={require('../../assets/policies.png')}
+              illustration={require('../../assets/Home.png')}
             />
           </View>
          <BannnerCarousel/>
@@ -174,13 +177,31 @@ useEffect(()=>{
           <View style={styles.sectionHeaderContainer}>
              <Text style={styles.sectionTitle}>Active Policy Details</Text>
           </View>
-          <PolicysCardList onNavigate={() =>  navigation.navigate('Policy')} policydata={PolicyData}/>
+
+          {PolicyData?.data?.policy_details && PolicyData?.data?.policy_details?.length > 0 ? (
+             <PolicysCardList onNavigate={() =>  navigation.navigate('Policy')} policydata={PolicyData}/>
+          ) : (
+            <View style={styles.card}>
+                          <Image
+                            source={require('../../assets/policynotfound.png')}
+                            style={styles.image}
+                            resizeMode="cover"
+                          />
+                          <View style={styles.textContainer}>
+                            <Text style={styles.title}>No Policies yet</Text>
+                            <Text style={styles.subtitle}>
+                              Contact your HR administrator to learn more about available insurance policies.
+                            </Text>
+                          </View>
+                        </View>
+          )}
+         
            {/* <View style={styles.sectionHeaderContainer}>
              <Text style={styles.sectionTitle}>Featured Offers</Text>
           </View> */}
        
           <HealthCarousel bannerData={bannerData}  />
-          <PromoCarousel2/>
+          <PromoCarousel2 bannerData={PromobannerData} />
             {/* <View style={styles.sectionHeaderContainer}>
              <Text style={styles.sectionTitle}>Featured Offers</Text>
           </View> */}
@@ -207,7 +228,7 @@ const styles = StyleSheet.create({
     fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
 
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(18) }, // approx 150
-  sectionContainer: { paddingHorizontal: Platform.OS === 'ios' ? wp(0) : wp(4), marginBottom: hp(1.2) ,marginTop: hp(2) }, // approx 16, 10
+   sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(2),marginBottom: hp(4) },
 
   // --- Quick Actions Styles ---
   quickActionsContainer: {
@@ -317,5 +338,37 @@ fixedFooterWrap: {
     fontFamily: 'Montserrat-Bold',
     color: '#333',
     marginBottom: hp(2.5), // approx 20
+  },
+  card: {
+    alignSelf: 'center',
+    borderRadius: wp(6),
+    width: '100%',
+    maxWidth: wp(95),
+    paddingVertical: hp(1),
+    paddingHorizontal: wp(4.5),
+    alignItems: 'center',
+  },
+  image: {
+    width: wp(70),
+    height: hp(31),
+    marginBottom: hp(2),
+  },
+  textContainer: {
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: hp(2.3),
+    fontFamily: 'Montserrat-Bold',
+    color: '#1A3B5D',
+    marginBottom: hp(0.5),
+    textAlign: 'center',
+  },
+  subtitle: {
+    fontSize: hp(1.6),
+    color: '#6B7280',
+    textAlign: 'center',
+    lineHeight: hp(2),
+    fontFamily: 'Montserrat-Regular',
+    maxWidth: '90%',
   },
 });

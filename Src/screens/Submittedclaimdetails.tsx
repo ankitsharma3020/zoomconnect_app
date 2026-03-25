@@ -28,13 +28,24 @@ const HeaderPattern = () => (
   </Svg>
 );
 
-const ClaimDetailss = ({ navigation, route }) => {
+const SubmittedclaimDetails = ({ navigation, route }) => {
   const [showModal, setShowModal] = useState(false);
   const [modalDocuments, setModalDocuments] = useState([]);
     const [isExpanded, setIsExpanded] = useState(false);
   
     // 1. Check if text is long enough to need expansion
-   
+   const formatToLocalDate = (isoString) => {
+  if (!isoString) return 'N/A';
+  
+  const date = new Date(isoString);
+  
+  const day = String(date.getDate()).padStart(2, '0');
+  const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const month = monthNames[date.getMonth()];
+  const year = date.getFullYear();
+
+  return `${day} ${month} ${year}`; 
+};
 
   const claim = route.params?.item || null;
   console.log('Claim Details Route Params:', claim);
@@ -101,7 +112,7 @@ const onDownload = route.params?.onDownload || null;
                <Avatar.Text size={wp(14)} label="INS" style={{backgroundColor: '#0f172a'}} /> 
           </View>
           <View style={styles.policyInfo}>
-            <Text style={styles.companyName}>{claim?.policy.insurance_company_name}</Text>
+            {/* <Text style={styles.companyName}> {claim?.uhid_member_id}</Text> */}
             <View style={styles.policyBadge}>
                 <Text style={styles.policyNumber}>Policy: {claim?.policy_number}</Text>
             </View>
@@ -113,8 +124,8 @@ const onDownload = route.params?.onDownload || null;
           
           <View style={styles.statusSection}>
              <View>
-                <Text style={styles.label}>Claim ID</Text>
-                <Text style={styles.valueBold}>{claim?.tpa_claim_id}</Text>
+                <Text style={styles.label}>Claim No</Text>
+                <Text style={styles.valueBold}>{claim?.claim_no}</Text>
              </View>
              
               <TouchableOpacity 
@@ -157,8 +168,9 @@ const onDownload = route.params?.onDownload || null;
 
           <Text style={styles.sectionTitle}>Patient Information</Text>
           <View style={styles.row}>
-             <DetailBox label="Patient Name" value={claim?.patient_name} />
-             <DetailBox label="Relation" value={claim?.patient_relation} align="right"/>
+             <DetailBox label="UHID:" value={claim?.uhid_member_id} />
+             <DetailBox label="Relation" value={claim?.
+relation_with_patient} align="right"/>
           </View>
           
           <View style={styles.divider} />
@@ -166,8 +178,8 @@ const onDownload = route.params?.onDownload || null;
           <Text style={styles.sectionTitle}>Hospitalization</Text>
           <DetailRow label="Hospital" value={claim?.hospital_name} />
           <View style={styles.row}>
-             <DetailBox label="Admission" value={claim?.date_of_admission} />
-             <DetailBox label="Discharge" value={claim?.date_of_discharge} align="right" />
+             <DetailBox label="Admission" value={ formatToLocalDate(claim?.date_of_admission) } />
+             <DetailBox label="Discharge" value={ formatToLocalDate(claim?.date_of_discharge) } align="right" />
           </View>
 
           <View style={styles.divider} />
@@ -175,121 +187,37 @@ const onDownload = route.params?.onDownload || null;
           <Text style={styles.sectionTitle}>Claim Financials</Text>
           <View style={styles.amountBox}>
              <Text style={styles.amountLabel}>Claim Amount</Text>
-             <Text style={styles.amountValue}>{claim?.claim_amount}</Text>
+             <Text style={styles.amountValue}>₹{claim?.claim_amount}</Text>
           </View>
           
           <View style={styles.row}>
-             <DetailBox label="Type" value={claim?.type_of_claim} />
+             <DetailBox label="Type" value={claim?.claim_type} />
              <DetailBox label="Mode" value={claim?.claim_mode} align="right" />
           </View>
 
-          {claim?.deduction_reasons && (
-             <View style={styles.warningBox}>
-                <Text style={styles.warningLabel}>Deductions:</Text>
-                <Text style={styles.warningValue}>{claim?.deduction_reasons}</Text>
-             </View>
-          )}
 
-          <View style={styles.actionContainer}>
-            {claim.settlment_letter && (
-              <TouchableOpacity 
-                style={styles.primaryButton}
-                onPress={() => Linking.openURL(claim.settlment_letter)}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#0f172a', '#334155']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.gradientButton}
-                >
-                   <View style={styles.gradientButton1}>
-                      <Text style={styles.primaryButtonText}>Download Settlement Letter</Text>
-                   </View>
-                  
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-
-            {claim.query_letter && (
-              <TouchableOpacity 
-                style={[styles.primaryButton, {marginTop: hp(1.2)}]}
-                onPress={() => Linking.openURL(claim.query_letter)}
-                activeOpacity={0.8}
-              >
-                 <LinearGradient
-                  colors={['#d97706', '#b45309']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.gradientButton}
-                >
-                  <View style={styles.gradientButton1}>
-                     <Text style={styles.primaryButtonText}>Download Query Letter</Text>
-                  </View>
-                  
-                </LinearGradient>
-              </TouchableOpacity>
-            )}
-{/* Check if document exists (either non-empty array OR valid string) */}
-          {(
-            (Array.isArray(claim?.claim_document) && claim?.claim_document.length > 0) || 
-            (typeof claim?.claim_document === 'string' && claim?.claim_document.trim() !== '')
-          ) && (
-            <TouchableOpacity
-              style={styles.secondaryButton}
-              onPress={() => {
-                if (Array.isArray(claim.claim_document)) {
-                  // It's an array -> Open the modal
-                  setModalDocuments(claim.claim_document);
-                  setShowModal(true);
-                } else {
-                  // It's a string -> Open the URL directly
-                  Linking.openURL(claim.claim_document).catch(err => 
-                    console.error("Failed to open document URL:", err)
-                  );
+         
+            {claim?.file_url && (
+            
+              <TouchableOpacity
+                style={styles.secondaryButton}
+                onPress={() => Linking.openURL(claim?.file_url)
                 }
-              }}
-            >
-              <Text style={styles.secondaryButtonText}>
-                {Array.isArray(claim.claim_document) ? 'View All Documents' : 'View Document'}
-              </Text>
-            </TouchableOpacity>
-          )}
+              >
+                <Text style={styles.secondaryButtonText}>View  Documents</Text>
+              </TouchableOpacity>
+            )}
+            
           </View>
 
-        </View>
+     
       </ScrollView>
 
       {/* LAYER 3: Fixed Header (Stays on Top) */}
  
 
       {/* Modal */}
-      <Modal
-        visible={showModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Documents</Text>
-            {modalDocuments.map((doc, idx) => (
-              <TouchableOpacity
-                key={idx}
-                onPress={() => Linking.openURL(`https://${doc.url}`)}
-                style={styles.docItem}
-              >
-                <View style={styles.docIconPlaceholder} />
-                <Text style={styles.docName} numberOfLines={1}>{doc.filename}</Text>
-                <Text style={styles.downloadLink}>OPEN</Text>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity style={styles.modalCloseBtn} onPress={() => setShowModal(false)}>
-              <Text style={styles.modalCloseText}>Close</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+ 
 
     </View>
   );
@@ -617,4 +545,4 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold' 
   },
 });
-export default ClaimDetailss;
+export default SubmittedclaimDetails;

@@ -3,13 +3,13 @@ import { View, BackHandler, SafeAreaView, Linking, StyleSheet, Animated } from '
 import { WebView } from 'react-native-webview';
 
 import Header from '../../component/header';
-import { DOMAIN_URI } from '../../redux/apiSlice';
 
 // --- Custom Shimmer Skeleton Component ---
 const WebSkeletonShimmer = () => {
     const opacityAnim = useRef(new Animated.Value(0.3)).current;
 
     useEffect(() => {
+        // Continuous pulsing animation loop
         Animated.loop(
             Animated.sequence([
                 Animated.timing(opacityAnim, {
@@ -28,12 +28,21 @@ const WebSkeletonShimmer = () => {
 
     return (
         <Animated.View style={[styles.skeletonContainer, { opacity: opacityAnim }]}>
+            {/* Mock Header */}
             <View style={styles.skeletonHeader} />
+            
+            {/* Mock Title */}
             <View style={styles.skeletonTitle} />
+            
+            {/* Mock Text Lines */}
             <View style={styles.skeletonLine} />
             <View style={styles.skeletonLine} />
             <View style={styles.skeletonLineShort} />
+            
+            {/* Mock Image/Banner Box */}
             <View style={styles.skeletonBox} />
+            
+            {/* More Mock Text Lines */}
             <View style={styles.skeletonTitle} />
             <View style={styles.skeletonLine} />
             <View style={styles.skeletonLine} />
@@ -42,8 +51,9 @@ const WebSkeletonShimmer = () => {
     );
 };
 
-const WebRendering = ({ route, navigation }) => {
+const WellnesswebRendering = ({ route, navigation }) => {
     const { url, label } = route.params;
+    
     // Initial load ke liye true rahega
     const [loading, setLoading] = useState(true);
     const webViewRef = useRef(null);
@@ -94,7 +104,7 @@ const WebRendering = ({ route, navigation }) => {
             
             <WebView
                 ref={webViewRef}
-                source={{ uri: `${DOMAIN_URI}/${url}` }}
+                source={{ uri: url }}
                 onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
                 onNavigationStateChange={(navState) => {
                     if (webViewRef.current) {
@@ -105,7 +115,7 @@ const WebRendering = ({ route, navigation }) => {
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
                 
-                // YAHAN FIX KIYA HAI: onLoadStart ko hata diya taaki internal navigation pe shimmer na aaye
+                // YAHAN FIX KIYA HAI: onLoadStart ko hata diya gaya hai.
                 
                 // Pehli baar load finish hone ke baad loader hamesha ke liye hide ho jayega
                 onLoadEnd={() => setLoading(false)}
@@ -118,7 +128,7 @@ const WebRendering = ({ route, navigation }) => {
 
             {/* Shimmer Effect Overlay */}
             {loading && (
-                <View style={[styles.loaderOverlay, { marginTop: 60 }]}> 
+                <View style={[styles.loaderOverlay, { marginTop: 60 }]}>
                     <WebSkeletonShimmer />
                 </View>
             )}
@@ -132,6 +142,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#FFFFFF',
         zIndex: 10,
     },
+    // Skeleton Styles
     skeletonContainer: {
         flex: 1,
         padding: 20,
@@ -174,4 +185,4 @@ const styles = StyleSheet.create({
     },
 });
 
-export default WebRendering;
+export default WellnesswebRendering;

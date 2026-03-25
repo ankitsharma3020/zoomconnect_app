@@ -32,7 +32,8 @@ const CardPattern = ({ dotColor, strokeColor }) => (
   </View>
 );
 
-const ClaimCard = ({ item, onDownload, isSubmitted = false }) => {
+const Submittedclaimscard = ({ item, onDownload, isSubmitted = false }) => {
+
   const navigation = useNavigation();
 
   const statusText = item?.claim_status || '';
@@ -77,7 +78,7 @@ const ClaimCard = ({ item, onDownload, isSubmitted = false }) => {
               {/* LEFT SIDE: Policy Name & Full Length Status */}
               <View style={{ flex: 1.5, marginRight: wp(2) }}>
                 <View style={[styles.policyBadge, { backgroundColor: themeColor }]}>
-                  <Text style={styles.policyText}>{item.policy_name}</Text>
+                  <Text style={styles.policyText}> Claim No. {item.claim_no}</Text>
                 </View>
                 
                 {/* FIX: Policy Number hatakar Status ko yahan daal diya taaki wo full length le sake */}
@@ -98,8 +99,9 @@ const ClaimCard = ({ item, onDownload, isSubmitted = false }) => {
                 <Text style={{ fontSize: hp(2) }}>👤</Text> 
               </View>
               <View>
-                <Text style={styles.patientName}>{item.patient_name}</Text>
-                <Text style={[styles.patientRelation, { color: textSubColor }]}>Relation: {item.patient_relation}</Text>
+               
+                <Text style={[styles.patientRelation, { color: textSubColor }]}>Relation: {item.relation_with_patient}</Text>
+                 <Text style={styles.patientName}> UHID: {item.uhid_member_id}</Text>
               </View>
             </View>
 
@@ -107,33 +109,19 @@ const ClaimCard = ({ item, onDownload, isSubmitted = false }) => {
             <View style={styles.actionRow}>
               <TouchableOpacity 
                 style={[styles.secondaryButton, { borderColor: themeColor }]} 
-                onPress={() => navigation.navigate('ClaimsDetails', { item })}
+                onPress={() => navigation.navigate('SubmitClaimdetails', { item })}
               >
                 <Text style={[styles.secondaryButtonText, { color: themeColor }]}>View Details</Text>
               </TouchableOpacity>
-              
-             <TouchableOpacity 
-  style={[styles.primaryButton, { backgroundColor: themeColor }]} 
-  onPress={() => {
-    // Check if claim_document exists and is an array
-    if (Array.isArray(item.claim_document)) {
-      // It's an array -> Navigate to ClaimsDetails
-      navigation.navigate('ClaimsDetails', { item, onDownload: true });
-    } 
-    // If it's not an array, check if it's a valid string (URL)
-    else if (typeof item.claim_document === 'string' && item.claim_document.trim() !== '') {
-      // It's a single URL -> Open in device browser/PDF viewer
-      Linking.openURL(item.claim_document).catch(err => 
-        console.error("Failed to open URL:", err)
-      );
-    } else {
-      // Fallback if there is no document
-      console.warn("No document available to download");
-    }
-  }}
->
-  <Text style={styles.primaryButtonText}>Download</Text>
-</TouchableOpacity>
+              {item?.file_url && (
+                <TouchableOpacity 
+                  style={[styles.primaryButton, { backgroundColor: themeColor }]}
+                  onPress={() => Linking.openURL(item?.file_url)}
+                >
+                  <Text style={styles.primaryButtonText}>View document</Text>
+                </TouchableOpacity>
+              )}
+          
             </View>
           </View>
         </View>
@@ -255,4 +243,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ClaimCard;
+export default Submittedclaimscard;

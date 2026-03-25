@@ -116,7 +116,7 @@ const NaturaAddition = ({ navigation,route }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editableData,setEditableData]=useState(null);
   const dispatch = useDispatch();
- console.log("policyid in natura",policyid)
+
   useEffect(()=>{
     dispatch(fetchDependence({policyid:policyid}));
   }, []);

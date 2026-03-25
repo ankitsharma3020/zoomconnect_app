@@ -13,7 +13,8 @@ import {
   ScrollView,
   Platform,
   ActivityIndicator,
-  ToastAndroid
+  ToastAndroid,
+  Linking // <-- Linking import kiya gaya hai
 } from 'react-native';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -94,6 +95,9 @@ const FirstLoginOtp = ({ route }) => {
   const [status, setStatus] = useState('idle');
   const [timer, setTimer] = useState(30);
   const [isResendDisabled, setIsResendDisabled] = useState(true);
+
+  // <-- Checkbox state add kiya gaya hai -->
+  const [isChecked, setIsChecked] = useState(false);
 
   const textInputRef = useRef(null);
   const keyboardOffset = useRef(new Animated.Value(0)).current;
@@ -176,6 +180,14 @@ const FirstLoginOtp = ({ route }) => {
     }
   };
 
+  // <-- Linking Functions add kiye gaye hain -->
+  const handleLinkPress = () => {
+    Linking.openURL('https://zoomconnect.co.in/terms-and-conditions');
+  };
+  const handleLinkPress2 = () => {
+    Linking.openURL('https://zoomconnect.co.in/privacy-policy');
+  };
+
   const handleVerifyOTP = async () => {
     // Dynamic validation based on mode length
     if (otp.length < otpLength) {
@@ -209,9 +221,6 @@ const FirstLoginOtp = ({ route }) => {
         setStatus('success');
 
         navigation.navigate('NonResetPassword',{firstLogin: firstLoginFlag, data: data, mode: mode});
-        
-        
-        
        
       } else {
         triggerShake();
@@ -250,6 +259,7 @@ const FirstLoginOtp = ({ route }) => {
         setLoading(false);
       }
     };
+    
   const triggerShake = () => {
     Animated.sequence([
       Animated.timing(shakeAnimation, { toValue: 10, duration: 50, useNativeDriver: true }),
@@ -283,6 +293,15 @@ const FirstLoginOtp = ({ route }) => {
         <Text style={styles.otpText}>{otp[i] || ''}</Text>
       </View>
     );
+  }
+
+  // <-- Button disable logic -->
+  let isButtonDisabled = false;
+  if (loading) {
+      isButtonDisabled = true;
+  }
+  if (!isChecked) {
+      isButtonDisabled = true;
   }
 
   return (
@@ -338,8 +357,33 @@ const FirstLoginOtp = ({ route }) => {
                   />
                 </View>
 
-                <TouchableOpacity onPress={loading ? undefined : handleVerifyOTP} style={styles.buttonShadow} activeOpacity={0.8} disabled={loading}>
-                  <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} style={styles.loginBtn}>
+                {/* <-- Naya Checkbox UI add kiya gaya hai --> */}
+                <View style={styles.checkboxWrapper}>
+                  <TouchableOpacity onPress={() => setIsChecked(!isChecked)} style={styles.checkboxIcon}>
+                    <Icon 
+                       name={isChecked ? "checkbox-marked" : "checkbox-blank-outline"} 
+                       size={24} 
+                       color={isChecked ? COLORS.primary : '#888'} 
+                    />
+                  </TouchableOpacity>
+                  <Text style={styles.checkboxText}>
+                    I acknowledge that I have read and accept your{' '}
+                    <Text style={styles.link} onPress={handleLinkPress}>Terms & Condition</Text> and{' '}
+                    <Text style={styles.link} onPress={handleLinkPress2}>Privacy Policy</Text>
+                  </Text>
+                </View>
+
+                {/* <-- Disabled state UI logic updated --> */}
+                <TouchableOpacity 
+                   onPress={isButtonDisabled ? undefined : handleVerifyOTP} 
+                   style={styles.buttonShadow} 
+                   activeOpacity={0.8} 
+                   disabled={isButtonDisabled}
+                >
+                  <LinearGradient 
+                    colors={isButtonDisabled ? ['#cccccc', '#b3b3b3'] : [COLORS.primary, COLORS.primaryLight]} 
+                    style={styles.loginBtn}
+                  >
                     <View style={styles.loginBtn1}>
                       {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Verify OTP</Text>}
                     </View>
@@ -388,6 +432,13 @@ const styles = StyleSheet.create({
   otpBoxError: { borderColor: COLORS.error, borderBottomColor: '#B71C1C' },
   otpText: { fontSize: hp(2.2), fontFamily: 'Montserrat-Bold', color: '#333' },
   hiddenTextInput: { position: 'absolute', opacity: 0.01, width: '100%', height: '100%' },
+  
+  // <-- Naye styles checkbox ke liye add kiye gaye hain -->
+  checkboxWrapper: { flexDirection: 'row', alignItems: 'center', marginTop: hp(1), marginBottom: hp(2), paddingHorizontal: wp(1) },
+  checkboxIcon: { marginRight: wp(2) },
+  checkboxText: { flex: 1, fontSize: hp(1.4), color: '#666', fontFamily: 'Montserrat-Regular', lineHeight: hp(2) },
+  link: { color: COLORS.primary, fontFamily: 'Montserrat-Bold' },
+
   buttonShadow: { marginTop: hp(1.5), elevation: 6 },
   loginBtn: { borderRadius: wp(6) },
   loginBtn1: { paddingVertical: hp(1.5), alignItems: 'center' },

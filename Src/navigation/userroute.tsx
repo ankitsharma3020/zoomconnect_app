@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   View, 
   TouchableOpacity, 
@@ -18,9 +18,7 @@ import ReactNativeBiometrics from 'react-native-biometrics';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 
-// IMPORTANT: Adjust this import path based on where your setUser action is located
 import { setUser } from '../redux/service/userSlice'; 
-// IMPORTANT: Adjust this path to your dimension utilities
 import { wp, hp } from '../utilites/Dimension'; 
 
 import ClaimDetailss from '../screens/claimsDetails';
@@ -40,6 +38,10 @@ import ClaimProcessPage from '../screens/claimProcess';
 import LoginedesetPassword from '../screens/LoginedResetPass';
 import WebRendering from '../screens/webview/webRender';
 import PermissionRequestScreen from '../component/Permission/permission';
+import { useSaveTokenMutation } from '../redux/service/user/user';
+import WellnesswebRendering from '../screens/webview/wellnessrendering';
+import ClaimListScreen from '../screens/claimList';
+import SubmittedclaimDetails from '../screens/Submittedclaimdetails';
 
 const Stack = createNativeStackNavigator();
 const rnBiometrics = new ReactNativeBiometrics();
@@ -52,16 +54,17 @@ export const UserRoute = ({ isFirstLaunch }) => {
   const [authStatus, setAuthStatus] = useState('INITIALIZING');
   const [showFirstLoginModal, setShowFirstLoginModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [isBiometricModalVisible, setIsBiometricModalVisible] = useState(false);
-  const [biometricMessage, setBiometricMessage] = useState('');
-  const [biometricTitle, setBiometricTitle] = useState('');
+  const [loading, setLoading] = useState(false); 
 
+  const [Savetoken] = useSaveTokenMutation();
+  
   // --- States for Floating Button ---
-  const animatedWidth = useRef(new Animated.Value(wp(30))).current;
-  const animatedOpacity = useRef(new Animated.Value(1)).current;
-  const animatedTranslateX = useRef(new Animated.Value(0)).current;
-  const [isChatVisible, setIsChatVisible] = useState(true);
+  const [isChatVisible, setIsChatVisible] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  
+  const animatedWidth = useRef(new Animated.Value(45)).current;
+  const animatedOpacity = useRef(new Animated.Value(0)).current;
+  const animatedTranslateX = useRef(new Animated.Value(50)).current;
   const pan = useRef(new Animated.ValueXY()).current;
 
   // --- PanResponder for Draggable Floating Button ---
@@ -96,7 +99,7 @@ export const UserRoute = ({ isFirstLaunch }) => {
         setIsDragging(false);
         pan.flattenOffset();
         
-        const buttonSize = 60;
+        const buttonSize = 45; 
         const initialRightMargin = wp(3.5);
         const bottomMargin = Platform.OS === 'android' ? hp(14) : hp(12);
         
@@ -130,18 +133,21 @@ export const UserRoute = ({ isFirstLaunch }) => {
     const initialize = async () => {
       setAuthStatus('INITIALIZING');
       try {
-        const firstLogin = await AsyncStorage.getItem('isFirstLogin');
         const biometricsEnable = await AsyncStorage.getItem('biometricsEnable');
+        const Enabledbio = await AsyncStorage.getItem('Enablebio');
 
         if (biometricsEnable === 'true') {
+          // If enabled, prompt immediately on app open
           setAuthStatus('CHECKING_BIOMETRICS');
           checkBiometrics();
-        } else if (firstLogin === 'true') {
+        } else if (Enabledbio === 'true') {
+          // If Enabledbio is true, prompt them to enable it
           setShowFirstLoginModal(true);
-          setAuthStatus('SHOW_APP');
+          setAuthStatus('SHOW_APP'); // Let the app load behind the modal
         } else {
+          // Standard login, no biometrics enabled and modal has already been handled in the past
           setAuthStatus('SHOW_APP');
-        }
+        } 
       } catch (e) {
         console.error("Initialization error:", e);
         setAuthStatus('SHOW_APP');
@@ -154,14 +160,13 @@ export const UserRoute = ({ isFirstLaunch }) => {
     try {
       const { available } = await rnBiometrics.isSensorAvailable();
       if (!available) {
-        // If device has no sensor, just let them in
         setAuthStatus('SHOW_APP');
         return;
       }
       handleBiometricAuthentication();
     } catch (error) {
       console.error('Biometric check error:', error);
-      logoutUser(); // Security fallback
+      handleLogout(); // Trigger proper logout logic on failsafe
     }
   };
 
@@ -175,25 +180,30 @@ export const UserRoute = ({ isFirstLaunch }) => {
       if (result.success) {
         setAuthStatus('SHOW_APP'); // Success -> Let them in
       } else {
-        // User clicked Cancel -> Log them out
-        logoutUser();
+        // User clicked Cancel on the system prompt -> Log them out
+        handleLogout();
       }
     } catch (error) {
       console.error('Biometric prompt error:', error);
-      // Failsafe -> Log them out
-      logoutUser();
+      handleLogout();
     }
   };
 
-  const logoutUser = async () => {
+  const handleLogout = useCallback(async () => {
     try {
-      await AsyncStorage.clear();
-      dispatch(setUser(false)); 
+      setLoading(true);
+      const reqbody = { device_token: null };
+      let res = await Savetoken(reqbody);
+      console.log("Logout Response:", res);  
+    } catch (error) {
+      console.log('Logout error:', error);
+    } finally {
+      await AsyncStorage.clear(); // Clear all storages safely
+      dispatch(setUser(false));
       setAuthStatus('LOGGED_OUT');
-    } catch (e) {
-      console.error("Logout error:", e);
+      setLoading(false);
     }
-  };
+  }, [Savetoken, dispatch]);
 
   const handleEnableBiometrics = async () => {
     try {
@@ -203,8 +213,9 @@ export const UserRoute = ({ isFirstLaunch }) => {
           setShowFirstLoginModal(false);
           return;
       }
+      // User Enables: Mark as enabled, and prevent modal from showing again
       await AsyncStorage.setItem('biometricsEnable', 'true');
-      await AsyncStorage.setItem('isFirstLogin', 'false');
+      await AsyncStorage.setItem('Enablebio', 'false'); 
       
       setShowFirstLoginModal(false);
       setShowSuccessModal(true);
@@ -221,9 +232,12 @@ export const UserRoute = ({ isFirstLaunch }) => {
 
   const handleCancelBiometricsModal = async () => {
     try {
-      await AsyncStorage.setItem('isFirstLogin', 'false');
+      // User Declines Custom Modal: Hide modal permanently by setting Enablebio to false
+      await AsyncStorage.setItem('Enablebio', 'false');
       setShowFirstLoginModal(false);
+      // DO NOT call handleLogout here. The user just didn't want to enable it. Let them use the app normally.
     } catch (e) {
+      console.error("Error saving biometrics preference:", e);
       setShowFirstLoginModal(false);
     }
   };
@@ -236,9 +250,21 @@ export const UserRoute = ({ isFirstLaunch }) => {
 
   const toggleChat = () => {
     Animated.parallel([
-      Animated.timing(animatedWidth, { toValue: isChatVisible ? wp(9.5) : wp(28), duration: 300, useNativeDriver: false }),
-      Animated.timing(animatedOpacity, { toValue: isChatVisible ? 0 : 1, duration: 200, useNativeDriver: true }),
-      Animated.timing(animatedTranslateX, { toValue: isChatVisible ? 50 : 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(animatedWidth, { 
+        toValue: isChatVisible ? 45 : wp(32), 
+        duration: 300, 
+        useNativeDriver: false 
+      }),
+      Animated.timing(animatedOpacity, { 
+        toValue: isChatVisible ? 0 : 1, 
+        duration: 200, 
+        useNativeDriver: true 
+      }),
+      Animated.timing(animatedTranslateX, { 
+        toValue: isChatVisible ? 50 : 0, 
+        duration: 200, 
+        useNativeDriver: true 
+      }),
     ]).start(() => setIsChatVisible(!isChatVisible));
   };
 
@@ -255,7 +281,7 @@ export const UserRoute = ({ isFirstLaunch }) => {
   }
 
   if (authStatus === 'LOGGED_OUT') {
-      return null; // Will trigger navigation reset via Redux state change in App.js
+      return null; // Triggers navigation reset via Redux state change
   }
 
   return (
@@ -282,6 +308,12 @@ export const UserRoute = ({ isFirstLaunch }) => {
         <Stack.Screen name="fileclaim" component={FileClaimPage} />
         <Stack.Screen name="claimProcess" component={ClaimProcessPage} />
         <Stack.Screen name="Webrendering" component={WebRendering} />
+        <Stack.Screen name="WellnessWebRendering" component={WellnesswebRendering} />
+        <Stack.Screen name="ClaimList" component={ClaimListScreen} />
+        <Stack.Screen name="SubmitClaimdetails" component={SubmittedclaimDetails} />
+
+
+
       </Stack.Navigator>
 
       {/* 2. Draggable Floating WhatsApp Button */}
@@ -298,15 +330,15 @@ export const UserRoute = ({ isFirstLaunch }) => {
           }
         ]}
       >
-         <TouchableOpacity onPress={toggleChat} style={styles.touchable}>
+         <TouchableOpacity onPress={toggleChat} style={styles.touchable} activeOpacity={0.8}>
           <Image
-            source={require('../../assets/floatingbuttonn.png')} // Adjust path if needed
-            style={{ width: 50, height: 50, right: 5 }}
+            source={require('../../assets/floatingbuttonn.png')} 
+            style={styles.floatingImage}
             resizeMode="contain"
           />
           {isChatVisible && (
             <Animated.View style={{ flexDirection: 'row', opacity: animatedOpacity, transform: [{ translateX: animatedTranslateX }] }}>
-            
+             
               <TouchableOpacity onPress={openWhatsApp} style={styles.chatContainer}>
                 <Text style={styles.chatText}>Let's Chat</Text>
               </TouchableOpacity>
@@ -315,7 +347,7 @@ export const UserRoute = ({ isFirstLaunch }) => {
         </TouchableOpacity>
       </Animated.View>
 
-      {/* 3. First Login: Enable Biometrics Modal */}
+      {/* 3. Enable Biometrics Modal */}
       <Modal
         visible={showFirstLoginModal}
         transparent
@@ -353,7 +385,7 @@ export const UserRoute = ({ isFirstLaunch }) => {
         <View style={styles.successModalContainer}>
           <View style={styles.successModalContent}>
             <Image
-              source={require('../../assets/fingerprintsucess.gif')} // Adjust path if needed
+              source={require('../../assets/fingerprintsucess.gif')} 
               style={styles.successGif}
               resizeMode="contain"
             />
@@ -361,6 +393,16 @@ export const UserRoute = ({ isFirstLaunch }) => {
           </View>
         </View>
       </Modal>
+
+      {/* 5. Loading Overlay for Logout */}
+      {loading && (
+        <View style={styles.fullScreenLoader}>
+          <View style={styles.loaderBox}>
+            <ActivityIndicator size="large" color="#934790" />
+            <Text style={styles.loaderText}>Logging out...</Text>
+          </View>
+        </View>
+      )}
 
     </View>
   );
@@ -380,6 +422,25 @@ const styles = StyleSheet.create({
     color: '#934790',
     fontWeight: 'bold',
   },
+  fullScreenLoader: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    zIndex: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderBox: {
+    backgroundColor: 'white',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    elevation: 5,
+  },
+  loaderText: {
+    marginTop: 10,
+    color: '#333',
+    fontWeight: '600',
+  },
   floatingButton: {
     position: 'absolute',
     bottom: Platform.OS === 'android' ? hp(14) : hp(12),
@@ -394,14 +455,20 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 4,
     elevation: 5,
+    overflow: 'hidden', 
   },
   touchable: {
     flexDirection: 'row-reverse',
     alignItems: 'center',
+    height: '100%', 
+  },
+  floatingImage: {
+    width: wp(11), 
+    height: hp(10),
   },
   chatContainer: {
     justifyContent: 'center',
-    left: Platform.OS === 'android' ? wp(3) : wp(3.6),
+    left: Platform.OS === 'android' ? wp(1) : wp(1.5),
     paddingVertical: 5,
     paddingHorizontal: 10,
   },
@@ -415,7 +482,7 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     top: -10,
-    left: -5,
+    left: -10,
     zIndex: 1,
     alignItems: 'center',
     justifyContent: 'center',

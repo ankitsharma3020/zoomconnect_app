@@ -2,6 +2,7 @@
 
 int main(int argc, char * argv[]) {
   @autoreleasepool {
-    return UIApplicationMain(argc, argv, nil, NSStringFromClass([UIViewController class]));
+    // NSStringFromClass hatakar seedha @"AppDelegate" pass kar diya hai
+    return UIApplicationMain(argc, argv, nil, @"AppDelegate");
   }
 }

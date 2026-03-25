@@ -10,6 +10,7 @@ import {
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Circle, Path } from 'react-native-svg';
 import { wp, hp } from '../utilites/Dimension';
+import FastImage from '@d11/react-native-fast-image';
 
 const { width } = Dimensions.get('window');
 const HEADER_HEIGHT = hp(8.5);
@@ -65,7 +66,7 @@ export default function ActivePolicyHeader({
 
           {/* Illustration */}
           <View style={styles.imageWrapper}>
-            <Image
+            <FastImage
               source={illustration}
               style={styles.illustration}
               resizeMode="contain"
@@ -79,38 +80,36 @@ export default function ActivePolicyHeader({
 
 const styles = StyleSheet.create({
   // FIX 1: Dedicated Shadow Container
-  shadowContainer: {
-  width: '100%',
-  height: HEADER_HEIGHT,
-  marginTop: hp(1.2),
+ shadowContainer: {
+    width: '100%',
+    height: HEADER_HEIGHT,
+    marginTop: hp(1.2),
+    // 1. MUST BE TRANSPARENT ON IOS
+    backgroundColor: 'transparent', 
+    
+    // iOS Shadow
+    shadowColor: '#A5B4FC',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
 
-  backgroundColor: '#fff',   // REQUIRED for Android shadows
-
-  // iOS shadow
-  shadowColor: '#A5B4FC',
-  shadowOffset: { width: 0, height: 4 },
-  shadowOpacity: 0.25,
-  shadowRadius: 8,
-
-  // Android shadow
-  elevation: 10,
-
-  borderRadius: 26, // optional
-},
-  // FIX 2: Inner Container for Clipping
+    // Android Shadow
+    elevation: 8,
+  },
   innerContainer: {
-    flex: 1, // Fill the shadow container
+    // 2. This is the actual "Card"
+    flex: 1, 
     borderRadius: wp(6), 
-    overflow: 'hidden', // Clips the gradient and SVG inside the rounded corners
-    justifyContent: 'center',
-    paddingHorizontal: wp(6),
+    overflow: 'hidden', 
+    backgroundColor: '#fff', // Card background
   },
   contentRow: {
+    flex: 1, // Use flex instead of height: 100%
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '100%',
-    height: '100%', // Ensure row takes full height
+    // 3. MOVE PADDING HERE instead of innerContainer
+    paddingHorizontal: wp(5), 
   },
   textColumn: {
     flex: 1,

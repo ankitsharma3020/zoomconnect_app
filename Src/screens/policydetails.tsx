@@ -14,6 +14,7 @@ import {
   Animated,
   Dimensions,
   Linking,
+  ToastAndroid,
   Alert
 } from 'react-native';
 import Ionicons from 'react-native-vector-icons/Ionicons';
@@ -22,6 +23,9 @@ import AntDesign from 'react-native-vector-icons/AntDesign';
 import { wp, hp } from '../utilites/Dimension'; 
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPolicydetails } from './Epicfiles/MainEpic';
+import { useDownloadEcardMutation } from '../redux/service/user/user';
+
+import ReactNativeBlobUtil from 'react-native-blob-util';
 
 // --- THEME CONSTANTS ---
 const COLORS = {
@@ -100,12 +104,12 @@ const PolicyDetails = ({ route }) => {
   
   const [activeTab, setActiveTab] = useState('Details');
   const [selectedMember, setSelectedMember] = useState(null);
-  
+  const [DownloadEcard] = useDownloadEcardMutation();
   // Drawer States
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const { data, isLoading } = useSelector((state) => state.policydetails);
-
+ 
   useEffect(() => {
     dispatch(fetchPolicydetails({ PolicyId: id }));
   }, [dispatch, id]);
@@ -118,8 +122,150 @@ const PolicyDetails = ({ route }) => {
       setSelectedMember(defaultMember);
     }
   }, [data]);
-  console.log('Policy Details Data:', data);
+  console.log('Policy Details Data:', selectedMember);
+ 
 
+
+
+const DownloadEcards = async () => {
+  let req = { policy_id:id, uhid: selectedMember?.uhid, dob: selectedMember?.dob };
+  
+  try {
+    let res = await DownloadEcard(req); 
+    console.log('res===>', res);
+
+    if (res.data && res.data.success && res.data.download_url) {
+      let fileUrl = res?.data?.download_url;
+      
+      // Step 1: URL check karna
+      let urlWithoutParams = fileUrl.split('?')[0].toLowerCase();
+      let isDirectPdf = urlWithoutParams.endsWith('.pdf');
+
+      // Step 2: Agar direct PDF nahi hai, toh Browser mein open karein
+      
+        if (Platform.OS === 'android') {
+          ToastAndroid.show('Opening browser to download E-Card...', ToastAndroid.LONG);
+        }
+        
+        Linking.canOpenURL(fileUrl)
+          .then((supported) => {
+            if (supported) {
+              return Linking.openURL(fileUrl);
+            } else {
+              Alert.alert('Error', 'Cannot open this link in browser.');
+            }
+          })
+          .catch((err) => console.error('An error occurred', err));
+          
+        return; 
+      
+
+      // Step 3: Agar direct '.pdf' link hai, toh apna purana Blob logic use karein
+      let config = ReactNativeBlobUtil.config;
+      let fs = ReactNativeBlobUtil.fs;
+      
+      let uniqueId = '';
+      if (selectedMember && selectedMember.uhid) {
+        uniqueId = selectedMember.uhid;
+      } else {
+        let chars = 'abcdefghijklmnopqrstuvwxyz';
+        for (let i = 0; i < 8; i++) {
+            uniqueId += chars[i]; 
+        }
+      }
+      
+      let fileName = 'eCard_' + uniqueId + '.pdf';
+      let DownloadDir = '';
+      
+      if (Platform.OS === 'ios') {
+          DownloadDir = fs.dirs.DocumentDir;
+      } else {
+          DownloadDir = fs.dirs.DownloadDir;
+      }
+      
+      let filePath = DownloadDir + '/' + fileName;
+
+      let headers = {
+        'Accept': 'application/pdf',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+      };
+
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('Downloading E-Card...', ToastAndroid.SHORT);
+        
+        config({
+          fileCache: true,
+          appendExt: 'pdf',
+          path: filePath
+        })
+        .fetch('GET', fileUrl, headers)
+        .then((downloadRes) => {
+          let status = downloadRes.info().status;
+          if (status === 200) {
+            ToastAndroid.show('Download Complete', ToastAndroid.SHORT);
+            ReactNativeBlobUtil.android.actionViewIntent(downloadRes.path(), 'application/pdf');
+          } else {
+            fs.unlink(downloadRes.path()); 
+            ToastAndroid.show('Failed: Server error', ToastAndroid.LONG);
+          }
+        })
+        .catch((error) => {
+          ToastAndroid.show('Failed to download', ToastAndroid.SHORT);
+        });
+
+      } else {
+        config({
+          fileCache: true,
+          appendExt: 'pdf',
+          path: filePath,
+        })
+        .fetch('GET', fileUrl, headers)
+        .then((downloadRes) => {
+          let status = downloadRes.info().status;
+          if (status === 200) {
+            ReactNativeBlobUtil.ios.previewDocument(downloadRes.path());
+          } else {
+            fs.unlink(downloadRes.path());
+            Alert.alert('Error', 'Server returned error instead of PDF');
+          }
+        })
+        .catch((error) => {
+          Alert.alert('Error', 'Failed to download E-Card');
+        });
+      }
+    } 
+    // YAHAN FIX KIYA HAI: Agar API ne response diya par success false hai (e.g., 200 OK but error body)
+    else if (res?.error?.data && res?.error?.data.message) {
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(res?.error?.data.message, ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Notice', res?.error?.data?.message);
+      }
+    } 
+    else {
+      if (Platform.OS === 'android') {
+        ToastAndroid.show('E-Card not found', ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Notice', 'E-Card not found');
+      }
+    }
+  } catch (error) {
+    // YAHAN FIX KIYA HAI: Agar Axios/Fetch 404 ya 500 error fekta hai, toh uske andar ka message nikalna
+    let errorMessage = 'Something went wrong';
+    
+    if (error && error.response && error.response.data && error.response.data.message) {
+      errorMessage = error.response.data.message;
+    } else if (error && error.message) {
+      errorMessage = error.message;
+    }
+
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(errorMessage, ToastAndroid.SHORT);
+    } else {
+      Alert.alert('Error', errorMessage);
+    }
+  }
+};
   // Toggle Drawer Animation
  const toggleDrawer = (show) => {
   if (show) {
@@ -197,6 +343,7 @@ const PolicyDetails = ({ route }) => {
                data={data} 
                id={id}
                navigation={navigation} 
+               DownloadEcard={DownloadEcards}
                selectedMember={selectedMember} 
                setSelectedMember={setSelectedMember}
                onConnectPress={handleConnectPress} // Pass the handler
@@ -308,9 +455,10 @@ const ContactList = ({ matrix }) => {
 };
 
 // --- Component: Details Tab ---
-const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, onConnectPress ,id}) => {
+const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, onConnectPress ,id,DownloadEcard}) => {
+
   if (!data) return <Text>Loading...</Text>;
-  
+ 
   const policy = data.policy || {};
   const dependents = data.dependents || [];
   const tpaData = data.tpa_data || {};
@@ -366,13 +514,15 @@ const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, o
           <View style={styles.sectionHeader}>
             <View>
               {/* Only show Download eCard if NOT GTL or GPA */}
-              {!isGtlOrGpa && (
-                <TouchableOpacity style={{ width:wp(80),height:hp(4),marginBottom:hp(1),borderWidth:1,alignItems:'center',borderRadius:hp(1.5),borderColor:COLORS.info,flexDirection:'row',paddingHorizontal:wp(2),justifyContent:'center',backgroundColor:'rgba(59, 130, 246,0.1)'}}>
-                  <Text style={styles.sectionTitle1}>Download your health card
-                    <Text  style={{color:COLORS.info,fontSize:hp(1.6)}} >  Download</Text>
-                  </Text>
-                </TouchableOpacity>
-              )}
+            
+                  {!isGtlOrGpa && (
+            <TouchableOpacity style={styles.moreActions}
+              onPress={()=>navigation.navigate('networkHospitalScreen',{policyid:id})}
+            >
+              <Text style={styles.moreActionsText}>Search your cashless hospital here</Text>
+              <Ionicons name="arrow-forward" size={hp(2.2)} color={COLORS.primary} style={{marginLeft: wp(6.5)}}/>
+            </TouchableOpacity>
+          )}
               <Text style={styles.sectionTitle}>Beneficiaries</Text>
             </View>
             <View style={styles.underline} />
@@ -423,21 +573,20 @@ const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, o
           )}
           
           {/* Only show Network Hospital if NOT GTL or GPA */}
-          {!isGtlOrGpa && (
-            <TouchableOpacity style={styles.moreActions}
-              onPress={()=>navigation.navigate('networkHospitalScreen',{policyid:id})}
-            >
-              <Text style={styles.moreActionsText}>Search your cashless hospital here</Text>
-              <Ionicons name="arrow-forward" size={hp(2.2)} color={COLORS.primary} style={{marginLeft: wp(6.5)}}/>
-            </TouchableOpacity>
-          )}
+           {!isGtlOrGpa && (
+                <TouchableOpacity  onPress={()=>DownloadEcard()} style={{ width:wp(80),height:hp(4),marginBottom:hp(1),borderWidth:1,alignItems:'center',borderRadius:hp(1.5),borderColor:COLORS.info,flexDirection:'row',paddingHorizontal:wp(2),justifyContent:'center',backgroundColor:'rgba(59, 130, 246,0.1)'}}>
+                  <Text style={styles.sectionTitle1}>Download your health card
+                    <Text  style={{color:COLORS.info,fontSize:hp(1.6)}} >  Download</Text>
+                  </Text>
+                </TouchableOpacity>
+              )}
       </View>
   
       {/* Actions */}
 
       {/* Only show Claim Insurance if NOT GTL or GPA */}
       {!isGtlOrGpa && (
-        <TouchableOpacity style={styles.claimButton} activeOpacity={0.9}>
+        <TouchableOpacity style={styles.claimButton} activeOpacity={0.9} onPress={()=>navigation.navigate('fileclaim')}>
           <Text style={styles.claimButtonText}>Claim Insurance</Text>
           <View style={styles.iconCircle}>
             <Ionicons name="arrow-forward" size={hp(2)} color={COLORS.textDark} />

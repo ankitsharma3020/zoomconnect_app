@@ -20,6 +20,7 @@ import { wp, hp } from '../utilites/Dimension';
 import Header from '../component/header';
 import ActivePolicyHeader from '../component/activpolicy';
 import { useSelector } from 'react-redux';
+import FastImage from '@d11/react-native-fast-image';
 
 const { width } = Dimensions.get('window');
 const BOTTOM_TAB_HEIGHT = hp(10); 
@@ -147,6 +148,7 @@ const WellnessScreen = ({ navigation }: any) => {
   const [selectedTab, setSelectedTab] = useState('All');
   
   const { data: wellnessData, isLoading: loading } = useSelector((state: any) => state.wellness);
+  console.log('Fetched Wellness Data:', wellnessData);
   
   const uniqueCategories = [
     'All', 
@@ -165,10 +167,13 @@ const WellnessScreen = ({ navigation }: any) => {
     return wellnessData.filter(item => item.category?.category_name === selectedTab);
   }, [selectedTab, wellnessData]);
 
-  const handleCardPress = (item: any) => {
-    console.log('Navigate to service:', item.wellness_name);
-  };
 
+const handleCardPress = (item) => {
+    if (item?.link) {
+      navigation.navigate('WellnessWebRendering', { url:item?.link , label:item?.wellness_name });
+    
+    }
+  };
   return (
     <View style={styles.screenWrap}>
       <View style={styles.backgroundFill} />
@@ -197,7 +202,7 @@ const WellnessScreen = ({ navigation }: any) => {
               title="Wellness"
               subtitle="Explore our health services."
               onBack={() => navigation?.goBack?.()}
-              illustration={require('../../assets/policies.png')}
+              illustration={require('../../assets/Wellness.png')}
             />
           </View>
 
@@ -282,7 +287,7 @@ const WellnessScreen = ({ navigation }: any) => {
                             <View style={styles.topLeftContainer}>
                               {vendorLogo ? (
                                 <View style={styles.logoBox}>
-                                  <Image
+                                  <FastImage
                                     source={{ uri: vendorLogo }}
                                     style={styles.companyLogo}
                                     resizeMode="contain"
@@ -304,7 +309,7 @@ const WellnessScreen = ({ navigation }: any) => {
 
                             {/* Bottom-Right Image */}
                             {imageUrl ? (
-                              <Image
+                              <FastImage
                                 source={{ uri: imageUrl }}
                                 style={styles.bottomRightImage}
                                 resizeMode="cover"
@@ -342,7 +347,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FD' 
   },
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(6.25) }, 
-  sectionContainer: { paddingHorizontal: Platform.OS === 'ios' ? 0 : wp(4), marginBottom: hp(2.2) ,marginTop: hp(2) },
+   sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(2),marginBottom: hp(4) },
 
   // --- TABS ---
   tabWrapper: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(1.2) },
@@ -435,7 +440,8 @@ const styles = StyleSheet.create({
     height: hp(2),
   },
   categoryLabel: {
-    fontSize: hp(1.1),
+    fontSize: hp(0.9),
+    width: '80%',
     fontFamily: 'Montserrat-Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,

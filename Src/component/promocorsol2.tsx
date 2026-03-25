@@ -10,6 +10,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { wp, hp } from '../utilites/Dimension'; // Adjusted import
+import { useNavigation } from '@react-navigation/native';
 
 const { width } = Dimensions.get('window');
 // Adjusted width to show approx 2.2 cards on screen like the screenshot
@@ -51,7 +52,9 @@ const promos = [
   },
 ];
 
-export default function PromoCarousel2() {
+export default function PromoCarousel2({ bannerData}) {
+  const navigation = useNavigation();
+  console.log("Received bannerData in PromoCarousel2:", bannerData);
   const scrollRef = useRef(null);
   const [activeIdx, setActiveIdx] = useState(0);
 
@@ -60,7 +63,12 @@ export default function PromoCarousel2() {
     const idx = Math.round(x / (CARD_WIDTH + CARD_SPACING));
     setActiveIdx(idx);
   };
-
+ const handleBannerPress = (url) => {
+    if (url) {
+      navigation.navigate('WellnessWebRendering', { url: url });
+    
+    }
+  };
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
@@ -77,13 +85,14 @@ export default function PromoCarousel2() {
           contentContainerStyle={{ paddingHorizontal: wp(4) }}
           onMomentumScrollEnd={onMomentum}
         >
-          {promos.map((p, i) => (
+          {bannerData.map((p, i) => (
             <TouchableOpacity 
+              onPress={() => handleBannerPress(p.link, p.title)}
               activeOpacity={0.9} 
               key={p.id} 
               style={[
                 styles.card, 
-                { marginRight: i === promos.length - 1 ? 0 : CARD_SPACING }
+                { marginRight: i === bannerData.length - 1 ? 0 : CARD_SPACING }
               ]}
             >
               <View style={styles.cardTop}>
@@ -108,7 +117,7 @@ export default function PromoCarousel2() {
 
         {/* Pagination Dots */}
         <View style={styles.dots}>
-          {promos.map((_, i) => (
+          {bannerData.map((_, i) => (
             <View key={i} style={[styles.dot, i === activeIdx ? styles.dotActive : null]} />
           ))}
         </View>

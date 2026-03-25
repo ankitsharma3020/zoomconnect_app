@@ -10,6 +10,7 @@ import {
   Linking
 } from 'react-native';
 import { wp, hp } from '../utilites/Dimension'; 
+import { useNavigation } from '@react-navigation/native';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const ITEM_SPACING = wp(2.5);
@@ -20,7 +21,7 @@ const HealthCarousel = ({ bannerData }) => {
   const [activeIndex, setActiveIndex] = useState(0);
   const isSingleItem = data.length === 1;
   const itemWidth = isSingleItem ? SCREEN_WIDTH : wp(90);
-
+  const navigation = useNavigation();
   const handleScroll = (event) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
     const index = Math.round(scrollPosition / itemWidth);
@@ -29,7 +30,8 @@ const HealthCarousel = ({ bannerData }) => {
 
   const handleBannerPress = (url) => {
     if (url) {
-      Linking.openURL(url).catch(err => console.error("Failed to open URL:", err));
+      navigation.navigate('WellnessWebRendering', { url: url });
+    
     }
   };
 

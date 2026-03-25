@@ -179,7 +179,33 @@ Addsupportticket: builder.mutation({
       }),
        // invalidatesTags: ['Chat'], // Optional: Uncomment to auto-refetch chat list
     }),
+  loginmicrosoft: builder.mutation({
+      query: ({...body}) => ({
+        url: '/login/microsoft',
+        method: 'POST',
+        body: body,
+      }),
+      //   invalidatesTags: [""],
+    }),
+   
 //olddddddddddd
+ Submitclaim: builder.mutation({
+  query: ({...body}) => ({
+    url: '/submit-claim',
+    method: 'POST',
+    body: body,
+  }),
+  //   invalidatesTags: [""],
+}),
+ DownloadEcard: builder.mutation({
+  query: ({...body}) => ({
+    url: '/download-ecard',
+    method: 'POST',
+    body: body,
+  }),
+  //   invalidatesTags: [""],
+}),
+
    
 
 
@@ -221,4 +247,7 @@ useLoginemailMutation,
  useAddsupportticketMutation,
   useGetBannersMutation,
   useReplytoticketMutation,
+  useLoginmicrosoftMutation,
+  useSubmitclaimMutation,
+  useDownloadEcardMutation,
 } = userApi;

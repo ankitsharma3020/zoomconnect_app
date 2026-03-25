@@ -1,16 +1,14 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Dimensions, Image, Platform, TextInput } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, Dimensions, Image, Platform, TextInput, Modal } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Defs, Pattern, Circle, Rect, Path } from 'react-native-svg';
 import { useDispatch, useSelector } from 'react-redux';
 import { setUser } from '../redux/service/userSlice';
 import { wp, hp } from '../utilites/Dimension'; // Adjusted import path
 import { useSaveTokenMutation } from '../redux/service/user/user';
+import FastImage from '@d11/react-native-fast-image';
 
 const { width } = Dimensions.get('window');
-
-// --- DUMMY DATA ---
-
 
 // --- SVG Pattern Component ---
 const ProfilePattern = () => (
@@ -32,12 +30,14 @@ const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   
   const [loading, setLoading] = useState(false);
-   const[Savetoken] = useSaveTokenMutation();
+  const [isLogoutModalVisible, setLogoutModalVisible] = useState(false); // Modal State
+  const [Savetoken] = useSaveTokenMutation();
   const [showFullEmail, setShowFullEmail] = useState(false);
   const { data: profileData } = useSelector((state: any) => state.profile);
  
   const user =  profileData?.data?.user; 
-   console.log("Profile Data from Redux:", user);
+  console.log("Profile Data from Redux:", user);
+  
   // --- Editable State ---
   const [mobile, setMobile] = useState(user.mobile);
  
@@ -52,7 +52,6 @@ const ProfileScreen = ({ navigation }) => {
  
   const handleEditPhoto = () => {
     console.log("Open Image Picker");
-    // Implement Image Picker logic here
   };
 
   // --- ICONS ---
@@ -99,12 +98,13 @@ const ProfileScreen = ({ navigation }) => {
       <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
     </Svg>
   );
+
   const LockIcon = ({ color = "#374151" }) => (
-  <Svg width={wp(5)} height={wp(5)} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
-    <Path d="M7 11V7a5 5 0 0 1 10 0v4" />
-  </Svg>
-);
+    <Svg width={wp(5)} height={wp(5)} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+      <Rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+      <Path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </Svg>
+  );
 
   const LogoutIcon = () => (
     <Svg width={wp(5)} height={wp(5)} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -114,19 +114,21 @@ const ProfileScreen = ({ navigation }) => {
     </Svg>
   );
 
-  const ChevronRight = () => (
-    <Svg width={wp(4)} height={wp(4)} viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-      <Path d="M9 18l6-6-6-6" />
+  const ModalLogoutIcon = () => (
+    <Svg width={wp(8)} height={wp(8)} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <Path d="M16 17l5-5-5-5" />
+      <Path d="M21 12H9" />
     </Svg>
   );
- const handleLogout = useCallback(async () => {
+
+  const handleLogout = useCallback(async () => {
     try {
+      setLogoutModalVisible(false); // Close modal first
       setLoading(true);
-    
-      
-      const reqbody = { device_token: null,  };
-     let res= await Savetoken(reqbody);
-     console.log("Logout Response:", res);  
+      const reqbody = { device_token: null };
+      let res = await Savetoken(reqbody);
+      console.log("Logout Response:", res);  
     } catch (error) {
       console.log('Logout error:', error);
     } finally {
@@ -134,6 +136,7 @@ const ProfileScreen = ({ navigation }) => {
       setLoading(false);
     }
   }, [Savetoken, dispatch]);
+
   return loading ? (
     <View style={styles.loadingOverlay}>
       <ActivityIndicator size="large" color="#F97316" />
@@ -155,7 +158,7 @@ const ProfileScreen = ({ navigation }) => {
                 {/* --- 2. HEADER --- */}
                 <View style={styles.headerContainer}>
                     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-                        <Image 
+                        <FastImage
                             source={{ uri: 'https://cdn-icons-png.flaticon.com/512/271/271220.png' }} 
                             style={styles.backIcon} 
                         />
@@ -169,25 +172,18 @@ const ProfileScreen = ({ navigation }) => {
                     {/* Editable Avatar */}
                     <View style={styles.avatarContainer} >
                         {user.gender === 'male' ? (
-                            <Image source={require('../../assets/profileman.png')} style={styles.avatarImage} resizeMode="cover" />
+                            <FastImage source={require('../../assets/profileman.png')} style={styles.avatarImage} resizeMode="cover" />
                         ) : (
-                             <Image source={require('../../assets/profilewomen.png')} style={styles.avatarImage} resizeMode="cover" />
+                             <FastImage source={require('../../assets/profilewomen.png')} style={styles.avatarImage} resizeMode="cover" />
                         )}
-                        {/* Camera Badge Overlay */}
-                        {/* <View style={styles.cameraBadge}>
-                            <Svg width={wp(4)} height={wp(4)} viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                                <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                                <Circle cx="12" cy="13" r="4" />
-                            </Svg>
-                        </View> */}
                     </View>
 
                     {/* User Info */}
                     <Text style={styles.userName}>{user?.full_name}</Text>
                     <Text style={styles.userEmail}>{user?.email}</Text>
                     <Text style={styles.userRole}>
-  {user?.designation}  •  {user?.location?.branch_name || user?.location?.city || 'N/A'}
-</Text>
+                      {user?.designation}  •  {user?.location?.branch_name || user?.location?.city || 'N/A'}
+                    </Text>
 
                     {/* Divider */}
                     <View style={styles.divider} />
@@ -200,13 +196,10 @@ const ProfileScreen = ({ navigation }) => {
                             Icon={IdCardIcon}
                         />
                         
-                        {/* Editable Mobile Number */}
                         <InfoItem 
                             label="Mobile" 
                             value={mobile} 
                             Icon={PhoneIcon}
-                            // isEditable={true}
-                            // onChangeText={(text) => setMobile(text)}
                         />
 
                         <InfoItem 
@@ -225,19 +218,12 @@ const ProfileScreen = ({ navigation }) => {
 
                 {/* --- 4. MENU ITEMS --- */}
                 <View style={styles.menuContainer}>
-                    
-                    {/* Your Functional Items */}
-                    {/* <MenuItem 
-                        title="Privacy Policy" 
-                        Icon={PrivacyIcon}
-                        onPress={() => navigation.navigate('PrivacyPolicy')}
-                    /> */}
                     <MenuItem 
                         title="Contact Us" 
                         Icon={ContactIcon}
                         onPress={() => navigation.navigate('Webrendering',{url: 'contact',label: 'Contact Us'})}
                     />
-                        <MenuItem 
+                    <MenuItem 
                         title="Reset Password" 
                         Icon={LockIcon}
                         onPress={() => navigation.navigate('ResetPassword')}
@@ -246,12 +232,11 @@ const ProfileScreen = ({ navigation }) => {
                         title="Logout" 
                         Icon={LogoutIcon}
                         loading={loading}
-                        onPress={() =>handleLogout()}
+                        onPress={() => setLogoutModalVisible(true)} // Open modal instead of logging out directly
                         isLast
                         isDestructive
                         showArrow={false}
                     />
-
                 </View>
 
                 {/* --- 5. FOOTER LINKS (Text Only) --- */}
@@ -273,6 +258,44 @@ const ProfileScreen = ({ navigation }) => {
 
             </ScrollView>
         </SafeAreaView>
+
+        {/* --- 6. LOGOUT CONFIRMATION MODAL --- */}
+        <Modal
+          animationType="fade"
+          transparent={true}
+          visible={isLogoutModalVisible}
+          onRequestClose={() => setLogoutModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              
+              <View style={styles.modalIconContainer}>
+                <ModalLogoutIcon />
+              </View>
+              
+              <Text style={styles.modalTitle}>Logout</Text>
+              <Text style={styles.modalMessage}>Are you sure you want to logout from your account?</Text>
+
+              <View style={styles.modalButtonContainer}>
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.cancelButton]} 
+                  onPress={() => setLogoutModalVisible(false)}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.modalButton, styles.confirmButton]} 
+                  onPress={handleLogout}
+                >
+                  <Text style={styles.confirmButtonText}>Yes, Logout</Text>
+                </TouchableOpacity>
+              </View>
+
+            </View>
+          </View>
+        </Modal>
+
     </View>
   );
 };
@@ -313,13 +336,13 @@ const MenuItem = ({
     isLast, 
     isDestructive, 
     showArrow = true, 
-    loading = false // New prop
+    loading = false 
 }) => (
     <TouchableOpacity 
         style={[styles.menuItem, isLast && styles.menuItemLast]} 
         onPress={onPress} 
         activeOpacity={0.7}
-        disabled={loading} // Disable interaction during loading
+        disabled={loading} 
     >
         <View style={styles.menuLeft}>
             <View style={[styles.iconCircle, isDestructive && { backgroundColor: '#FEE2E2' }]}>
@@ -328,12 +351,10 @@ const MenuItem = ({
             <Text style={[styles.menuText, isDestructive && styles.destructiveText]}>{title}</Text>
         </View>
 
-        {/* Logic for Right Side: Loading Spinner OR Arrow */}
         {loading ? (
             <ActivityIndicator 
                 size="small" 
                 color={isDestructive ? '#EF4444' : '#374151'} 
-                style={styles.loader} 
             />
         ) : (
             showArrow && (
@@ -369,44 +390,44 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: hp(5), // approx 40
+    paddingBottom: hp(5), 
   },
 
   // --- Header ---
   headerContainer: {
-    paddingHorizontal: wp(6), // approx 24
-    paddingTop: Platform.OS === 'android' ? hp(5) : hp(2.5), // approx 40/20
-    marginBottom: hp(2.5), // approx 20
+    paddingHorizontal: wp(6), 
+    paddingTop: Platform.OS === 'android' ? hp(5) : hp(2.5), 
+    marginBottom: hp(2.5), 
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between', 
   },
   backButton: {
-    width: wp(10), // approx 40
+    width: wp(10), 
     height: wp(10),
-    borderRadius: wp(5), // approx 20
+    borderRadius: wp(5), 
     backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: hp(2), // approx 16
+    marginBottom: hp(2), 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: hp(0.25) },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
     position: 'absolute',
-    left: wp(6), // approx 24
-    top: Platform.OS === 'android' ? hp(5) : hp(2.5), // approx 40/20
+    left: wp(6), 
+    top: Platform.OS === 'android' ? hp(5) : hp(2.5), 
     zIndex: 10,
   },
   backIcon: {
-    width: wp(4.5), // approx 18
+    width: wp(4.5), 
     height: wp(4.5),
     tintColor: '#1F2937',
   },
   screenTitle: {
-    fontSize: hp(2.5), // approx 28
-    fontFamily: 'Montserrat-Bold', // Font
+    fontSize: hp(2.5), 
+    fontFamily: 'Montserrat-Bold', 
     color: '#111827', 
     letterSpacing: 0.5,
     textAlign: 'center',
@@ -415,21 +436,21 @@ const styles = StyleSheet.create({
 
   // --- Profile Card ---
   profileCard: {
-    marginHorizontal: wp(5), // approx 20
+    marginHorizontal: wp(5), 
     backgroundColor: '#FFFFFF',
-    borderRadius: wp(8), // approx 32
-    paddingVertical: hp(4), // approx 32
-    paddingHorizontal: wp(5), // approx 20
+    borderRadius: wp(8), 
+    paddingVertical: hp(4), 
+    paddingHorizontal: wp(5), 
     alignItems: 'center',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: hp(1.25) },
     shadowOpacity: 0.05,
     shadowRadius: 20,
     elevation: 5,
-    marginBottom: hp(3), // approx 24
+    marginBottom: hp(3), 
   },
   avatarContainer: {
-    marginBottom: hp(2), // approx 16
+    marginBottom: hp(2), 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: hp(1) },
     shadowOpacity: 0.15,
@@ -437,70 +458,62 @@ const styles = StyleSheet.create({
     elevation: 8,
     position: 'relative', 
   },
- avatarImage: {
-  width: wp(25),
-  height: wp(25),
-  borderRadius: wp(12.5),
-  backgroundColor: '#fff', // 1. Essential for shadows to show
-  // borderColor: '#934790',
-  // borderWidth: 1, // Optional: add back if you want a visible ring
-
-  // iOS Shadows
-  shadowColor: '#000',
-  shadowOffset: { 
-    width: 0, 
-    height: 4 // 2. Move shadow down slightly
+  avatarImage: {
+    width: wp(25),
+    height: wp(25),
+    borderRadius: wp(12.5),
+    backgroundColor: '#fff', 
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2, 
+    shadowRadius: 5,    
+    elevation: 5, 
   },
-  shadowOpacity: 0.2, // 3. Increased for visibility
-  shadowRadius: 5,    // 4. Smaller radius = tighter shadow; larger = softer
-
-  // Android Shadow
-  elevation: 5, // 5. Higher number = deeper shadow
-},eraBadge: {
+  cameraBadge: {
     position: 'absolute',
     bottom: 0,
     right: 0,
     backgroundColor: '#F97316',
-    width: wp(8), // approx 32
+    width: wp(8), 
     height: wp(8),
-    borderRadius: wp(4), // approx 16
+    borderRadius: wp(4), 
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: '#FFFFFF',
   },
   cameraIcon: {
-    width: wp(4), // approx 16
+    width: wp(4), 
     height: wp(4),
     tintColor: '#FFFFFF',
   },
   userName: {
-    fontSize: hp(2.45), // approx 22
-    fontFamily: 'Montserrat-Bold', // Font
+    fontSize: hp(2.45), 
+    fontFamily: 'Montserrat-Bold', 
     color: '#1F2937',
-    marginBottom: hp(0.75), // approx 6
+    marginBottom: hp(0.75), 
     textAlign: 'center',
   },
   userEmail: {
-    fontSize: hp(1.55), // approx 14
+    fontSize: hp(1.55), 
     color: '#6B7280', 
-    marginBottom: hp(0.75), // approx 6
+    marginBottom: hp(0.75), 
     textAlign: 'center',
-    fontFamily: 'Montserrat-Regular' // Font
+    fontFamily: 'Montserrat-Regular' 
   },
   userRole: {
-    fontSize: hp(1.5), // approx 13
+    fontSize: hp(1.5), 
     color: '#9CA3AF', 
-    marginBottom: hp(3), // approx 24
+    marginBottom: hp(3), 
     textAlign: 'center',
-    fontFamily: 'Montserrat-SemiBold', // Font
+    fontFamily: 'Montserrat-SemiBold', 
   },
   
   divider: {
     width: '100%',
     height: 1,
     backgroundColor: '#F3F4F6',
-    marginBottom: hp(2.5), // approx 20
+    marginBottom: hp(2.5), 
   },
 
   // --- Info Grid ---
@@ -510,108 +523,86 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: hp(2), // approx 16
-    padding: wp(2.5), // approx 10
-    borderRadius: wp(3), // approx 12
+    marginBottom: hp(2), 
+    padding: wp(2.5), 
+    borderRadius: wp(3), 
   },
   iconBox: {
-    width: wp(10), // approx 40
+    width: wp(10), 
     height: wp(10),
-    borderRadius: wp(2.5), // approx 10
+    borderRadius: wp(2.5), 
     backgroundColor: '#FFF7ED', 
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: wp(3), // approx 12
-  },
-  smallIcon: {
-    width: wp(5), // approx 20
-    height: wp(5),
+    marginRight: wp(3), 
   },
   infoTextContainer: {
     flex: 1,
   },
   infoLabel: {
-    fontSize: hp(1.3), // approx 11
+    fontSize: hp(1.3), 
     color: '#9CA3AF',
-    fontFamily: 'Montserrat-SemiBold', // Font
-    marginBottom: hp(0.25), // approx 2
+    fontFamily: 'Montserrat-SemiBold', 
+    marginBottom: hp(0.25), 
     textTransform: 'uppercase',
   },
   infoValue: {
-    fontSize: hp(1.6), // approx 15
+    fontSize: hp(1.6), 
     color: '#374151',
-    fontFamily: 'Montserrat-SemiBold', // Font
+    fontFamily: 'Montserrat-SemiBold', 
   },
   infoValueInput: {
-    fontSize: hp(1.9), // approx 15
+    fontSize: hp(1.9), 
     color: '#374151',
-    fontFamily: 'Montserrat-SemiBold', // Font
+    fontFamily: 'Montserrat-SemiBold', 
     padding: 0, 
     margin: 0,
-  },
-  editIconSmall: {
-    width: wp(4), // approx 16
-    height: wp(4),
-    tintColor: '#F97316',
-    marginLeft: wp(2), // approx 8
-    opacity: 0.7,
   },
 
   // --- Menu Items ---
   menuContainer: {
-    paddingHorizontal: wp(5), // approx 20
-    gap: hp(1.5), // approx 12
-    marginBottom: hp(3.75), // approx 30
+    paddingHorizontal: wp(5), 
+    gap: hp(1.5), 
+    marginBottom: hp(3.75), 
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: '#FFFFFF',
-    paddingVertical: hp(2.25), // approx 18
-    paddingHorizontal: wp(5), // approx 20
-    borderRadius: wp(5), // approx 20
+    paddingVertical: hp(2.25), 
+    paddingHorizontal: wp(5), 
+    borderRadius: wp(5), 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: hp(0.25) },
     shadowOpacity: 0.03,
     shadowRadius: 4,
     elevation: 1,
-    marginBottom: hp(1.5), // approx 12
+    marginBottom: hp(1.5), 
   },
   menuItemLast: {
-    marginBottom: hp(5), // approx 40
+    marginBottom: hp(5), 
   },
   menuLeft: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   iconCircle: {
-    width: wp(10), // approx 40
+    width: wp(10), 
     height: wp(10),
-    borderRadius: wp(5), // approx 20
+    borderRadius: wp(5), 
     backgroundColor: '#F3F4F6', 
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: wp(4), // approx 16
-  },
-  menuIcon: {
-    width: wp(5), // approx 20
-    height: wp(5),
-    tintColor: '#374151',
+    marginRight: wp(4), 
   },
   menuText: {
-    fontSize: hp(1.8), // approx 16
-    fontFamily: 'Montserrat-SemiBold', // Font
+    fontSize: hp(1.8), 
+    fontFamily: 'Montserrat-SemiBold', 
     color: '#1F2937',
   },
   destructiveText: {
     color: '#EF4444',
-  },
-  chevronIcon: {
-    width: wp(4), // approx 16
-    height: wp(4),
-    opacity: 0.3,
-    transform: [{ rotate: '-90deg' }] 
   },
 
   // --- Footer Links ---
@@ -619,18 +610,92 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: hp(5), // approx 40
+    paddingBottom: hp(5), 
   },
   footerLinkText: {
-    fontSize: hp(1.6), // approx 13
-    fontFamily: 'Montserrat-SemiBold', // Font
+    fontSize: hp(1.6), 
+    fontFamily: 'Montserrat-SemiBold', 
     color: '#6B7280', 
     textDecorationLine: 'underline', 
   },
   footerSeparator: {
-    fontSize: hp(1.6), // approx 13
+    fontSize: hp(1.6), 
     color: '#D1D5DB', 
-    marginHorizontal: wp(3), // approx 12
+    marginHorizontal: wp(3), 
+  },
+
+  // --- Modal Styles ---
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: wp(85),
+    backgroundColor: '#FFFFFF',
+    borderRadius: wp(6),
+    padding: wp(6),
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  modalIconContainer: {
+    width: wp(16),
+    height: wp(16),
+    borderRadius: wp(8),
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: hp(2),
+  },
+  modalTitle: {
+    fontSize: hp(2.4),
+    fontFamily: 'Montserrat-Bold',
+    color: '#1F2937',
+    marginBottom: hp(1),
+  },
+  modalMessage: {
+    fontSize: hp(1.8),
+    fontFamily: 'Montserrat-Regular',
+    color: '#6B7280',
+    textAlign: 'center',
+    marginBottom: hp(3.5),
+    paddingHorizontal: wp(2),
+  },
+  modalButtonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalButton: {
+    flex: 1,
+    height: hp(5),
+    borderRadius: wp(4),
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#F3F4F6',
+    marginRight: wp(2),
+  },
+  confirmButton: {
+    backgroundColor: '#ee6262',
+    marginLeft: wp(2),
+  },
+  cancelButtonText: {
+    color: '#374151',
+    fontFamily: 'Montserrat-Bold',
+    fontSize: hp(1.8),
+  },
+  confirmButtonText: {
+    color: '#FFFFFF',
+    fontFamily: 'Montserrat-Bold',
+    fontSize: hp(1.6),
   },
 });
+
 export default ProfileScreen;

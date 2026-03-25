@@ -10,7 +10,7 @@ import store from './Src/redux/store';
 // 1. Import SafeAreaProvider
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import navigationservice from './Src/component/pushNotification/navigationservice';
-// import PushNotification from "react-native-push-notification";
+import PushNotification from "react-native-push-notification";
 import PushNotificationComponent from './Src/component/pushNotification/pushNotification';
 
 const { width, height } = Dimensions.get('window');
@@ -60,7 +60,7 @@ const App = () => {
   
   return (
      <StoreProvider store={store}>
-      <PersistGate persistor={persistor} loading={<BootSplash />}>
+      <PersistGate persistor={persistor} >
         {/* 2. Wrap your NavigationContainer with SafeAreaProvider */}
         <SafeAreaProvider>
           <NavigationContainer ref={(e) => navigationservice.setToplevelNavigation(e)}>
@@ -76,12 +76,12 @@ const App = () => {
 export default App;
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF', 
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  // container: {
+  //   flex: 1,
+  //   backgroundColor: '#e1d1e1', 
+  //   justifyContent: 'center',
+  //   alignItems: 'center',
+  // },
   bootLogo: {
     width: width * 0.7,
     height: height * 0.3,

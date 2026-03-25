@@ -14,6 +14,7 @@ import {
   Platform,
   ActivityIndicator,
   ToastAndroid,
+  Alert,
 } from 'react-native';
 
 import React, { useState, useRef, useEffect } from 'react';
@@ -24,13 +25,15 @@ import { wp, hp } from '../utilites/Dimension';
 import { 
   useLoginemailMutation, 
   useLoginmobileMutation, 
-  useLoginemployeeMutation // Added this mutation
+  useLoginemployeeMutation, 
+  useLoginmicrosoftMutation
 } from '../redux/service/user/user';
 import { GetApi } from '../component/Apifunctions';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { GoogleSignin,statusCodes } from '@react-native-google-signin/google-signin';
-import { authorize,AppAuth } from 'react-native-app-auth';
-import {jwtDecode} from 'jwt-decode';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
+import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
+import { authorize } from 'react-native-app-auth';
+import { jwtDecode } from 'jwt-decode';
 import auth from '@react-native-firebase/auth';
 import { setUser } from '../redux/service/userSlice';
 
@@ -63,23 +66,15 @@ const Images = {
 };
 
 const configs = {
-  identityserver:{
+  identityserver: {
     issuer: 'https://login.microsoftonline.com/ac7594d5-c933-4baf-b79d-4ccb4aaec90c/v2.0',
-  clientId: '151553b6-39f3-48e4-9982-6dc7d4833e59', // Replace with your microsoft client id
-
-  redirectUrl: Platform.OS=='android'?'msauth.com.zoomconnect://auth':'msauth.com.zoomconnect://auth/'  , // replace with your redirect uri added in microsoft portal
-  additionalParameters:{},
-  scopes: ['openid', 'profile', 'email',]
-  },
-  auth0:{
-    issuer: 'https://login.microsoftonline.com/ac7594d5-c933-4baf-b79d-4ccb4aaec90c/v2.0',
-    clientId: '151553b6-39f3-48e4-9982-6dc7d4833e59', // Replace with your microsoft client id
-   
-    redirectUrl: Platform.OS=='android'?'msauth.com.zoomconnect://auth':'msauth.com.zoomconnect://auth'  , // replace with your redirect uri added in microsoft portal
-    additionalParameters:{},
-    scopes: ['openid', 'profile', 'email',],
-  },
+    clientId: '151553b6-39f3-48e4-9982-6dc7d4833e59', 
+    redirectUrl: Platform.OS === 'android' ? 'msauth.com.zoomconnect://auth' : 'msauth.com.zoomconnect://auth/', 
+    additionalParameters: {},
+    scopes: ['openid', 'profile', 'email']
+  }
 };
+
 const Login = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
@@ -88,12 +83,13 @@ const Login = () => {
   const [Emaillogin] = useLoginemailMutation();
   const [Mobilelogin] = useLoginmobileMutation();
   const [LoginEmployee] = useLoginemployeeMutation();
+  const [MicrosoftLogin] = useLoginmicrosoftMutation();
   
   // State
   const [loginMode, setLoginMode] = useState('email');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Controls ALL login loading states
   const [showPass, setShowPass] = useState(false);
 
   // Company Dropdown States
@@ -110,8 +106,6 @@ const Login = () => {
 
   useEffect(() => {
     GetCompanyList();
-  }, []);
-    useEffect(() => {
     GoogleSignin.configure({
       webClientId: '23273467961-vbqo2a5m9a07nm43t8dmafc7pr36ogfg.apps.googleusercontent.com',
       offlineAccess: true,
@@ -120,16 +114,13 @@ const Login = () => {
 
   const GetCompanyList = async () => {
     try {
-      const endpoint = '/login/companies'; 
-      const response = await GetApi(endpoint);
-      console.log('Company List Response:', response);
+      const response = await GetApi('/login/companies');
       setCompanyList(response?.data?.companies || []);
     } catch (error) {
       console.error('Error fetching company list:', error);
     }
   };
 
-  // Search Filter logic: show only 4 companies at a time
   useEffect(() => {
     if (companySearch.length > 0) {
       const filtered = companyList?.filter(item => item.name.toLowerCase().includes(companySearch.toLowerCase())).slice(0, 4);
@@ -146,7 +137,7 @@ const Login = () => {
     const onShow = (e) => {
       const h = e?.endCoordinates?.height ?? 0;
       Animated.timing(keyboardOffset, {
-        toValue: -Math.max(0, h - hp(15)), // Adjusted for extra field
+        toValue: -Math.max(0, h - hp(15)), 
         duration: 250,
         useNativeDriver: false, 
       }).start();
@@ -167,71 +158,122 @@ const Login = () => {
     if (loginMode === 'employee') return;
     Animated.timing(toggleAnim, { toValue: loginMode === 'phone' ? 1 : 0, duration: 250, useNativeDriver: false }).start();
   }, [loginMode]);
-const onGoogleButtonPress = async () => {
-  // setLoading(true); // Uncomment if you want to show a spinner
+
+  // --- REUSABLE SSO API CALLER ---
+const handleSSOApiCall = async (email, providerName) => {
   try {
-    // 1. Check for Google Play Services
-    await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    // Using MicrosoftLogin mutation for both Google and Microsoft as requested
+    const response = await MicrosoftLogin({ email: email })
+    console.log(`${providerName} API Response:`, response);
     
-    // 2. Trigger the Google Sign-In prompt
-    const signInResult = await GoogleSignin.signIn();
+    let isSuccess = response && (response.data.success || response.data?.data?.token || response.data || response.data.status === 'success');
     
-    // 3. Extract the token safely (handling newer library versions)
-    const idToken = signInResult?.data?.idToken || signInResult?.idToken; 
-    
-    if (!idToken) { 
-      throw new Error('No ID token found in Google response'); 
-    }
-    
-    // 4. Create a Firebase credential with the token
-    const googleCredential = auth.GoogleAuthProvider.credential(idToken);
-    
-    // 5. Sign-in the user with Firebase
-    const userCredential = await auth().signInWithCredential(googleCredential);
-    const email = userCredential?.user?.email;
-    
-    console.log('Google Sign-In successful, user email:', email);
-    
-    // 6. TODO: Call your ZoomConnect backend API here to log the user in
-    // if (email) { 
-    //    const response = await Emaillogin({ email: email, isSSO: true }).unwrap(); 
-    //    // Handle success...
-    // }
+    if (isSuccess) {
+      let userData = response.data?.data?.user || null;
 
+      if (response.data?.data?.token) {
+        await AsyncStorage.setItem('token', response.data?.data?.token);
+        await AsyncStorage.setItem('Enablebio', 'true');
+      } else if (response.data?.data?.token) {
+        await AsyncStorage.setItem('token', response.data?.data?.token);
+        await AsyncStorage.setItem('Enablebio', 'true');
+      }
+    
+      let isFirstLogin = userData?.first_login === 1;
+
+      if (isFirstLogin) {
+         navigation.navigate('FirstRegister', { user: userData, firstLogin: true, mode: loginMode }); 
+      } else {
+        dispatch(setUser(true));
+      }
+      
+      let successMsg = response.data.message || 'Login Successful';
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(successMsg, ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Success', successMsg);
+      }
+
+    } else {
+      let failMsg =res?.error?.data.message || 'Login failed';
+      if (Platform.OS === 'android') {
+        ToastAndroid.show(failMsg, ToastAndroid.SHORT);
+      } else {
+        Alert.alert('Notice', failMsg);
+      }
+    }
   } catch (error) {
-    // setLoading(false);
-    console.error('Google Sign-In Error:', error);
+    console.error(`${providerName} API Error:`, error);
+    let errorMsg = error?.data?.message || 'Something went wrong with backend authentication';
     
-    // Gracefully handle if the user simply closed the Google popup
-    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-      console.log('User cancelled the login flow');
-      return; 
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(errorMsg, ToastAndroid.SHORT);
+    } else {
+      Alert.alert('Error', errorMsg);
     }
-
-    // Pass a STRING to ToastAndroid, not an object
-    const errorMessage = error?.message || 'Google Sign-In failed';
-    ToastAndroid.show(errorMessage, ToastAndroid.SHORT);
   }
 };
 
-  const handleMicrosoftLogin = async (provider) => {
-    console.log('Starting Microsoft login with provider:', provider);
-    const config = { ...configs[provider] };
-    console.log('Microsoft Login Config:', config);
-
+  // --- GOOGLE LOGIN ---
+  const onGoogleButtonPress = async () => {
+    if (loading) return;
+    setLoading(true);
     try {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const signInResult = await GoogleSignin.signIn();
+      const idToken = signInResult?.data?.idToken || signInResult?.idToken; 
+      
+      if (!idToken) throw new Error('No ID token found');
+      
+      const googleCredential = auth.GoogleAuthProvider.credential(idToken);
+      const userCredential = await auth().signInWithCredential(googleCredential);
+      const email = userCredential?.user?.email;
+      
+      if (email) {
+        await handleSSOApiCall(email, 'Google');
+      } else {
+        ToastAndroid.show('Email not found in Google profile', ToastAndroid.SHORT);
+      }
+    } catch (error) {
+      if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
+        console.error('Google Sign-In Error:', error);
+        ToastAndroid.show(error?.message || 'Google Sign-In failed', ToastAndroid.SHORT);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // --- MICROSOFT LOGIN ---
+  const handleMicrosoftLogin = async (provider) => {
+    if (loading) return;
+    setLoading(true);
+    try {
+      const config = { ...configs[provider] };
       const res = await authorize(config);
-      console.log('Microsoft Login Response======>:', res);
+      
       if (res.idToken) {
         const decodedToken = jwtDecode(res.idToken);
-        const memail = decodedToken.email || decodedToken.preferred_username;
-        console.log('Decoded Microsoft ID Token:', decodedToken);
-        // if (memail) { onSignUp({ memail, microsoft: true }); }
-        // else { console.error("Email not found in decoded token"); }
-      } else { console.error("ID Token not found in response"); }
-    } catch (error) { console.error("Microsoft Login Error:", error); alert(`Login failed`); }
+        const email = decodedToken.email || decodedToken.preferred_username;
+        
+        if (email) {
+          await handleSSOApiCall(email, 'Microsoft');
+        } else {
+          ToastAndroid.show('Email not found in Microsoft profile', ToastAndroid.SHORT);
+        }
+      } else {
+        ToastAndroid.show('ID Token not found in Microsoft response', ToastAndroid.SHORT);
+      }
+    } catch (error) { 
+      console.error("Microsoft Login Error:", error); 
+      ToastAndroid.show('Microsoft Login failed', ToastAndroid.SHORT);
+    } finally {
+      setLoading(false);
+    }
   };
+
   const handleSetLoginMode = (mode) => {
+    if (loading) return;
     setLoginMode(mode);
     setUsername('');
     setPassword('');
@@ -240,98 +282,93 @@ const onGoogleButtonPress = async () => {
     setIsDropdownVisible(false);
   };
 
-const handleLogin = async () => {
-  if (loginMode === 'employee') {
-    if (!selectedCompanyId || !username || !password) {
-      ToastAndroid.show('Please select company and fill all fields', ToastAndroid.SHORT);
+  // --- STANDARD LOGIN ---
+  const handleLogin = async () => {
+    if (loginMode === 'employee') {
+      if (!selectedCompanyId || !username || !password) {
+        ToastAndroid.show('Please select company and fill all fields', ToastAndroid.SHORT);
+        return;
+      }
+    } else if (!username) {
+      ToastAndroid.show('Please fill required fields', ToastAndroid.SHORT);
       return;
     }
-  } else if (!username) {
-    ToastAndroid.show('Please fill required fields', ToastAndroid.SHORT);
-    return;
-  }
 
-  setLoading(true);
-  try {
-    let response;
-    if (loginMode === 'email') {
-      response = await Emaillogin({ email: username, password }).unwrap();
-     
-    } else if (loginMode === 'phone') {
-      response = await Mobilelogin({ mobile: username }).unwrap();
-    } else if (loginMode === 'employee') {
-      const loginBody = {
-        company_id: selectedCompanyId,
-        employee_code: username,
-        password: password, 
-      };
-      response = await LoginEmployee(loginBody).unwrap();
+    setLoading(true);
+    try {
+      let response;
+      if (loginMode === 'email') {
+        response = await Emaillogin({ email: username, password })
+      } else if (loginMode === 'phone') {
+        response = await Mobilelogin({ mobile: username });
       
-    }
+      } else if (loginMode === 'employee') {
+        response = await LoginEmployee({
+          company_id: selectedCompanyId,
+          employee_code: username,
+          password: password, 
+        });
+      }
+      console.log('Login API Response:',  response);
+      let isSuccess =  (response?.data?.data|| response.data?.data?.token || response?.data || response?.data?.status === 'success');
 
-    let isSuccess = false;
-    if (response && (response.success || response.token || response.data || response.status === 'success')) {
-        isSuccess = true;
-    }
+      if (isSuccess) {
 
-    if (isSuccess) {
-      if (loginMode === 'employee') {
-        // FIX 1: Safely extract user to prevent "Cannot read properties of undefined"
-        let userData = null;
-        if (response.data && response.data.user) {
-            userData = response.data.user;
-        }
+        console.log('Login successful, processing response...');
+        if (loginMode === 'employee') {
+          let userData = response.data?.data?.user || null;
+
+          if (response.data.data.token) {
+            await AsyncStorage.setItem('token', response.data.data.token);
+              await AsyncStorage.setItem('Enablebio', 'true');
+          } else if (response.token) {
+              await AsyncStorage.setItem('Enablebio', 'true');
+            await AsyncStorage.setItem('token', response.token);
+          }
         
-        console.log('Login successful, processing response for employee:', userData);
+          let isFirstLogin = userData?.first_login === 1;
 
-        if (response.data && response.data.token) {
-          await AsyncStorage.setItem('token', response.data.token);
-          console.log('Token stored from response.data.token');
-        } else if (response.token) {
-          await AsyncStorage.setItem('token', response.token);
-        }
-      
-        // FIX 2: Safely check for first_login
-        let isFirstLogin = false;
-        if (userData && userData.first_login === 1) {
-            isFirstLogin = true;
-        }
-
-        if (isFirstLogin) {
-           // FIX 3: Changed 'mode: mode' to 'mode: loginMode' to fix ReferenceError
-           navigation.navigate('FirstRegister', { user: userData, firstLogin: true, mode: loginMode }); 
+          if (isFirstLogin) {
+             navigation.navigate('FirstRegister', { user: userData, firstLogin: true, mode: loginMode }); 
+          } else {
+            dispatch(setUser(true));
+          }
+          
+          ToastAndroid.show(response.data.message || 'Login Successful', ToastAndroid.SHORT);
         } else {
-          dispatch(setUser(true));
+
+          navigation.navigate('Otp', { data: username, mode: loginMode });
         }
+      }   else if (response?.error?.data && response?.error?.data.message) {
         
-        // FIX 4: Changed the fallback message from "Login failed" to "Login Successful"
-        let toastMsg = 'Login Successful';
-        if (response && response.message) {
-            toastMsg = response.message;
-        }
-        ToastAndroid.show(toastMsg, ToastAndroid.SHORT);
-        
-      } else {
-        navigation.navigate('Otp', { data: username, mode: loginMode });
-      }
+            if (Platform.OS === 'android') {
+              ToastAndroid.show(response?.error?.data.message, ToastAndroid.SHORT);
+            } else {
+              Alert.alert('Notice', response?.error?.data?.message);
+            }
+          } 
       
-    } else {
-      let errorMsg = 'Login failed';
-      if (response && response.message) {
-          errorMsg = response.message;
+      else {
+       
+        if (Platform.OS === 'android') {
+              ToastAndroid.show( response?.error?.data.message|| 'Login failed', ToastAndroid.SHORT);
+            } else {
+              Alert.alert('Notice', response?.error?.data?.message|| 'Login failed');
+            }
+       
       }
-      ToastAndroid.show(errorMsg, ToastAndroid.SHORT);
+    } catch (error) {
+      if (Platform.OS === 'android') {
+              ToastAndroid.show( error.message|| 'Login failed', ToastAndroid.SHORT);
+            } else {
+              Alert.alert('Notice', error.message|| 'Login failed');
+            }
+    
+
+    } finally {
+      setLoading(false);
     }
-  } catch (error) {
-    let catchMsg = 'Something went wrong';
-    if (error && error.data && error.data.message) {
-        catchMsg = error.data.message;
-    }
-    ToastAndroid.show(catchMsg, ToastAndroid.SHORT);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const onSelectCompany = (item) => {
     setCompanySearch(item.name);
@@ -347,8 +384,11 @@ const handleLogin = async () => {
     <View style={styles.mainContainer}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       
+      {/* Pointer events are disabled when loading is true to ensure 
+        the user cannot tap inputs or buttons during API calls 
+      */}
       <TouchableWithoutFeedback onPress={() => { Keyboard.dismiss(); setIsDropdownVisible(false); }}>
-        <View style={styles.container}>
+        <View style={styles.container} pointerEvents={loading ? 'none' : 'auto'}>
           
           <Animated.View style={[styles.topSection, { height: topSectionHeightAnim, zIndex: 1 }]}>
             <LinearGradient colors={[COLORS_DEF.primaryDark, COLORS_DEF.primary, COLORS_DEF.primaryLight]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
@@ -383,10 +423,9 @@ const handleLogin = async () => {
               )}
 
               <View style={styles.formContainer}>
-                {/* --- Searchable Company Dropdown --- */}
                 {loginMode === 'employee' && (
                   <View style={{ zIndex: 2000 }}>
-                    <View style={styles.inputWrapper}>
+                    <View style={[styles.inputWrapper, loading && { opacity: 0.7 }]}>
                       <TextInput 
                         style={styles.inputField} 
                         placeholder="Search Company" 
@@ -394,6 +433,7 @@ const handleLogin = async () => {
                         value={companySearch} 
                         onChangeText={(t) => { setCompanySearch(t); setIsDropdownVisible(true); }}
                         onFocus={() => setIsDropdownVisible(true)}
+                        editable={!loading}
                       />
                       <Text style={{ color: COLORS_DEF.primary }}>▼</Text>
                     </View>
@@ -410,22 +450,24 @@ const handleLogin = async () => {
                   </View>
                 )}
 
-                <View style={styles.inputWrapper}>
-                  <TextInput style={styles.inputField} placeholder={usernamePlaceholder} placeholderTextColor={COLORS_DEF.placeholder} keyboardType={keyboardType} value={username} onChangeText={setUsername} autoCapitalize="none" />
+                <View style={[styles.inputWrapper, loading && { opacity: 0.7 }]}>
+                  <TextInput style={styles.inputField} placeholder={usernamePlaceholder} placeholderTextColor={COLORS_DEF.placeholder} keyboardType={keyboardType} value={username} onChangeText={setUsername} autoCapitalize="none" editable={!loading} />
                 </View>
 
                 {loginMode === 'employee' && (
-                  <>
-                    <View style={styles.inputWrapper}>
-                      <TextInput style={styles.inputField} placeholder="Password" placeholderTextColor={COLORS_DEF.placeholder} secureTextEntry={!showPass} value={password} onChangeText={setPassword} />
-                      <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPass(!showPass)}><Text style={{ fontSize: hp(2.2) }}>{showPass ? '🙈' : '👁️'}</Text></TouchableOpacity>
-                    </View>
-                    {/* <View style={styles.forgotRow}><TouchableOpacity onPress={() => navigation.navigate('FirstRegister')}><Text style={styles.forgotPasswordText}>Forgot Password?</Text></TouchableOpacity></View> */}
-                  </>
+                  <View style={[styles.inputWrapper, loading && { opacity: 0.7 }]}>
+                    <TextInput style={styles.inputField} placeholder="Password" placeholderTextColor={COLORS_DEF.placeholder} secureTextEntry={!showPass} value={password} onChangeText={setPassword} editable={!loading} />
+                    <TouchableOpacity style={styles.eyeBtn} onPress={() => setShowPass(!showPass)} disabled={loading}>
+                   
+                        <Icon name={showPass ? "eye-off" : "eye"} size={hp(2.5)} color="#BBB" />
+                      
+                      </TouchableOpacity>
+                     
+                  </View>
                 )}
               </View>
 
-              <TouchableOpacity activeOpacity={0.8} onPress={loading ? undefined : handleLogin} style={styles.shadowWrapper} disabled={loading}>
+              <TouchableOpacity activeOpacity={0.8} onPress={handleLogin} style={styles.shadowWrapper} disabled={loading}>
                 <LinearGradient colors={[COLORS_DEF.primary, COLORS_DEF.primaryLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.loginBtn}>
                   {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.loginBtnText}>Log In</Text>}
                 </LinearGradient>
@@ -433,7 +475,7 @@ const handleLogin = async () => {
 
               <View style={styles.infoTextContainer}>
                 {loginMode !== 'employee' ? (
-                  <Text style={styles.infoText}>Don't have an account? <Text style={styles.linkText} onPress={() => handleSetLoginMode('employee')}>Try Employee Code</Text></Text>
+                  <Text style={styles.infoText}>You can login with <Text style={styles.linkText} onPress={() => handleSetLoginMode('employee')}>Try Employee Code</Text></Text>
                 ) : (
                   <Text style={styles.infoText}>Switch back to <Text style={styles.linkText} onPress={() => handleSetLoginMode('email')}>Email</Text> or <Text style={styles.linkText} onPress={() => handleSetLoginMode('phone')}>Mobile</Text></Text>
                 )}
@@ -444,13 +486,25 @@ const handleLogin = async () => {
               </View>
 
               <View style={styles.socialRow}>
-                <TouchableOpacity style={styles.socialBtn} onPress={onGoogleButtonPress}><Image source={Images.gmail} style={styles.socialIcon} /></TouchableOpacity>
-                <TouchableOpacity style={styles.socialBtn} onPress={() => handleMicrosoftLogin('identityserver')}><Image source={Images.microsoft} style={styles.socialIcon} /></TouchableOpacity>
+                <TouchableOpacity style={[styles.socialBtn, loading && { opacity: 0.5 }]} onPress={onGoogleButtonPress} disabled={loading}>
+                  <Image source={Images.gmail} style={styles.socialIcon} />
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.socialBtn, loading && { opacity: 0.5 }]} onPress={() => handleMicrosoftLogin('identityserver')} disabled={loading}>
+                  <Image source={Images.microsoft} style={styles.socialIcon} />
+                </TouchableOpacity>
               </View>
               
               <View style={styles.footerContainer}><Text style={styles.poweredByText}>Powered by Novel Healthtech</Text></View>
             </View>
           </Animated.View>
+
+          {/* Full Screen Loading Overlay to prevent interaction during SSO */}
+          {loading && (
+             <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color={COLORS_DEF.primary} />
+             </View>
+          )}
+
         </View>
       </TouchableWithoutFeedback>
     </View>
@@ -462,6 +516,7 @@ export default Login;
 const styles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: COLORS_DEF.primaryDark },
   container: { flex: 1, backgroundColor: COLORS_DEF.bg },
+  loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(255,255,255,0.4)', zIndex: 9999, justifyContent: 'center', alignItems: 'center' },
   topSection: { position: 'absolute', top: 0, left: 0, right: 0, overflow: 'hidden' },
   safeTopContent: { flex: 1 },
   topContentContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingBottom: hp(5) },
@@ -477,20 +532,20 @@ const styles = StyleSheet.create({
   titleContainer: { alignItems: 'center', marginBottom: hp(2.5) },
   welcomeTitle: { fontSize: hp(3.2), fontWeight: '700', textAlign: 'center' },
   titleUnderline: { width: wp(10), height: hp(0.5), backgroundColor: COLORS_DEF.secondary, marginTop: hp(1), borderRadius: wp(0.5) },
-pillTrack: { 
-    width: PILL_WIDTH, // Fixed: Changed from '85%' to the exact constant
+  pillTrack: { 
+    width: PILL_WIDTH, 
     alignSelf: 'center', 
     height: hp(6), 
     backgroundColor: '#E9EAF0', 
     borderRadius: wp(6), 
-    padding: PILL_PADDING, // Best practice: keep padding bound to the constant 
+    padding: PILL_PADDING,  
     marginBottom: hp(3), 
     flexDirection: 'row', 
     position: 'relative' 
   },
   pillThumb: { 
     position: 'absolute', 
-    left: 0, // Fixed: Explicitly anchor to the left so translation math starts accurately
+    left: 0, 
     top: PILL_PADDING, 
     bottom: PILL_PADDING, 
     borderRadius: wp(5.5), 
@@ -504,8 +559,6 @@ pillTrack: {
   formContainer: { marginBottom: hp(1.2) },
   inputWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS_DEF.inputBg, borderWidth: 1, borderColor: COLORS_DEF.inputBorder, borderRadius: wp(4), height: hp(6.4), paddingHorizontal: wp(4), marginBottom: hp(2) },
   inputField: { flex: 1, fontSize: hp(1.5), color: '#333', height: '100%' },
-  
-  // DROPDOWN STYLES
   dropdownBox: {
     position: 'absolute', top: hp(6.5), left: 0, right: 0,
     backgroundColor: '#FFF', borderRadius: wp(3), borderWidth: 1, borderColor: COLORS_DEF.inputBorder,
@@ -513,10 +566,7 @@ pillTrack: {
   },
   dropdownItem: { paddingVertical: hp(1.5), paddingHorizontal: wp(4), borderBottomWidth: 1, borderBottomColor: '#F5F5F5' },
   dropdownText: { fontSize: hp(1.6), color: '#333' },
-
   eyeBtn: { padding: wp(2) },
-  forgotRow: { alignItems: 'flex-end', marginBottom: hp(1.2) },
-  forgotPasswordText: { color: COLORS_DEF.primary, fontSize: hp(1.5), fontWeight: '600' },
   shadowWrapper: { marginTop: hp(1.2), marginBottom: hp(2.5) },
   loginBtn: { height: hp(6.5), borderRadius: wp(6), justifyContent: 'center', alignItems: 'center' },
   loginBtnText: { color: '#FFFFFF', fontSize: hp(2), fontWeight: '700', letterSpacing: 1 },

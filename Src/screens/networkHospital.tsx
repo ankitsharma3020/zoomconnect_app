@@ -13,6 +13,7 @@ import {
   Modal,
   ScrollView,
   Platform,
+  Linking,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -75,15 +76,100 @@ const NetworkHospitalScreen = ({ route }) => {
     }
   };
 
+const openGoogleMap = (latitude, longitude) => {
+  // Check if coordinates exist
+  if (!latitude || !longitude) {
+    Alert.alert('Error', 'Location coordinates are missing.');
+    return;
+  }
+
+  // Ensure they are strings for concatenation
+  let lat = latitude + '';
+  let lng = longitude + '';
+  let url = '';
+
+  if (Platform.OS === 'android') {
+    // Android ke liye 'geo:' tag direct Google Maps app open karta hai
+    // '?q=' query pin drop karne ke kaam aati hai
+    url = 'geo:' + lat + ',' + lng + '?q=' + lat + ',' + lng;
+  } else {
+    // iOS ke liye 'maps:' tag default maps app open karta hai
+    url = 'maps://?q=' + lat + ',' + lng;
+  }
+
+  // Check if the phone can open the native map app
+  Linking.canOpenURL(url)
+    .then((supported) => {
+      if (supported) {
+        // Agar native app hai toh usme open karein
+        Linking.openURL(url);
+      } else {
+        // Fallback: Agar map app nahi hai, toh seedha browser mein universal Google Maps link open karein
+        let browserUrl = 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng;
+        Linking.openURL(browserUrl).catch((err) => {
+          Alert.alert('Error', 'Could not open Google Maps.');
+        });
+      }
+    })
+    .catch((err) => {
+      Alert.alert('Error', 'An error occurred while opening the map.');
+      console.error('An error occurred', err);
+    });
+};
+const openDialer = (phoneNumber) => {
+  try {
+    let formattedPhoneNumber = '';
+    
+    // Bina kisi default JS function ke sirf numbers filter karne ka pure loop
+    if (phoneNumber) {
+      for (let i = 0; i < phoneNumber.length; i++) {
+        let char = phoneNumber[i];
+        if (char >= '0' && char <= '9') {
+          formattedPhoneNumber += char;
+        }
+      }
+    }
+
+    // Agar number khali hai toh return kar dein
+    if (formattedPhoneNumber === '') {
+      Alert.alert('Error', 'Phone number is invalid or empty.');
+      return;
+    }
+
+    let url = '';
+    
+    if (Platform.OS === 'android') {
+      url = 'tel:' + formattedPhoneNumber;
+    } else {
+      // iOS ke liye telprompt use karna best hai taaki wo call karne se pehle confirm kare
+      url = 'telprompt:' + formattedPhoneNumber;
+    }
+
+    // Direct dialer open karna
+    Linking.openURL(url).catch((err) => {
+      Alert.alert('Error', 'An error occurred while trying to open the dialer: ' + err.message);
+      console.error('An error occurred', err);
+    });
+
+  } catch (error) {
+    Alert.alert('Error', 'An error occurred: ' + error.message);
+    console.error('An error occurred', error);
+  }
+};
   const statesList = useMemo(() => {
      if (!API_RESPONSE?.data?.search_options?.states) return [];
-     return API_RESPONSE.data.search_options.states.map(item => item.state).sort();
+     return API_RESPONSE?.data.search_options.states.map(item => item.state).sort();
   }, [API_RESPONSE]);
+  console.log('hospitalList:', hospitalList);
+ const filteredHospitals = hospitalList?.filter((hospital) => {
+  const searchLower = localSearch.toLowerCase();
+  
+  // Safe string conversion: Agar value nahi hai toh empty string use karo
+  const hospitalName = (hospital?.hospital_name || "").toLowerCase();
+  const hospitalPincode = (hospital?.pincode || "").toString().toLowerCase();
 
-  const filteredHospitals = hospitalList?.filter((hospital) =>
-    hospital.pincode?.includes(localSearch.toLowerCase()) || 
-    hospital.name?.toLowerCase().includes(localSearch.toLowerCase())
-  );
+  return hospitalName.includes(searchLower) || hospitalPincode.includes(searchLower);
+});
 
   // --- Input Handlers (Mutual Exclusivity) ---
   const handlePincodeChange = (text) => {
@@ -191,12 +277,17 @@ const NetworkHospitalScreen = ({ route }) => {
   };
 
   const renderHospitalCard = ({ item }) => (
+
     <View style={styles.resultCard3D}>
       <View style={styles.cardPatternCircle} />
 
       <View style={styles.cardContent}>
-        <Text style={styles.hospitalName}>{item.name ? item.name : 'SHAKUNTLA HOSPITAL & RESEARCH CENTRE'}</Text>
-        <Text style={styles.hospitalAddress}>{item.address ? item?.address : 'Near Dhamariya Pul, VARANASI'}</Text>
+        <Text style={styles.hospitalName}>{item?.hospital_name }</Text>
+        <Text style={[styles.hospitalAddress,{marginBottom:hp(0)}]}>{item.
+address_line_1 }</Text>
+     <Text style={[styles.hospitalAddress]}>{item.
+address_line_2? `${item.address_line_2}, ` : ''}{item.city}, {item.state}</Text>
+  
         
         <View style={styles.pincodeContainer}>
           <MaterialCommunityIcons name="map-marker-radius" size={16} color="#AB47BC" />
@@ -206,10 +297,12 @@ const NetworkHospitalScreen = ({ route }) => {
       </View>
 
       <View style={styles.cardActions}>
-        <TouchableOpacity style={[styles.actionBtn, styles.callBtn]}>
+        <TouchableOpacity style={[styles.actionBtn, styles.callBtn]} onPress={()=>openDialer(item?.phone)} >
             <MaterialIcons name="call" size={20} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionBtn, styles.navBtn]}>
+        <TouchableOpacity style={[styles.actionBtn, styles.navBtn]} onPress={()=>openGoogleMap(item.
+latitude_column ,item?.longitude_column
+)}>
             <MaterialIcons name="directions" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -327,7 +420,7 @@ const NetworkHospitalScreen = ({ route }) => {
                         style={styles.resultSearchInput}
                         placeholder="Filter by name or pincode..."
                         value={localSearch}
-                        onChangeText={setLocalSearch}
+                        onChangeText={(text) => setLocalSearch(text)}
                      />
                 </View>
             </View>

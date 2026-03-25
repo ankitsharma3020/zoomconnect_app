@@ -120,7 +120,7 @@ const Help = () => {
               title="Help Center"
               subtitle="Find answers or contact support."
               onBack={() => navigation?.goBack?.()}
-              illustration={require('../../assets/policies.png')} 
+              illustration={require('../../assets/help.png')} 
             />
           </View>
 
@@ -195,11 +195,9 @@ const Help = () => {
                         <View key={item.id} style={[styles.accordionItem, isExpanded && styles.accordionItemActive]}>
                             <TouchableOpacity style={styles.accordionHeader} onPress={() => toggleExpand(item.id)} activeOpacity={0.8}>
                                 <View style={[styles.iconBubble, { backgroundColor: isExpanded ? (item.color || '#e0e7ff') : '#f1f5f9' }]}>
-                                    {item.image_url ? (
-                                        <Image source={{ uri: item.image_url }} style={styles.faqImage} resizeMode="contain" />
-                                    ) : (
-                                        <Icon name="help" size={hp(2.5)} color={isExpanded ? '#fff' : (item.color || '#64748b')} />
-                                    )}
+                                    
+                                        <Image source={require('../../assets/purpleshortlogo.png')} style={styles.faqImage} resizeMode="contain" />
+                                  
                                 </View>
                                 <View style={styles.accordionTextContainer}>
                                     <Text style={[styles.questionText, isExpanded && styles.questionTextActive]}>{item?.question}</Text>
@@ -251,7 +249,7 @@ const styles = StyleSheet.create({
   backgroundLayer: { ...StyleSheet.absoluteFillObject, zIndex: 0, overflow: 'hidden', opacity: 0.5 },
   fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: '#F8F9FD' },
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(3.75) },
-  headerContainer: { paddingHorizontal: Platform.OS === 'ios' ? 0 : wp(4), marginBottom: hp(3), marginTop: hp(2) },
+  headerContainer: { paddingHorizontal:  wp(4), marginBottom: hp(3), marginTop: hp(2) },
   contentSection: { paddingHorizontal: wp(5), marginBottom: hp(3), marginTop: hp(1.25) },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(1.5), marginLeft: wp(1) },
   sectionTitle: { fontSize: hp(1.55), fontFamily: 'Montserrat-Bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6 },
@@ -277,7 +275,7 @@ const styles = StyleSheet.create({
   accordionItemActive: { borderColor: '#dbeafe', backgroundColor: '#fff' },
   accordionHeader: { flexDirection: 'row', alignItems: 'center', padding: wp(4) },
   iconBubble: { width: wp(11), height: wp(11), borderRadius: wp(3.5), alignItems: 'center', justifyContent: 'center', marginRight: wp(3.5) },
-  faqImage: { width: hp(2.5), height: hp(2.5) },
+  faqImage: { width: hp(5.5), height: hp(5.5) },
   accordionTextContainer: { flex: 1, justifyContent: 'center', paddingRight: wp(2) },
   questionText: { fontSize: hp(1.45), fontFamily: 'Montserrat-Bold', color: '#495668ff', lineHeight: hp(2.15) },
   questionTextActive: { color: '#0a0c10ff' },

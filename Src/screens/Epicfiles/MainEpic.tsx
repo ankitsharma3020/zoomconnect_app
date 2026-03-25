@@ -256,7 +256,7 @@ export const fetchDependence=createAsyncThunk(
   // 1. FIXED: The first argument is the payload (unused here, so '_'), 
   // the second argument is the thunkAPI object containing rejectWithValue.
    async ({ policyid }, { rejectWithValue })=>{
-    console.log("policyid in dependence",policyid)
+    
     try {
       const token = await AsyncStorage.getItem('token');
       

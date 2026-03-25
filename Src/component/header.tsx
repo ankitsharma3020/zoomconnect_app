@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { wp, hp } from '../utilites/Dimension';
 import { DOMAIN_URI } from '../redux/apiSlice';
 import { useSelector } from 'react-redux';
+import FastImage from '@d11/react-native-fast-image';
 
 type Props = {
   userName?: string;
@@ -55,7 +56,7 @@ export default function Header({
   const PROFILE_URL = '/profile';
   const selector=useSelector((state:any)=>state.profile)
   const {data, isLoading, error} = useSelector((state:any)=>state.profile)
-  // console.log("profile data in header",data)
+  // console.log("profile data in header",data?.data.user?.company?.comp_icon_url)
 
   
 
@@ -69,7 +70,7 @@ export default function Header({
   return (
     // 4. Use standard View with our calculated stable padding
     <View style={[styles.headerRow, { paddingTop }]}>
-      
+   
       {/* --- LEFT SECTION --- */}
       <View style={styles.leftContent}>
         {showBack ? (
@@ -79,7 +80,7 @@ export default function Header({
               activeOpacity={0.7}
               style={styles.backButton}
             >
-              <Image
+              <FastImage
                 source={{ uri: 'https://cdn-icons-png.flaticon.com/512/271/271220.png' }}
                 style={styles.backIcon}
               />
@@ -93,9 +94,9 @@ export default function Header({
             activeOpacity={0.8}
           >
             {data?.data?.user?.gender === 'male' ? (
-              <Image source={require('../../assets/profileman.png')} style={styles.avatar} />
+              <FastImage source={require('../../assets/profileman.png')} style={styles.avatar} />
             ) : (
-              <Image source={require('../../assets/profilewomen.png')} style={styles.avatar} />
+              <FastImage source={require('../../assets/profilewomen.png')} style={styles.avatar} />
             )}
             <View>
               <Text style={styles.greetSmall}>{greeting}</Text>
@@ -106,8 +107,8 @@ export default function Header({
       </View>
 
       {/* --- RIGHT SECTION --- */}
-      <Image
-        source={companyLogo}
+      <FastImage
+        source={ { uri: `https://zoomconnect.co.in/${data?.data?.user?.company?.comp_icon_url}` } }
         style={styles.companyLogo}
         resizeMode="contain"
       />
@@ -122,7 +123,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: wp(5),
     paddingBottom: hp(2),
-    
+  
     backgroundColor: '#F6F7FB',
     // paddingTop is now handled inline
   },
@@ -190,7 +191,7 @@ const styles = StyleSheet.create({
     tintColor: '#1E293B',
   },
   headerTitle: {
-    fontSize: hp(2),
+    fontSize: hp(1.7),
     fontFamily: 'Montserrat-Bold',
     color: '#1E293B',
   },

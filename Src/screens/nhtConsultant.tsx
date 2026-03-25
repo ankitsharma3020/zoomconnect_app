@@ -11,6 +11,8 @@ import {
   StatusBar,
   SafeAreaView,
   Platform,
+  Alert,
+  Linking,
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -73,6 +75,46 @@ const featuresData = [
 
 const DoctorOnCallScreen = () => {
     const navigation=useNavigation();
+    const openDialer = (phoneNumber) => {
+      try {
+        let formattedPhoneNumber = '';
+        
+        // Bina kisi default JS function ke sirf numbers filter karne ka pure loop
+        if (phoneNumber) {
+          for (let i = 0; i < phoneNumber.length; i++) {
+            let char = phoneNumber[i];
+            if (char >= '0' && char <= '9') {
+              formattedPhoneNumber += char;
+            }
+          }
+        }
+    
+        // Agar number khali hai toh return kar dein
+        if (formattedPhoneNumber === '') {
+          Alert.alert('Error', 'Phone number is invalid or empty.');
+          return;
+        }
+    
+        let url = '';
+        
+        if (Platform.OS === 'android') {
+          url = 'tel:' + formattedPhoneNumber;
+        } else {
+          // iOS ke liye telprompt use karna best hai taaki wo call karne se pehle confirm kare
+          url = 'telprompt:' + formattedPhoneNumber;
+        }
+    
+        // Direct dialer open karna
+        Linking.openURL(url).catch((err) => {
+          Alert.alert('Error', 'An error occurred while trying to open the dialer: ' + err.message);
+          console.error('An error occurred', err);
+        });
+    
+      } catch (error) {
+        Alert.alert('Error', 'An error occurred: ' + error.message);
+        console.error('An error occurred', error);
+      }
+    };
   return (
     <View style={styles.mainContainer}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
@@ -124,7 +166,7 @@ const DoctorOnCallScreen = () => {
                   {/* Partition Line */}
                   <View style={styles.heroPartitionLine} />
                   
-                  <TouchableOpacity style={styles.callNowButton} activeOpacity={0.8}>
+                  <TouchableOpacity style={styles.callNowButton} activeOpacity={0.8} onPress={()=>openDialer('18001200260')}>
                     <Text style={styles.callNowText}>Call Now</Text>
                     <Icon name="phone-in-talk" size={hp(2.2)} color={COLORS.primary} style={{ marginLeft: wp(2) }} />
                   </TouchableOpacity>

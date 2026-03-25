@@ -86,20 +86,28 @@ const LoginedesetPassword = () => {
     const subHide = Keyboard.addListener(hideEvent, onHide);
     return () => { subShow.remove(); subHide.remove(); };
   }, []);
-
+ const showToastOrAlert = (msg) => {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(msg, ToastAndroid.SHORT);
+    } else {
+      Alert.alert('Required', msg);
+    }
+  };
   const handleReset = async () => {
     const token = token || await AsyncStorage.getItem('token'); // Fallback to AsyncStorage if not passed via params
     // 1. Validations
     if (!newPassword || !confirmPassword) {
-      ToastAndroid.show("Please fill all fields", ToastAndroid.SHORT);
+       showToastOrAlert
+("Please fill all fields");
       return;
     }
     if (newPassword.length < 6) {
-      ToastAndroid.show("Password must be at least 6 characters", ToastAndroid.SHORT);
+       showToastOrAlert
+("Password must be at least 6 characters");
       return;
     }
     if (newPassword !== confirmPassword) {
-      ToastAndroid.show("Passwords do not match", ToastAndroid.SHORT);
+       showToastOrAlert("Passwords do not match");
       return;
     }
    
@@ -112,17 +120,24 @@ const LoginedesetPassword = () => {
         new_password: newPassword,
         confirm_password: confirmPassword
       };
-      console.log('Reset Password Payload:', body);
+     
       // 2. API Call with requested body structure
      let response = await resetPasswordApi(body);
       console.log('Reset Password Response:', response);
+     if(response?.data?.success===true){
+      showToastOrAlert(response?.data.message);
+      navigation.pop();
+     }else{
+      showToastOrAlert(response?.error?.data?.message || "Failed to reset password");
+     }
+      
 
       // 3. Success Handling
-      ToastAndroid.show(response?.message || "Password Reset Successfully", ToastAndroid.LONG);
+       
     
        // Clear user data on first login password reset
       
-        navigation.pop();
+        
       
       
       // Pop the screen back to Login
@@ -130,7 +145,8 @@ const LoginedesetPassword = () => {
       
     } catch (error) {
       const errorMsg = error?.data?.message || "Failed to reset password";
-      ToastAndroid.show(errorMsg, ToastAndroid.SHORT);
+       showToastOrAlert
+(errorMsg, ToastAndroid.SHORT);
     } finally {
       setLoading(false);
     }
