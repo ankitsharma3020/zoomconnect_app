@@ -256,9 +256,10 @@ export const fetchDependence=createAsyncThunk(
   // 1. FIXED: The first argument is the payload (unused here, so '_'), 
   // the second argument is the thunkAPI object containing rejectWithValue.
    async ({ policyid }, { rejectWithValue })=>{
-    
+    const token = await AsyncStorage.getItem('token');
+    console.log("Fetching Dependence for Policy ID:", policyid,token);
     try {
-      const token = await AsyncStorage.getItem('token');
+      
       
       if (!token) {
         throw new Error('No authentication token found');

@@ -205,7 +205,15 @@ Addsupportticket: builder.mutation({
   }),
   //   invalidatesTags: [""],
 }),
-
+// /company-status
+CompanyStatus: builder.mutation({
+  query: ({...body}) => ({
+    url: '/company-status',
+    method: 'POST',
+    body: body,
+  }),
+  //   invalidatesTags: [""],
+}),
    
 
 
@@ -250,4 +258,5 @@ useLoginemailMutation,
   useLoginmicrosoftMutation,
   useSubmitclaimMutation,
   useDownloadEcardMutation,
+  useCompanyStatusMutation,
 } = userApi;

@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions, Animated, Easing } from 'react-native';
-import { useSelector } from 'react-redux';
+import { View, StyleSheet, Dimensions, Animated, Easing, Alert } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import Splash from '../../splash';
 import { UserRoute } from './userroute';
 import { GuestRoute } from './guestroute';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useCompanyStatusMutation } from '../redux/service/user/user';
+import { GetApi } from '../component/Apifunctions';
+import { setUser } from '../redux/service/userSlice';
 
 const { height } = Dimensions.get('window');
 
@@ -15,9 +18,11 @@ const RouteManager = () => {
 
   // 2. State to keep Splash visible in background while animation happens
   const [isSplashVisible, setSplashVisible] = useState(true);
-
+  //  const [inactivecmp, setInactivecmp] = useState([]);
+   const [Inactivecomp] = useCompanyStatusMutation();
   // 3. Animated Value for the Slide (Starts off-screen at 'height')
   const slideAnim = useRef(new Animated.Value(height)).current;
+  const dispatch = useDispatch();
 
   useEffect(() => {
     // SCENARIO 1: GUEST (No Login)
@@ -55,6 +60,11 @@ const RouteManager = () => {
     };
     checkFirstLaunch();
   }, []);
+
+
+  
+
+
   // --- RENDER LOGIC ---
 
   // 1. If Guest, just show GuestRoute (No fancy slide needed usually, or add logic if desired)

@@ -1,5 +1,5 @@
 import { useNavigation } from '@react-navigation/native';
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { GetApi } from './Apifunctions';
 import {
@@ -12,13 +12,19 @@ import {
   TouchableOpacity,
 } from 'react-native';
 
-// 1. Import the hook
+// 1. Import the safe area hook
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+// 🔥 2. IMPORT COPILOT 🔥
+import { CopilotStep, walkthroughable } from 'react-native-copilot';
 
 import { wp, hp } from '../utilites/Dimension';
 import { DOMAIN_URI } from '../redux/apiSlice';
 import { useSelector } from 'react-redux';
 import FastImage from '@d11/react-native-fast-image';
+
+// 🔥 3. CREATE WALKTHROUGHABLE COMPONENT 🔥
+const CopilotTouchableOpacity = walkthroughable(TouchableOpacity);
 
 type Props = {
   userName?: string;
@@ -37,12 +43,10 @@ export default function Header({
   onBack,
   title = ""
 }: Props) {
-  // 2. Get real-time safe area insets
+  // Get real-time safe area insets
   const insets = useSafeAreaInsets();
   
-  // 3. CALCULATE PADDING WITH FALLBACK
-  // If insets.top is 0 (during nav transition), fallback to standard heights 
-  // (44 for iOS, 24 for Android) to prevent the "jump".
+  // CALCULATE PADDING WITH FALLBACK
   const iosNotch = insets.top > 0 ? insets.top : 44; 
   const androidStatusBar = StatusBar.currentHeight || 24;
   
@@ -51,14 +55,8 @@ export default function Header({
     : iosNotch + hp(1);
 
   const [greeting, setGreeting] = useState('Good Morning');
-  const [profileData, setProfileData] = useState(null);
   const navigation = useNavigation();
-  const PROFILE_URL = '/profile';
-  const selector=useSelector((state:any)=>state.profile)
-  const {data, isLoading, error} = useSelector((state:any)=>state.profile)
-  // console.log("profile data in header",data?.data.user?.company?.comp_icon_url)
-
-  
+  const { data, isLoading, error } = useSelector((state:any) => state.profile);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -68,7 +66,6 @@ export default function Header({
   }, []);
 
   return (
-    // 4. Use standard View with our calculated stable padding
     <View style={[styles.headerRow, { paddingTop }]}>
    
       {/* --- LEFT SECTION --- */}
@@ -88,27 +85,34 @@ export default function Header({
             {title ? <Text style={styles.headerTitle}>{title}</Text> : null}
           </View>
         ) : (
-          <TouchableOpacity
-            onPress={() => navigation.navigate('profile')}
-            style={styles.profileContainer}
-            activeOpacity={0.8}
-          >
-            {data?.data?.user?.gender === 'male' ? (
-              <FastImage source={require('../../assets/profileman.png')} style={styles.avatar} />
-            ) : (
-              <FastImage source={require('../../assets/profilewomen.png')} style={styles.avatar} />
-            )}
-            <View>
-              <Text style={styles.greetSmall}>{greeting}</Text>
-              <Text style={styles.greetName} numberOfLines={1}>{data?.data?.user.full_name}</Text>
-            </View>
-          </TouchableOpacity>
+          /* 🔥 STEP 5: PROFILE STEP IMPLEMENTATION 🔥 */
+          <CopilotStep 
+          name="profile"
+          order={5}
+           text={"Profile\nManage your profile and account settings here!"}
+            >
+            <CopilotTouchableOpacity
+              onPress={() => navigation.navigate('profile')}
+              style={styles.profileContainer}
+              activeOpacity={0.8}
+            >
+              {data?.data?.user?.gender === 'male' ? (
+                <FastImage source={require('../../assets/profileman.png')} style={styles.avatar} />
+              ) : (
+                <FastImage source={require('../../assets/profilewomen.png')} style={styles.avatar} />
+              )}
+              <View>
+                <Text style={styles.greetSmall}>{greeting}</Text>
+                <Text style={styles.greetName} numberOfLines={1}>{data?.data?.user?.full_name}</Text>
+              </View>
+            </CopilotTouchableOpacity>
+          </CopilotStep>
         )}
       </View>
 
       {/* --- RIGHT SECTION --- */}
       <FastImage
-        source={ { uri: `https://zoomconnect.co.in/${data?.data?.user?.company?.comp_icon_url}` } }
+        source={{ uri: `${DOMAIN_URI}/${data?.data?.user?.company?.comp_icon_url}` }}
         style={styles.companyLogo}
         resizeMode="contain"
       />
@@ -123,45 +127,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: wp(5),
     paddingBottom: hp(2),
-  
     backgroundColor: '#F6F7FB',
-    // paddingTop is now handled inline
   },
-  
-  // Wrapper for the left side
   leftContent: {
     flex: 1,
     marginRight: wp(4),
   },
-
-  // --- Home State Styles ---
   profileContainer: {
     flexDirection: 'row',
     alignItems: 'center',
   },
- avatar: {
-  width: wp(12),
-  height: wp(12),
-  borderRadius: wp(6),
-  marginRight: wp(3),
-  
-  // Border refinement
-  borderWidth: 1.5, // Slightly thinner for a smaller icon
-  borderColor: '#FFFFFF',
-  backgroundColor: '#F0F0F0', // Placeholder color while image loads
-
-  // iOS Shadow (Subtle & Crisp)
-  shadowColor: '#000',
-  shadowOffset: { 
-    width: 0, 
-    height: 2 // Reduced from hp(0.25) for better scaling
+  avatar: {
+    width: wp(12),
+    height: wp(12),
+    borderRadius: wp(6),
+    marginRight: wp(3),
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+    backgroundColor: '#F0F0F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15, 
+    shadowRadius: 3,
+    elevation: 3, 
   },
-  shadowOpacity: 0.15, // Slightly higher to compensate for smaller size
-  shadowRadius: 3,
-
-  // Android Shadow
-  elevation: 3, // Balanced for a small UI element
-},
   greetSmall: {
     color: '#64748B',
     fontSize: hp(1.2),
@@ -174,8 +163,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold',
     letterSpacing: -0.5,
   },
-
-  // --- Back State Styles ---
   backContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -195,8 +182,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Montserrat-Bold',
     color: '#1E293B',
   },
-
-  // --- Company Logo ---
   companyLogo: {
     width: wp(25),
     height: hp(5),

@@ -70,6 +70,12 @@ const WebRendering = ({ route, navigation }) => {
     const onShouldStartLoadWithRequest = (event) => {
         const { url } = event;
 
+        // Handle mailto links
+        if (url.startsWith('mailto:')) {
+            Linking.openURL(url);
+            return false;
+        }
+
         if (url.includes('.pdf') || url.includes('.jpg') || url.includes('.png') || url.includes('.docx') || url.includes('.xlsx')) {
             Linking.openURL(url);
             return false; 

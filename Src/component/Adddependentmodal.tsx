@@ -12,12 +12,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  ToastAndroid,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import RNFS from 'react-native-fs';
 import { pick, keepLocalCopy, types } from '@react-native-documents/picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import Toast from 'react-native-toast-message';
 import { useAdddependentMutation, useEditdependentMutation } from '../redux/service/user/user';
 import { fetchDependence } from '../screens/Epicfiles/MainEpic';
 import { useDispatch } from 'react-redux';
@@ -36,8 +36,6 @@ const genderOptions = [
 ];
 
 const DependantModal = ({ visible, onClose, policyId, data }) => {
-  // console.log('Editable Data in Modal:', data); 
-
   // --- Form State ---
   const [name, setName] = useState('');
   
@@ -71,31 +69,25 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
   // --- Animation & Pre-fill Logic ---
   useEffect(() => {
     if (visible) {
-      // 1. Trigger Open Animations
       Animated.parallel([
         Animated.spring(scaleValue, { toValue: 1, friction: 6, tension: 50, useNativeDriver: true }),
         Animated.timing(opacityValue, { toValue: 1, duration: 200, useNativeDriver: true }),
       ]).start();
 
-      // 2. Pre-fill Form if 'data' is passed (Edit Mode)
       if (data && Object.keys(data).length > 0) {
         setName(data.insured_name || '');
         
-        // Match existing dropdown values
         setRelation(relationOptions.find(r => r.value === data.relation?.toUpperCase()) || null);
         setGender(genderOptions.find(g => g.value === data.gender?.toUpperCase()) || null);
         
-        // Parse dates from strings to JS Date objects
         setDob(data.dob ? new Date(data.dob) : null);
         setDoe(data.date_of_event ? new Date(data.date_of_event) : null);
         
-        // Extract filename from the document URL for display
         if (data.document) {
           const extractedName = data.document.split('/').pop();
           setSelectedFile({ name: extractedName, uri: data.document });
         }
       } else {
-        // Reset Form for New Entry
         setName('');
         setRelation(null);
         setGender(null);
@@ -106,15 +98,27 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
         setIsChecked(false);
       }
 
+      setShowDobPicker(false);
+      setShowDoePicker(false);
+
     } else {
-      // Trigger Close Animations
       Animated.timing(scaleValue, { toValue: 0, duration: 200, useNativeDriver: true }).start();
       Animated.timing(opacityValue, { toValue: 0, duration: 200, useNativeDriver: true }).start();
+      
+      setShowDobPicker(false);
+      setShowDoePicker(false);
     }
-  }, [visible, data]); // Re-run whenever visibility or data changes
+  }, [visible, data]);
 
   // --- Date Handlers & Formatters ---
-  
+  const showToastOrAlert = (msg) => {
+    if (Platform.OS === 'android') {
+      ToastAndroid.show(msg, ToastAndroid.SHORT);
+    } else {
+      Alert.alert('Notice', msg);
+    }
+  };
+
   const formatDate = (dateObj) => {
     if (!dateObj) return '';
     const d = new Date(dateObj);
@@ -138,7 +142,10 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
   const handledateofbirthChange = (event, selectedDate) => {
     if (Platform.OS === 'android') setShowDobPicker(false);
     
-    if (event.type === 'dismissed' || !selectedDate) return;
+    if (event.type === 'dismissed' || !selectedDate) {
+        if (Platform.OS === 'ios') setShowDobPicker(false);
+        return;
+    }
 
     const pickedDate = new Date(selectedDate);
     pickedDate.setHours(0,0,0,0);
@@ -151,22 +158,28 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
     thirtyDaysAgo.setHours(0,0,0,0);
 
     if (pickedDate > currentDate) {
-      Toast.show({ type: 'error', text1: 'Invalid Date', text2: 'The date cannot be in the future.' });
+      showToastOrAlert('The date cannot be in the future.');
+      if (Platform.OS === 'ios') setShowDobPicker(false);
       return;
     }
 
     if (relation?.value === 'CHILD' && pickedDate < thirtyDaysAgo) {
-      Toast.show({ type: 'error', text1: 'Invalid Date', text2: 'Child birthdate cannot be older than 30 days.' });
+      showToastOrAlert('Child birthdate cannot be older than 30 days.');
+      if (Platform.OS === 'ios') setShowDobPicker(false);
       return;
     }
 
     setDob(pickedDate);
+    if (Platform.OS === 'ios') setShowDobPicker(false);
   };
 
   const handledateofeventChange = (event, selectedDate) => {
     if (Platform.OS === 'android') setShowDoePicker(false);
     
-    if (event.type === 'dismissed' || !selectedDate) return;
+    if (event.type === 'dismissed' || !selectedDate) {
+        if (Platform.OS === 'ios') setShowDoePicker(false);
+        return;
+    }
 
     const pickedDate = new Date(selectedDate);
     pickedDate.setHours(0,0,0,0);
@@ -179,16 +192,19 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
     thirtyDaysAgo.setHours(0,0,0,0);
 
     if (pickedDate > currentDate) {
-      Toast.show({ type: 'error', text1: 'Invalid Date', text2: 'The date cannot be in the future.' });
+      showToastOrAlert('The date cannot be in the future.');
+      if (Platform.OS === 'ios') setShowDoePicker(false);
       return;
     }
 
     if (pickedDate < thirtyDaysAgo) {
-      Toast.show({ type: 'error', text1: 'Invalid Date', text2: 'The date cannot be more than 30 days in the past.' });
+      showToastOrAlert('The date cannot be more than 30 days in the past.');
+      if (Platform.OS === 'ios') setShowDoePicker(false);
       return;
     }
 
     setDoe(pickedDate);
+    if (Platform.OS === 'ios') setShowDoePicker(false);
   };
 
   // --- Document Picker ---
@@ -224,7 +240,7 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
       const fileSizeInMB = fileSize / (1024 * 1024);
 
       if (fileSizeInMB > 2) {
-        Toast.show({ type: 'error', text1: 'File Size Error', text2: 'File is over 2MB.' });
+        showToastOrAlert('File is over 2MB.');
         return;
       }
 
@@ -238,33 +254,32 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
       });
       setDP64(base64Data);
 
-      Toast.show({ type: 'success', text1: 'File Selected', text2: fileObj.name });
+      showToastOrAlert(`File Selected: ${fileObj.name}`);
 
     } catch (error) {
       if (error?.code === 'OPERATION_CANCELED' || error?.code === 'DOCUMENTS_PICKER_CANCELED') {
         console.log('User cancelled');
       } else {
-        Toast.show({ type: 'error', text1: 'Error', text2: 'Failed to pick document' });
+        showToastOrAlert('Failed to pick document');
       }
     }
   }, []);
 
   const handleSubmit = async () => {
-    // Check if there is either a newly selected document (dp64) or an existing pre-filled one (selectedFile)
     const hasDocument = dp64 || selectedFile;
 
     if(!name || !relation || !gender || !dob || !hasDocument) {
-        Alert.alert('Missing Fields', 'Please fill all fields and ensure a document is attached.');
+        showToastOrAlert('Please fill all fields and ensure a document is attached.');
         return;
     }
     
     if(relation?.value === 'SPOUSE' && !doe) {
-       Alert.alert('Missing Fields', 'Please select Date of Event for Spouse.');
+       showToastOrAlert('Please select Date of Event for Spouse.');
        return;
     }
 
     if (!isChecked) {
-      Alert.alert('Required', 'Please accept the declaration to proceed.');
+      showToastOrAlert('Please accept the declaration to proceed.');
       return;
     }
     
@@ -281,55 +296,45 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
           date_of_event: relation?.value === 'CHILD' ? dobString : doeString,
       };
 
-      // Only attach document key if they actually picked a new file
-      // If editing and no new file picked, don't overwrite the existing document on the server
       if (dp64) {
          reqbody.document = dp64;
       }
 
-      // If we are editing existing data, pass the ID
       if (data && data.id) {
          reqbody.id = data.id; 
       }
       
       let res = await Adddependent(reqbody)
-
+      console.log('Add/Edit Dependant Response:', res);
+      
       if (res?.data?.success === true) {
-        dispatch(fetchDependence())
-        onClose(); // Automatically close the modal on success
-        return Toast.show({
-          type: 'success',
-          text1: data?.id ? 'Dependant Updated' : 'Added Dependant',
-          text2: `${res.data.success}`
-        });
+        dispatch(fetchDependence({policyid:policyId}));
+        onClose(); 
+        showToastOrAlert(data?.id ? 'Dependant Updated' : 'Added Dependant');
       } else {
-        return Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: `${res.error.data.message}`
-        });
+        showToastOrAlert(res.error?.data?.message || 'Failed to add dependant');
       }
 
     } catch (error) {
       console.log('Response Error:', error);
     }
   };
+
    const handleEdit = async () => {
-    // Check if there is either a newly selected document (dp64) or an existing pre-filled one (selectedFile)
     const hasDocument = dp64 || selectedFile;
 
     if(!name || !relation || !gender || !dob || !hasDocument) {
-        Alert.alert('Missing Fields', 'Please fill all fields and ensure a document is attached.');
+        showToastOrAlert('Please fill all fields and ensure a document is attached.');
         return;
     }
     
     if(relation?.value === 'SPOUSE' && !doe) {
-       Alert.alert('Missing Fields', 'Please select Date of Event for Spouse.');
+       showToastOrAlert('Please select Date of Event for Spouse.');
        return;
     }
 
     if (!isChecked) {
-      Alert.alert('Required', 'Please accept the declaration to proceed.');
+      showToastOrAlert('Please accept the declaration to proceed.');
       return;
     }
     
@@ -346,13 +351,10 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
           date_of_event: relation?.value === 'CHILD' ? dobString : doeString,
       };
 
-      // Only attach document key if they actually picked a new file
-      // If editing and no new file picked, don't overwrite the existing document on the server
       if (dp64) {
          reqbody.document = dp64;
       }
 
-      // If we are editing existing data, pass the ID
       if (data && data.id) {
          reqbody.id = data.id; 
       }
@@ -360,19 +362,11 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
       let res = await Editdependent(reqbody)
 
       if (res?.data?.success === true) {
-        dispatch(fetchDependence())
-        onClose(); // Automatically close the modal on success
-        return Toast.show({
-          type: 'success',
-          text1: data?.id ? 'Dependant Updated' : 'Added Dependant',
-          text2: `${res.data.success}`
-        });
+        dispatch(fetchDependence({policyid:policyId}));
+        onClose(); 
+        showToastOrAlert(data?.id ? 'Dependant Updated' : 'Added Dependant');
       } else {
-        return Toast.show({
-          type: 'error',
-          text1: 'Error',
-          text2: `${res.error.data.message}`
-        });
+        showToastOrAlert(res.error?.data?.message || 'Failed to update dependant');
       }
 
     } catch (error) {
@@ -506,7 +500,7 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
               {/* Date of Birth Picker */}
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Date of Birth</Text>
-                <TouchableOpacity style={styles.selector} onPress={() => setShowDobPicker(true)}>
+                <TouchableOpacity style={styles.selector} onPress={() => setShowDobPicker(!showDobPicker)}>
                   <Text style={dob ? styles.inputText : styles.placeholderText}>
                     {dob ? formatDate(dob) : 'DD/MM/YYYY'}
                   </Text>
@@ -516,9 +510,10 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
                     <DateTimePicker
                         value={dob || new Date()}
                         mode="date"
-                        display="default"
+                        display={Platform.OS === 'ios' ? 'inline' : 'default'}
                         onChange={handledateofbirthChange}
                         maximumDate={new Date()} 
+                        themeVariant="light"
                     />
                 )}
               </View>
@@ -527,7 +522,7 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
               {relation?.value === 'SPOUSE' && (
                 <View style={styles.inputGroup}>
                     <Text style={styles.label}>Date of Event (Marriage)</Text>
-                    <TouchableOpacity style={styles.selector} onPress={() => setShowDoePicker(true)}>
+                    <TouchableOpacity style={styles.selector} onPress={() => setShowDoePicker(!showDoePicker)}>
                     <Text style={doe ? styles.inputText : styles.placeholderText}>
                         {doe ? formatDate(doe) : 'DD/MM/YYYY'}
                     </Text>
@@ -537,9 +532,10 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
                         <DateTimePicker
                             value={doe || new Date()}
                             mode="date"
-                            display="default"
+                            display={Platform.OS === 'ios' ? 'inline' : 'default'}
                             onChange={handledateofeventChange}
                             maximumDate={new Date()}
+                            themeVariant="light"
                         />
                     )}
                 </View>
@@ -596,7 +592,7 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
               </TouchableOpacity>
 
               {/* Submit */}
-              <TouchableOpacity style={styles.submitBtn} onPress={data?.id ?handleEdit:handleSubmit}>
+              <TouchableOpacity style={styles.submitBtn} onPress={data?.id ? handleEdit : handleSubmit}>
                 <Text style={styles.submitBtnText}>{data?.id ? 'Update Details' : 'Submit Details'}</Text>
                 <Icon name={data?.id ? "content-save" : "arrow-right"} size={18} color="#fff" style={{marginLeft: 8}} />
               </TouchableOpacity>
@@ -604,7 +600,6 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
             </ScrollView>
           </Animated.View>
         </KeyboardAvoidingView>
-        <Toast /> 
       </View>
     </Modal>
   );

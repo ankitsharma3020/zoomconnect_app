@@ -113,7 +113,7 @@ export default function EnrollmentModal({ visible, onClose, onStart }: Props) {
               <View style={styles.descriptionContainer}>
                   <Text style={styles.leadCentered}>
                   Enrollment period begins{'\n'}
-                  <Text style={styles.highlightDate}>January 6 to 13, 2025.</Text>
+                  <Text style={styles.highlightDate}>Enroll Now</Text>
                   </Text>
               </View>
 
@@ -121,9 +121,18 @@ export default function EnrollmentModal({ visible, onClose, onStart }: Props) {
 
           {/* Buttons Footer */}
           <Animated.View style={[styles.footerContainer, { opacity: fadeAnim }]}>
-            <TouchableOpacity activeOpacity={0.9} style={styles.cta} onPress={onStart}>
-              <LinearGradient colors={["#3B82F6", "#10B981"]} start={{x:0, y:0}} end={{x:1, y:0}} style={styles.ctaInner}>
-                <Text style={styles.ctaText}>ENROLL NOW</Text>
+           <TouchableOpacity 
+  activeOpacity={0.9} 
+  onPress={() => {
+    onClose(); // 1. Tells the parent to close the modal
+    onStart(); // 2. Triggers your navigation/start logic
+  }}
+>
+              <LinearGradient colors={["#3B82F6", "#10B981"]} start={{x:0, y:0}} end={{x:1, y:0}} style={styles.cta}>
+                <View style={styles.ctaInner}>
+                   <Text style={styles.ctaText}>ENROLL NOW</Text>
+                </View>
+               
               </LinearGradient>
             </TouchableOpacity>
 
@@ -191,7 +200,7 @@ const styles = StyleSheet.create({
 
   // --- Image ---
   centralImageContainer: {
-    height: height * 0.28, 
+    height: height * 0.23, 
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
@@ -200,12 +209,13 @@ const styles = StyleSheet.create({
   },
   illustrationBig: {
     width: '85%', 
-    height: '100%', 
+    height: '90%', 
   },
 
   // --- Description ---
   descriptionContainer: {
     paddingHorizontal: wp(8), // approx 32
+    
     alignItems: 'center',
     zIndex: 20,
   },
@@ -234,7 +244,7 @@ const styles = StyleSheet.create({
     marginBottom: hp(6), // approx 90
   },
   cta: { 
-    width: '90%',
+    width: wp(80), // approx 320
     marginTop: hp(4), // approx 8
     borderRadius: wp(4), // approx 16
     overflow: 'hidden', 

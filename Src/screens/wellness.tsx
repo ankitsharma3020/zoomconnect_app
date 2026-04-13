@@ -169,8 +169,8 @@ const WellnessScreen = ({ navigation }: any) => {
 
 
 const handleCardPress = (item) => {
-    if (item?.link) {
-      navigation.navigate('WellnessWebRendering', { url:item?.link , label:item?.wellness_name });
+    if (item?.webview_url) {
+      navigation.navigate('WellnessWebRendering', { url:item?.webview_url, label:item?.wellness_name });
     
     }
   };
@@ -202,6 +202,7 @@ const handleCardPress = (item) => {
               title="Wellness"
               subtitle="Explore our health services."
               onBack={() => navigation?.goBack?.()}
+              isEnhanced3D = {true}
               illustration={require('../../assets/Wellness.png')}
             />
           </View>
@@ -347,7 +348,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FD' 
   },
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(6.25) }, 
-   sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(2),marginBottom: hp(4) },
+   sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(4),marginBottom: hp(4) },
 
   // --- TABS ---
   tabWrapper: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(1.2) },

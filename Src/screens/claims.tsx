@@ -305,6 +305,7 @@ const ClaimScreen = ({ navigation }) => {
               title="Claims"
               subtitle="Find all your claims here."
               onBack={() => navigation?.goBack()}
+              isEnhanced3D = {true}
               illustration={require('../../assets/claimshead.png')}
             />
           </View>
@@ -368,7 +369,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, zIndex: 1 },
   fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
   scrollContent: { paddingBottom: hp(15) },
-  sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(1),marginBottom: hp(3) },
+  sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(4),marginBottom: hp(3) },
   headerText: { fontSize: hp(2), fontFamily: 'Montserrat-Bold', color: '#333', marginBottom: hp(2) },
   
   claimsWrapper: {

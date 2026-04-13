@@ -12,7 +12,8 @@ import {
   Image,
   ImageBackground,
   ScrollView,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 import FastImage from '@d11/react-native-fast-image';
 import LinearGradient from 'react-native-linear-gradient';
@@ -299,7 +300,7 @@ const handleScroll = Animated.event(
           <View style={styles.imageWrapper3D}>
             {/* Secondary Organic Accent Shape */}
              <LinearGradient
-              colors={['rgba(244, 160, 224, 0.4)', 'rgba(207, 117, 117, 0.05)']}
+              colors={['rgba(244, 160, 224, 0.4)', 'rgba(181, 88, 88, 0.05)']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.blobShapeSecondary}
@@ -307,7 +308,7 @@ const handleScroll = Animated.event(
             
             {/* Primary Beautiful Glassmorphism Blob */}
             <LinearGradient
-              colors={['rgba(218, 107, 211, 0.35)', 'rgba(111, 74, 110, 0.15)']}
+              colors={['rgba(218, 107, 211, 0.35)', 'rgba(213, 140, 211, 0.15)']}
               start={{ x: 0.1, y: 0 }}
               end={{ x: 0.9, y: 1 }}
               style={styles.blobShapePrimary}
@@ -581,7 +582,7 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: wp(35),
     borderBottomLeftRadius: wp(40),
     transform: [{ rotate: '-12deg' }],
-    borderWidth: 1.5,
+    borderWidth:Platform.OS === 'ios' ? 0 : 1.5,
     borderColor: 'rgba(147, 71, 144, 0.1)', 
   },
   blobShapeSecondary: {

@@ -109,6 +109,7 @@ const PolicyDetails = ({ route }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(SCREEN_WIDTH)).current;
   const { data, isLoading } = useSelector((state) => state.policydetails);
+  console.log('Policy Details State:', { data, isLoading });  
  
   useEffect(() => {
     dispatch(fetchPolicydetails({ PolicyId: id }));
@@ -354,7 +355,7 @@ const DownloadEcards = async () => {
 
           <View style={styles.footerContainer}>
             <Text style={styles.footerText}>Made with care & empathy</Text>
-            <Text style={styles.footerHeart}>❤️</Text>
+            
           </View>
         </ScrollView>
       </SafeAreaView>
@@ -393,11 +394,7 @@ const DownloadEcards = async () => {
                 <ContactList matrix={data?.escalation_matrix} />
               </ScrollView>
 
-              <View style={styles.drawerFooter}>
-                <TouchableOpacity onPress={() => Alert.alert("Escalation", "Opening escalation form...")}>
-                   <Text style={styles.escalateText}>Escalate issue</Text>
-                </TouchableOpacity>
-              </View>
+            
             </SafeAreaView>
           </Animated.View>
         </View>
@@ -468,6 +465,8 @@ const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, o
   // Check if policy is GTL or GPA
   const policyName = (policy?.policy_name || policy?.name || data?.policy_name || '').toLowerCase();
   const isGtlOrGpa = policyName.includes('gtl') || policyName.includes('gpa');
+  const isNaturaladditionallowed=policy.natural_addition_allowed;
+  console.log('natural addition allowed',isNaturaladditionallowed);
   
   const getShortName = (name) => {
     if (!name) return '';
@@ -595,7 +594,7 @@ const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, o
       )}
       
       {/* Only show Add Dependent if NOT GTL or GPA */}
-      {!isGtlOrGpa && (
+      {!isGtlOrGpa && isNaturaladditionallowed !== 0 && (
         <TouchableOpacity style={styles.claimButton} activeOpacity={0.9}
         onPress={()=>navigation.navigate('NaturalAddition',{policyid:id})}
         >

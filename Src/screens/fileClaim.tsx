@@ -487,25 +487,27 @@ const FileClaimPage = ({ navigation }) => {
                   
                   {step === 4 && (
                     <>
-                      <PatternedInput label="Date of Admission *" placeholder="YYYY-MM-DD" value={doa} isTouchable onPress={() => setShowDoaPicker(true)} />
+                      <PatternedInput label="Date of Admission *" placeholder="YYYY-MM-DD" value={doa} isTouchable onPress={() => setShowDoaPicker(!showDoaPicker)} />
                       {showDoaPicker && (
                         <DateTimePicker 
                            value={doa ? new Date(doa) : new Date()} 
                            mode="date" 
-                           display="default" 
+                           display={Platform.OS === 'ios' ? 'inline' : 'default'}
                            onChange={onDoaChange} 
                            maximumDate={new Date()} 
+                           themeVariant="light"
                         />
                       )}
                       
-                      <PatternedInput label="Date of Discharge *" placeholder="YYYY-MM-DD" value={dod} isTouchable onPress={() => setShowDodPicker(true)} />
+                      <PatternedInput label="Date of Discharge *" placeholder="YYYY-MM-DD" value={dod} isTouchable onPress={() => setShowDodPicker(!showDodPicker)} />
                       {showDodPicker && (
                         <DateTimePicker 
                            value={dod ? new Date(dod) : new Date()} 
                            mode="date" 
-                           display="default" 
+                           display={Platform.OS === 'ios' ? 'inline' : 'default'}
                            onChange={onDodChange} 
                            minimumDate={doa ? new Date(doa) : undefined} 
+                           themeVariant="light"
                         />
                       )}
                       

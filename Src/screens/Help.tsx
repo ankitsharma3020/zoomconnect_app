@@ -120,8 +120,26 @@ const Help = () => {
               title="Help Center"
               subtitle="Find answers or contact support."
               onBack={() => navigation?.goBack?.()}
+              isEnhanced3D = {true}
               illustration={require('../../assets/help.png')} 
             />
+          </View>
+          <View style={styles.chatButtonContainer}>
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              style={styles.chatButton}
+              onPress={() => navigation.navigate('ChatScreen')}
+            >
+              <LinearGradient 
+                colors={['#ad5db8', '#d340ce']} 
+                start={{ x: 0, y: 0 }} 
+                end={{ x: 1, y: 0 }}
+                style={styles.chatButtonGradient}
+              >
+                <Icon name="chat-processing-outline" size={hp(2.5)} color="#ffffff" />
+                <Text style={styles.chatButtonText}>Chat with us</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.contentSection}>
@@ -249,7 +267,7 @@ const styles = StyleSheet.create({
   backgroundLayer: { ...StyleSheet.absoluteFillObject, zIndex: 0, overflow: 'hidden', opacity: 0.5 },
   fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: '#F8F9FD' },
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(3.75) },
-  headerContainer: { paddingHorizontal:  wp(4), marginBottom: hp(3), marginTop: hp(2) },
+  headerContainer: { paddingHorizontal:  wp(4), marginBottom: hp(3), marginTop: hp(4) },
   contentSection: { paddingHorizontal: wp(5), marginBottom: hp(3), marginTop: hp(1.25) },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(1.5), marginLeft: wp(1) },
   sectionTitle: { fontSize: hp(1.55), fontFamily: 'Montserrat-Bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6 },
@@ -287,6 +305,32 @@ const styles = StyleSheet.create({
   fixedFooterWrap: { position: 'absolute', left: 0, right: 0, bottom: BOTTOM_TAB_HEIGHT + hp(3.7), alignItems: 'center', zIndex: 0 },
   fixedFooterText: { fontSize: hp(7.5), fontFamily: 'Montserrat-Bold', color: 'rgba(15,17,32,0.06)', textTransform: 'uppercase', letterSpacing: 3, textAlign: 'center' },
   loadingContainer: { paddingVertical: hp(3), alignItems: 'center', justifyContent: 'center' },
+  chatButtonContainer: { 
+    paddingHorizontal: wp(5), 
+    marginBottom: hp(3.5), 
+    marginTop: hp(3) 
+  },
+  chatButton: { 
+    borderRadius: wp(4), 
+    shadowColor: '#2563eb', 
+    shadowOffset: { width: 0, height: hp(0.5) }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 8, 
+    elevation: 6 
+  },
+  chatButtonGradient: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: hp(1.8), 
+    borderRadius: wp(4) 
+  },
+  chatButtonText: { 
+    color: '#ffffff', 
+    fontSize: hp(1.8), 
+    fontFamily: 'Montserrat-Bold', 
+    marginLeft: wp(2) 
+  },
 });
 
 export default Help;

@@ -9,6 +9,7 @@ import {
   Dimensions,
   SafeAreaView,
   StatusBar,
+  Linking,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import LinearGradient from 'react-native-linear-gradient'; 
@@ -16,6 +17,7 @@ import DependantModal from '../component/Adddependentmodal';
 import { wp, hp } from '../utilites/Dimension'; 
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchDependence } from './Epicfiles/MainEpic';
+import { baseUrl, DOMAIN_URI } from '../redux/apiSlice';
 
 const { width, height } = Dimensions.get('window');
 
@@ -311,7 +313,7 @@ const DependantCard = ({ data ,openModal}) => {
               
               {/* --- ACTION BUTTONS ROW --- */}
               <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.docButton}>
+                <TouchableOpacity style={styles.docButton}  onPress={()=>Linking.openURL(`${DOMAIN_URI}/${data?.document}`)}>
                     <Icon name="file-document-outline" size={hp(2)} color="#2563eb" style={{marginRight: wp(1)}}/>
                     <Text style={styles.docButtonText}>View Docs</Text>
                 </TouchableOpacity>
