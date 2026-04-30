@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, BackHandler, SafeAreaView, Linking, StyleSheet, Animated } from 'react-native';
+import { View, BackHandler, Linking, StyleSheet, Animated } from 'react-native';
 import { WebView } from 'react-native-webview';
+
+// --> Imported useSafeAreaInsets to handle the bottom cutoff
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import Header from '../../component/header';
 import { DOMAIN_URI } from '../../redux/apiSlice';
@@ -44,6 +47,8 @@ const WebSkeletonShimmer = () => {
 
 const WebRendering = ({ route, navigation }) => {
     const { url, label } = route.params;
+    const insets = useSafeAreaInsets(); // <-- Get safe area bounds
+    
     // Initial load ke liye true rahega
     const [loading, setLoading] = useState(true);
     const webViewRef = useRef(null);
@@ -91,9 +96,11 @@ const WebRendering = ({ route, navigation }) => {
     };
 
     return (
-        <View style={{ flex: 1, backgroundColor: '#fff' }}>
+        // <-- Added paddingBottom: insets.bottom so the webview doesn't hide behind system bars
+        <View style={{ flex: 1, backgroundColor: '#fff', paddingBottom: insets.bottom }}>
             <Header
                 showBack={true} 
+                useCloseIcon={true} // <-- Pass true to show the cross icon
                 onBack={() => navigation.goBack()} 
                 title={label}
             />
@@ -110,8 +117,6 @@ const WebRendering = ({ route, navigation }) => {
                 onMessage={onMessage}
                 javaScriptEnabled={true}
                 domStorageEnabled={true}
-                
-                // YAHAN FIX KIYA HAI: onLoadStart ko hata diya taaki internal navigation pe shimmer na aaye
                 
                 // Pehli baar load finish hone ke baad loader hamesha ke liye hide ho jayega
                 onLoadEnd={() => setLoading(false)}

@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { wp, hp } from '../utilites/Dimension'; // Adjusted import
+import { useSelector } from 'react-redux';
 
 const { width } = Dimensions.get('window');
 
@@ -24,7 +25,7 @@ const DATA = [
     image: require('../../assets/talktodocb.png'),
     gradient: ['#4338ca', '#6366f1'],
     bgColor: '#4338ca',
-    navigation:'DoconCall'
+    navigation:'WellnessWebRendering'
   },
   // {
   //   id: '2',
@@ -52,11 +53,12 @@ const ITEM_WIDTH_CAROUSEL = width * 0.85; // Normal width
 const ITEM_WIDTH_SINGLE = width * 0.94; // Wider width for single item
 
 export default function BannerCarousel() {
+    const { data: wellnessData, isLoading: loading } = useSelector((state: any) => state.wellness);
   const navigation = useNavigation();
   const scrollX = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(0);
-
+ console.log("wellnessData Data in Dashboard:", wellnessData);
   // 1. Determine Layout Logic based on Data Length
   const isSingleItem = DATA.length === 1;
   
@@ -86,6 +88,32 @@ export default function BannerCarousel() {
 
     return () => clearInterval(interval);
   }, [currentIndex, isSingleItem, snapInterval]);
+  const handlePress = (item) => {
+    
+    if (item.title === 'Talk to Doctor') {
+
+      // Find the specific item in the wellnessData array
+      // Note: adjust 'name' to match your exact API key (e.g., 'wellness_name' or 'title')
+      const targetWellnessItem = wellnessData?.find(
+         
+        (wellness) => wellness.wellness_name === 'Talk to Doctor (Specialists)' 
+       
+      );
+    console.log("Target Wellness Item:", targetWellnessItem);
+      if (targetWellnessItem && targetWellnessItem.webview_url) {
+        // Navigate to your screen and pass the URL as a param
+        navigation.navigate(item.navigation, { url: targetWellnessItem.webview_url });
+      } else {
+        // Handle case where data isn't loaded or URL is missing
+        console.warn("WebView URL not found for Talk to Doctor");
+        // Optional: Alert the user
+        // Alert.alert("Loading", "Please wait while we fetch the doctor details.");
+      }
+    } else {
+      // Default navigation for other banners
+      navigation.navigate(item.navigation);
+    }
+  };
 
   const handleMomentumScrollEnd = (event) => {
     const offset = event.nativeEvent.contentOffset.x;
@@ -152,7 +180,7 @@ export default function BannerCarousel() {
                 },
               ]}
             >
-              <TouchableOpacity onPress={()=>navigation.navigate(item.navigation)} activeOpacity={0.8}  style={styles.card} >
+              <TouchableOpacity onPress={() => handlePress(item)} activeOpacity={0.8}  style={styles.card} >
                   <LinearGradient
                 colors={item.gradient}
                 style={styles.card}

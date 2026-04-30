@@ -1,6 +1,7 @@
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
-import { useSelector } from 'react-redux'; 
+import { useSelector } from 'react-redux';
+import axios from 'axios'; 
 import {
   StyleSheet,
   View,
@@ -17,7 +18,9 @@ import {
 } from 'react-native';
 import FastImage from '@d11/react-native-fast-image';
 import LinearGradient from 'react-native-linear-gradient';
-import { wp, hp } from './Src/utilites/Dimension'; 
+import AsyncStorage from '@react-native-async-storage/async-storage'; // 🔥 ADDED THIS IMPORT
+import { wp, hp } from './Src/utilites/Dimension';
+import { fetchDynamicUrl } from './Src/redux/apiSlice';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -73,6 +76,48 @@ const Splash = () => {
   const bottomContentTranslateYAnim = useRef(new Animated.Value(hp(100))).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
   const scrollX = useRef(new Animated.Value(0)).current; // Tracks horizontal scroll
+
+  // 🔥 ADDED TUTORIAL CHECK FUNCTION HERE 🔥
+  useEffect(() => {
+    const checkTutorialStatus = async () => {
+      try {
+        const tutorialStatus = await AsyncStorage.getItem('tutorialCompleted');
+        // If undefined or null, set it to 'false'. If it's already 'true' or 'false', it does nothing.
+        if (tutorialStatus === null || tutorialStatus === undefined) {
+          await AsyncStorage.setItem('tutorialCompleted', 'false');
+        }
+      } catch (error) {
+        console.error('Error checking tutorial status in AsyncStorage:', error);
+      }
+    };
+
+    checkTutorialStatus();
+  }, []);
+  useEffect(() => {
+    const initializeApp = async () => {
+      try {
+        console.log("⏳ Splash Screen: Waiting for URL to fetch...");
+        
+        // 1. THIS IS THE MOST IMPORTANT LINE IN YOUR APP
+        // It pauses the Splash screen until the URL is successfully fetched.
+        await fetchDynamicUrl(); 
+        
+        console.log("🔓 Splash Screen: URL fetched! Unlocking app...");
+        
+        // 2. NOW you are allowed to navigate to the next screen or set your animations to finish.
+        // If you have a state like `setIsReady(true)`, do it here!
+        
+      } catch (error) {
+        console.error('💥 CRITICAL: App failed to get the base URL. Cannot proceed.');
+        // Show an error popup to the user here, or a retry button.
+      }
+    };
+
+    initializeApp();
+  }, []);
+
+  // 🔥 CALL GET-URL ENDPOINT 🔥
+  
 
   useEffect(() => {
     FastImage.preload([
@@ -679,8 +724,3 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
   },
 });
-
-
-
-
-

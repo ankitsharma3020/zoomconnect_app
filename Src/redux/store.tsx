@@ -18,6 +18,7 @@ import {
   import surveyReducer from '../screens/Slices/SurveySlice';
   import hospitalstateReducer from '../screens/Slices/getStatebypidSlice';
   import DependentReducer from '../screens/Slices/getDependentList';
+  import ClaimReducer from '../screens/Slices/getclaimSlice';
 
 
 
@@ -40,6 +41,7 @@ import {
     surveys:surveyReducer,
     hospitalstate:hospitalstateReducer,
     dependence:DependentReducer,
+    claims:ClaimReducer
 
      
  

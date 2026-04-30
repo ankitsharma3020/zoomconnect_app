@@ -4,12 +4,13 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, '15.1'
 prepare_react_native_project!
 
-# Firebase needs this flag to play nicely with React Native
+# 👇 THE GOLDEN STANDARD FOR FIREBASE 👇
 $RNFirebaseAsStaticFramework = true
 
 target 'ZoomConnect' do
-  # Ye line Firebase (Swift) ke liye MUST hai, iske bina -Swift.h header nahi banega
+  # We MUST use this for Firebase to generate its Swift.h files
   use_frameworks! :linkage => :static
+  # 👆 -------------------------------- 👆
 
   config = use_native_modules!
 
@@ -21,11 +22,28 @@ target 'ZoomConnect' do
   )
 
   post_install do |installer|
-    # React Native's script will handle the rest of the New Arch flags natively
     react_native_post_install(
       installer,
       config[:reactNativePath],
       :mac_catalyst_enabled => false
     )
+    
+    installer.pods_project.targets.each do |target|
+      # 1. Xcode 15/16 'fmt' workaround
+      if target.name == 'fmt'
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_CXX_LANGUAGE_STANDARD'] = 'c++17'
+        end
+      end
+      
+      # 2. 👇 THE FIX FOR APP-AUTH CRASH 👇
+      # This forces RNAppAuth to expose its Obj-C headers to its Swift files
+      if target.name == 'RNAppAuth'
+        target.build_configurations.each do |config|
+          config.build_settings['DEFINES_MODULE'] = 'YES'
+        end
+      end
+      # 👆 ------------------------------- 👆
+    end
   end
 end

@@ -104,13 +104,13 @@ const ChatScreen = ({ route }) => {
         const isTerminal = lastMsg?.message?.is_terminal;
 
         if (isResolved || isTerminal) {
-          options = [{ id: 'start_over', label: 'Start New Chat' }, { id: 'other', label: 'Other Query' }];
+          options = [{ id: 'start_over', label: 'Start New Chat' }, { id: 'other', label: 'Raise Ticket' }];
           if (isResolved) {
             formattedMessages.push({ id: 'end-msg', text: "Chat ended. Issue resolved.", sender: 'bot', type: 'text' });
           }
         } else {
           options = lastMsg?.message?.options ? [...lastMsg.message.options] : [];
-          if (!options.find(o => o.id === 'other')) options.push({ id: 'other', label: 'Other Query' });
+          if (!options.find(o => o.id === 'other')) options.push({ id: 'other', label: 'Raise Ticket' });
         }
         setMessages(formattedMessages);
         setCurrentOptions(options);
@@ -126,7 +126,7 @@ const ChatScreen = ({ route }) => {
       if (res?.data) {
         setMessages([{ id: Date.now(), text: res.data.message, sender: 'bot', type: 'text' }]);
         let opts = res.data.options || [];
-        opts.push({ id: 'other', label: 'Other Query' });
+        opts.push({ id: 'other', label: 'Raise Ticket' });
         setCurrentOptions(opts);
         setChatContext({ ticket_id: res.data.conversation_id, state_key: res.data.state_key });
         dispatch(fetchtickets());
@@ -152,8 +152,8 @@ const ChatScreen = ({ route }) => {
         const botMsg = { id: Date.now() + 1, text: res.data.message, sender: 'bot', type: 'text' };
         let nextOptions = res.data.options || [];
         if (res.data.is_terminal) {
-            nextOptions = [{ id: 'start_over', label: 'Start New Chat' }, { id: 'other', label: 'Other Query' }];
-        } else { nextOptions.push({ id: 'other', label: 'Other Query' }); }
+            nextOptions = [{ id: 'start_over', label: 'Start New Chat' }, { id: 'other', label: 'Raise Ticket' }];
+        } else { nextOptions.push({ id: 'other', label: 'Raise Ticket' }); }
         setMessages(prev => [...prev, botMsg]);
         setCurrentOptions(nextOptions);
         setChatContext(prev => ({ ...prev, state_key: res.data.state_key }));

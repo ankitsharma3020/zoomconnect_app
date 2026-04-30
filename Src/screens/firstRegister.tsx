@@ -14,15 +14,15 @@ import {
   Platform,
   LayoutAnimation,
   UIManager,
-  ActivityIndicator, // Added
-  ToastAndroid,      // Added
+  ActivityIndicator, 
+  ToastAndroid,      
 } from 'react-native';
 
 import React, { useState, useRef, useEffect } from 'react';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { wp, hp } from '../utilites/Dimension'; 
-import { useLoginmobileMutation } from '../redux/service/user/user'; // Added API Hook
+import { useLoginmobileMutation } from '../redux/service/user/user'; 
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -48,7 +48,28 @@ const COLORS = {
   inputDisabled: '#F5F5F5',
 };
 
-// ... (ExactShardPattern and CardPattern remain unchanged, assuming they are above) ...
+// --- HELPER COMPONENT FOR TOGGLING TEXT ---
+const ExpandableText = ({ value }) => {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const textStr = value ? String(value) : '-';
+
+  if (textStr.length <= 20) {
+    return <Text style={styles.infoValue}>{textStr}</Text>;
+  }
+
+  return (
+    <Text 
+      style={styles.infoValue} 
+      onPress={() => {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setIsExpanded(!isExpanded);
+      }}
+    >
+      {isExpanded ? textStr : `${textStr.substring(0, 20)}...`}
+    </Text>
+  );
+};
+
 const ExactShardPattern = () => {
   return (
     <View style={StyleSheet.absoluteFill} pointerEvents="none">
@@ -70,13 +91,12 @@ const CardPattern = () => {
 
 const RegisterScreen = ({ navigation, route }) => {
   const { user, firstLogin, mode } = route.params;
-  console.log("RegisterScreen received params:", { user, firstLogin, mode });
   const userData = user ? user : null;
 
   // --- STATE ---
   const [currentStep, setCurrentStep] = useState(1); 
   const [mobilenumber, setMobilenumber] = useState('');
-  const [loading, setLoading] = useState(false); // Added Loading State
+  const [loading, setLoading] = useState(false); 
 
   // --- API MUTATION ---
   const [Mobilelogin] = useLoginmobileMutation(); 
@@ -122,10 +142,8 @@ const RegisterScreen = ({ navigation, route }) => {
     setLoading(true);
     try {
       const response = await Mobilelogin({ mobile: targetMobile }).unwrap();
-      console.log('Mobile Login Response:', response);  
       
       if (response && (response.success || response.token || response.status === 'success')) {
-        // Navigates to OTP with the target mobile number
         navigation.navigate('FirstloginOtp', { data: targetMobile, firstLogin: true, mode: 'phone' });
       } else {
         ToastAndroid.show(response?.message || 'Failed to send OTP', ToastAndroid.SHORT);
@@ -137,14 +155,10 @@ const RegisterScreen = ({ navigation, route }) => {
     }
   };
 
-  // Step 1 Button Action
   const onStep1Submit = () => {
     if (mode === 'phone') {
-      // Skips Step 2 and immediately calls API with existing number
       const userMobile = userData?.mobile || userData?.phone_number; 
-              navigation.navigate('NonResetPassword',{firstLogin: firstLogin, data: userMobile, mode: mode});
-
-      // handleSendOtp(userMobile);
+      navigation.navigate('NonResetPassword',{firstLogin: firstLogin, data: userMobile, mode: mode});
     } else {
       goToStep2();
     }
@@ -175,7 +189,6 @@ const RegisterScreen = ({ navigation, route }) => {
               <View style={styles.headerGroup}>
                  <View style={{flex: 1}}>
                     <Text style={styles.cardTitle}>Verify Details</Text>
-                    {/* Dynamic Step Counter based on Mode */}
                     <Text style={styles.cardSubtitle}>
                       Step {currentStep} of {mode === 'number' ? 1 : 2}
                     </Text>
@@ -194,13 +207,28 @@ const RegisterScreen = ({ navigation, route }) => {
               {/* --- STEP 1 --- */}
               {currentStep === 1 && (
                 <View style={styles.infoContainer}>
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Name:</Text><Text style={styles.infoValue}>{userData?.first_name}</Text></View>
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Name:</Text>
+                    <ExpandableText value={userData?.first_name} />
+                  </View>
                   <View style={styles.divider} />
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Email:</Text><Text style={styles.infoValue}>{userData?.email}</Text></View>
+                  
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Email:</Text>
+                    <ExpandableText value={userData?.email} />
+                  </View>
                   <View style={styles.divider} />
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Employee Code:</Text><Text style={styles.infoValue}>{userData?.employee_code}</Text></View>
+                  
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Employee Code:</Text>
+                    <ExpandableText value={userData?.employee_code} />
+                  </View>
                   <View style={styles.divider} />
-                  <View style={styles.infoRow}><Text style={styles.infoLabel}>Gender:</Text><Text style={styles.infoValue}>{userData?.gender}</Text></View>
+                  
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Gender:</Text>
+                    <ExpandableText value={userData?.gender} />
+                  </View>
                   <View style={styles.divider} />
 
                   <TouchableOpacity activeOpacity={0.8} onPress={loading ? null : onStep1Submit} style={styles.buttonShadow} disabled={loading}>
@@ -209,7 +237,6 @@ const RegisterScreen = ({ navigation, route }) => {
                         <ActivityIndicator color={COLORS.white} />
                       ) : (
                         <>
-                          {/* Button text adapts based on mode */}
                           <Text style={styles.submitBtnText}>{mode === 'number' ? 'Get OTP' : 'Next'}</Text>
                           {mode !== 'number' && <Icon name="arrow-right" size={hp(2.5)} color={COLORS.white} style={{marginLeft: wp(2)}} />}
                         </>
@@ -255,22 +282,17 @@ const RegisterScreen = ({ navigation, route }) => {
 
 export default RegisterScreen;
 
-// ... (Your exact styles remain unchanged here)
-
-export default RegisterScreen;
-
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: COLORS.primaryDark },
   container: { flex: 1, backgroundColor: COLORS.primaryDark },
 
-  // --- Top Section ---
   topSection: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
     overflow: 'hidden',
     justifyContent: 'flex-start', 
     alignItems: 'center',
-    paddingTop: Platform.OS === 'android' ? hp(7.5) : hp(8.5), // approx 60/70
+    paddingTop: Platform.OS === 'android' ? hp(7.5) : hp(8.5), 
   },
   backButtonAbsolute: {
     position: 'absolute',
@@ -289,7 +311,6 @@ const styles = StyleSheet.create({
   topLogoWrap: { 
     alignItems: 'center', 
     justifyContent: 'center', 
-    // Shift logo up slightly to sit nicely above card
     marginTop: hp(5), 
   },
   topLogo: { 
@@ -297,7 +318,6 @@ const styles = StyleSheet.create({
     height: hp(10) 
   }, 
 
-  // --- Floating Card ---
   floatingCard: {
     position: 'absolute',
     left: wp(5), 
@@ -314,11 +334,10 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: wp(6),
-    paddingTop: hp(3.7), // approx 30
+    paddingTop: hp(3.7), 
     paddingBottom: hp(2.5),
   },
 
-  // --- Header Inside Card ---
   headerGroup: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -326,12 +345,12 @@ const styles = StyleSheet.create({
     marginBottom: hp(3),
   },
   cardTitle: {
-    fontSize: hp(2.4), // approx 24
+    fontSize: hp(2.4), 
     fontFamily: 'Montserrat-Bold',
     color: COLORS.text,
   },
   cardSubtitle: {
-    fontSize: hp(1.6), // approx 13
+    fontSize: hp(1.6), 
     color: COLORS.primary,
     marginTop: hp(0.5),
     fontFamily: 'Montserrat-SemiBold',
@@ -340,7 +359,7 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   avatar: {
-    width: wp(15), // approx 60
+    width: wp(15), 
     height: wp(15),
     borderRadius: wp(7.5),
     borderWidth: 2,
@@ -351,7 +370,7 @@ const styles = StyleSheet.create({
     bottom: -2,
     right: -2,
     backgroundColor: COLORS.primary,
-    width: wp(5.5), // approx 22
+    width: wp(5.5), 
     height: wp(5.5),
     borderRadius: wp(2.75),
     justifyContent: 'center',
@@ -360,7 +379,6 @@ const styles = StyleSheet.create({
     borderColor: '#FFF',
   },
 
-  // --- Info Display (Step 1) ---
   infoContainer: {
     marginTop: hp(1.2),
     marginBottom: hp(2.5),
@@ -368,16 +386,16 @@ const styles = StyleSheet.create({
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: hp(1), // approx 12
+    alignItems: 'flex-start',
+    paddingVertical: hp(1), 
   },
   infoLabel: {
-    fontSize: hp(1.5), // approx 15
+    fontSize: hp(1.5), 
     color: COLORS.textLight,
     fontFamily: 'Montserrat-SemiBold',
   },
   infoValue: {
-    fontSize: hp(1.6), // approx 16
+    fontSize: hp(1.4), 
     color: COLORS.text,
     fontFamily: 'Montserrat-Bold',
     textAlign: 'right',
@@ -390,13 +408,12 @@ const styles = StyleSheet.create({
     width: '100%',
   },
 
-  // --- Input Styles (Step 2) ---
   inputGroup: {
     marginBottom: hp(3),
     marginTop: hp(1.2),
   },
   label: {
-    fontSize: hp(1.8), // approx 14
+    fontSize: hp(1.8), 
     fontFamily: 'Montserrat-SemiBold',
     color: COLORS.textLight,
     marginBottom: hp(1),
@@ -407,21 +424,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: COLORS.inputBorder,
-    borderRadius: wp(3), // approx 12
-    height: hp(6.2), // approx 50
-  
+    borderRadius: wp(3), 
+    height: hp(6.2), 
     paddingHorizontal: wp(3),
     backgroundColor: 'rgba(255,255,255,0.9)', 
   },
   input: {
     flex: 1,
-    fontSize: hp(1.7), // approx 15
+    fontSize: hp(1.7), 
     color: COLORS.text,
     fontFamily: 'Montserrat-SemiBold',
     height: '100%',
   },
 
-  // --- Button ---
   buttonShadow: {
     marginTop: hp(2.5),
     marginBottom: hp(1.2),
@@ -432,20 +447,19 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   submitBtn: {
-    height: hp(6), // approx 52
-    borderRadius: wp(3), // approx 12
+    height: hp(6), 
+    borderRadius: wp(3), 
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   submitBtnText: {
     color: '#FFFFFF',
-    fontSize: hp(1.8), // approx 17
+    fontSize: hp(1.8), 
     fontFamily: 'Montserrat-Bold',
     letterSpacing: 0.5,
   },
 
-  // --- Previous Step Button ---
   prevStepButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -458,13 +472,12 @@ const styles = StyleSheet.create({
     marginLeft: wp(1.5),
   },
 
-  // --- Footer ---
   footerContainer: {
     alignItems: 'center',
     marginTop: hp(1.8),
   },
   poweredByText: {
-    fontSize: hp(1.4), // approx 11
+    fontSize: hp(1.4), 
     color: '#CCC',
     fontFamily: 'Montserrat-Regular',
   },

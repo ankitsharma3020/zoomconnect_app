@@ -5,13 +5,12 @@ import { GetApi } from './Apifunctions';
 import {
   View,
   Text,
-  Image,
   StyleSheet,
   Platform,
   StatusBar,
   TouchableOpacity,
 } from 'react-native';
-
+import Ionicons from 'react-native-vector-icons/Ionicons';
 // 1. Import the safe area hook
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -33,6 +32,7 @@ type Props = {
   showBack?: boolean;
   onBack?: () => void;
   title?: string;
+  useCloseIcon?: boolean; // <-- Added new prop for cross icon
 };
 
 export default function Header({
@@ -41,7 +41,8 @@ export default function Header({
   companyLogo = require('../../assets/bharatpelogo.png'),
   showBack = false,
   onBack,
-  title = ""
+  title = "",
+  useCloseIcon = false // <-- Default is false
 }: Props) {
   // Get real-time safe area insets
   const insets = useSafeAreaInsets();
@@ -77,10 +78,23 @@ export default function Header({
               activeOpacity={0.7}
               style={styles.backButton}
             >
-              <FastImage
-                source={{ uri: 'https://cdn-icons-png.flaticon.com/512/271/271220.png' }}
+              {/* <-- Dynamically switch between Close Cross and Back Arrow --> */}
+              {
+                useCloseIcon ? (
+                  <Ionicons name="close" size={24} color="#1E293B" />
+                ) : (
+                  <Ionicons name="arrow-back" size={24} color="#1E293B" />
+                )
+              }
+              {/* <FastImage
+                source={{ 
+                  uri: useCloseIcon 
+                    ? 'https://cdn-icons-png.flaticon.com/512/2961/2961522.png' // Cross Icon
+                    : 'https://cdn-icons-png.flaticon.com/512/271/271220.png'  // Arrow Icon
+                }}
                 style={styles.backIcon}
-              />
+              /> */}
+
             </TouchableOpacity>
             {title ? <Text style={styles.headerTitle}>{title}</Text> : null}
           </View>

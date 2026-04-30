@@ -25,9 +25,10 @@ import Header from '../component/header';
 import ClaimCard from '../component/claimscard';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGetClaimdetailsMutation } from '../redux/service/user/user';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import Submittedclaimscard from '../component/Submittedclaimscard';
 import FastImage from '@d11/react-native-fast-image';
+import { fetchClaims } from './Epicfiles/MainEpic';
 
 const { width, height } = Dimensions.get('window');
 const HEADER_HEIGHT = Platform.OS === 'ios' ? hp(14) : hp(13);
@@ -117,11 +118,13 @@ const ClaimScreen = ({ navigation }) => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [getClaims] = useGetClaimdetailsMutation();
   const {data:PolicyData} = useSelector((state) => state.policy);
-  
+  const dispatch = useDispatch();
+  const ClaimState = useSelector((state) => state.claims);
+  console.log("claim state", ClaimState.data.submitted_claims);
   // States
   const [claimDetails, setClaimDetails] = useState([]);      // Processed
-  const [Submitedaims, setSubmitedaimsc] = useState([]);     // Submitted
   const [isLoading, setIsLoading] = useState(true);
+  const Submitedaims=ClaimState.data.submitted_claims || [];
 
   const getClaimDetails = async () => {
     setIsLoading(true);
@@ -132,7 +135,6 @@ const ClaimScreen = ({ navigation }) => {
       
       if (res?.data) {
         setClaimDetails(res?.data?.data?.claims || []); // PROCESSED
-        setSubmitedaimsc(res?.data?.data?.submitted_claims || []); // SUBMITTED 
       }
     } catch (error) {
       console.log("claim details error", error);
@@ -142,6 +144,7 @@ const ClaimScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
+    dispatch(fetchClaims());
     getClaimDetails();
   }, []);
 
@@ -369,7 +372,7 @@ const styles = StyleSheet.create({
   safe: { flex: 1, zIndex: 1 },
   fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
   scrollContent: { paddingBottom: hp(15) },
-  sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(4),marginBottom: hp(3) },
+  sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(3.5),marginBottom: hp(3) },
   headerText: { fontSize: hp(2), fontFamily: 'Montserrat-Bold', color: '#333', marginBottom: hp(2) },
   
   claimsWrapper: {

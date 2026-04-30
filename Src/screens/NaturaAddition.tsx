@@ -114,6 +114,7 @@ const getStatusConfig = (statusCode) => {
 
 const NaturaAddition = ({ navigation,route }) => {
   const [isEdit,setIsedit]=useState(false); 
+
   const {policyid}=route.params;
   const [modalVisible, setModalVisible] = useState(false);
   const [editableData,setEditableData]=useState(null);
@@ -205,7 +206,7 @@ const Edit=(data)=>{
       </ScrollView>
 
       {/* Footer Button */}
-      <View style={styles.footer}>
+      <View style={[styles.footer, { bottom: Math.max(hp(10)) }]}>
         <TouchableOpacity 
             style={styles.addButton} 
             activeOpacity={0.9} 

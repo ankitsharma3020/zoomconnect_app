@@ -317,7 +317,7 @@ export const UserRoute = ({ isFirstLaunch }) => {
       </Stack.Navigator>
 
       {/* 2. Draggable Floating WhatsApp Button */}
-      <Animated.View 
+      {/* <Animated.View 
         {...panResponder.panHandlers}
         style={[
           styles.floatingButton, 
@@ -345,7 +345,7 @@ export const UserRoute = ({ isFirstLaunch }) => {
             </Animated.View>
           )}
         </TouchableOpacity>
-      </Animated.View>
+      </Animated.View> */}
 
       {/* 3. Enable Biometrics Modal */}
       <Modal

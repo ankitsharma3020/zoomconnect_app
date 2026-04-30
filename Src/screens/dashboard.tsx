@@ -83,9 +83,11 @@ const Dashboard = () => {
 const navigation = useNavigation(); 
 const [PromobannerData, setPromobannerData] = useState([]); 
 const [getBannerlist] = useGetBannersMutation();
+
+
   const {data:PolicyData, isLoading:policyLoading, error:policyError} = useSelector((state:any)=>state.policy);
   const [bannerData, setBannerData] = useState([]);
-  console.log("Policy Data in Dashboard:", PolicyData);
+ 
 
   // --- QUICK ACTIONS DATA ---
   const quickActions = [
@@ -229,7 +231,7 @@ const styles = StyleSheet.create({
     fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
 
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(18) }, // approx 150
-   sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(4),marginBottom: hp(4) },
+   sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(3.5),marginBottom: hp(4) },
 
   // --- Quick Actions Styles ---
   quickActionsContainer: {

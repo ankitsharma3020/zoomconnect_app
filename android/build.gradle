@@ -3,19 +3,36 @@ buildscript {
         buildToolsVersion = "36.0.0"
         minSdkVersion = 24
         compileSdkVersion = 36
-        targetSdkVersion = 36
-        ndkVersion = "27.0.12077973"
+        targetSdkVersion = 35
+        ndkVersion = "28.0.12433566"
+        frescoVersion = "3.6.0"      // ← bump this
         kotlinVersion = "2.1.20"
+        REACT_NATIVE_NODE_MODULES_DIR = "${rootProject.projectDir}/../node_modules/react-native"
     }
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle")
+        classpath("com.android.tools.build:gradle:8.5.1")
         classpath("com.google.gms:google-services:4.4.4")
         classpath("com.facebook.react:react-native-gradle-plugin")
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+    }
+}
+
+// ← ADD THIS BLOCK (outside buildscript)
+allprojects {
+    configurations.all {
+        resolutionStrategy {
+            force "com.facebook.fresco:fresco:3.6.0"
+            force "com.facebook.fresco:ui-common:3.6.0"
+            force "com.facebook.fresco:imagepipeline:3.6.0"
+            force "com.facebook.fresco:imagepipeline-base:3.6.0"
+            force "com.facebook.fresco:animated-gif:3.6.0"
+            force "com.facebook.fresco:animated-webp:3.6.0"
+            force "com.facebook.fresco:webpsupport:3.6.0"
+        }
     }
 }
 

@@ -26,7 +26,6 @@ import Svg, { Defs, Pattern, Path, Rect, Circle } from 'react-native-svg';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { wp, hp } from '../utilites/Dimension';
 
-// 🔥 RE-ADDED CopilotStep and walkthroughable to handle the 5th Profile step 🔥
 import { useCopilot, CopilotStep, walkthroughable } from 'react-native-copilot';
 
 // Components
@@ -35,14 +34,12 @@ import ActivePolicyHeader from '../component/activpolicy';
 import EnrollmentModal from '../component/Enrollmodal';
 import SurveyModal from '../component/Survaymodal';
 import Header from '../component/header';
-import { useGetNewProfileQuery, useSaveTokenMutation } from '../redux/service/user/user';
+import { useSaveTokenMutation } from '../redux/service/user/user';
 import { GetApi } from '../component/Apifunctions';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchPolicies, fetchProfile, fetchSurveys, fetchWellness } from './Epicfiles/MainEpic';
 import FastImage from '@d11/react-native-fast-image';
 import { setUser } from '../redux/service/userSlice';
-
-import TutorialStepWrapper from '../component/TutorialStepWrapper';
 
 const { width, height } = Dimensions.get('window');
 
@@ -53,7 +50,6 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-// 🔥 DEFINED WalkableView for the Header 🔥
 const CopilotView = walkthroughable(View);
 
 // --- 1. Shimmer Component ---
@@ -88,19 +84,21 @@ const PolicyScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch(); 
   
-  const { start, currentStep } = useCopilot();
+  const { start, currentStep, copilotEvents } = useCopilot();
+  const scrollViewRef = useRef(null);
   const hasStartedTutorial = useRef(false);
+  
   const isProfileStep = currentStep?.name === 'profile';
   const shouldHideHeader = !!currentStep && !isProfileStep;
+  
   // State
   const [claimExpanded, setClaimExpanded] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [showEnrollmentModal, setShowEnrollmentModal] = useState(false);
   const [showSurveyModal, setShowSurveyModal] = useState(false);
+  const [isTutorialActive, setIsTutorialActive] = useState(false); 
   const [Savetoken] = useSaveTokenMutation();
-  const [showFullEmail, setShowFullEmail] = useState(false);
   
-  // Removed `isTutorialActive` as it is no longer needed to hide the header
   const { data:surveylistdata, isLoading, error } = useSelector((state) => state.surveys);
   const filteredSurveys = useMemo(() => surveylistdata?.data?.filter(item => item.is_submit !== "1") || [], [surveylistdata]);
   
@@ -110,19 +108,13 @@ const PolicyScreen = () => {
       await messaging().registerDeviceForRemoteMessages();
       const token = await messaging().getToken();
       AsyncStorage.setItem('deviceTOKEN', token);
-    } catch (error) { 
-      console.error('Error getting FCM token:', error); 
-    }
+    } catch (error) { console.error('Error getting FCM token:', error); }
   }, []);
 
   const Savedevicetoken = useCallback(async () => {
     await getToken();
     const token = await AsyncStorage.getItem('deviceTOKEN');
-    try {
-      if(token) await Savetoken({ device_token: token });
-    } catch (error) { 
-      console.log(error, 'errrorrr'); 
-    }
+    try { if(token) await Savetoken({ device_token: token }); } catch (error) { console.log(error); }
   }, [getToken, Savetoken]);
 
   const {data:PolicyData, isLoading:policyLoading} = useSelector((state:any)=>state.policy);
@@ -140,26 +132,46 @@ const PolicyScreen = () => {
     return { shouldShowImage };
   }, [enrollmentlistdata]);
 
+  // Listen for tutorial completion to restore scroll
+  useEffect(() => {
+    if (copilotEvents) {
+      const handleStop = () => {
+        setIsTutorialActive(false);
+        AsyncStorage.setItem('tutorialCompleted', 'true');
+      };
+      copilotEvents.on('stop', handleStop);
+      return () => copilotEvents.off('stop');
+    }
+  }, [copilotEvents]);
+
   useFocusEffect(
     useCallback(() => {
       let timer;
       let isActive = true;
 
-      if (!policyLoading && PolicyData?.data?.policy_details?.length > 0) {
-        InteractionManager.runAfterInteractions(() => {
+      const checkAndStartTutorial = async () => {
+        try {
+          const isCompleted = await AsyncStorage.getItem('tutorialCompleted');
+          if (isCompleted === 'true') return;
           if (!isActive || hasStartedTutorial.current) return;
+          
+          setIsTutorialActive(true);
+          scrollViewRef.current?.scrollTo({ y: 0, animated: false });
+          
           timer = setTimeout(() => {
             hasStartedTutorial.current = true;
             start();
-          }, 3000);
-        });
-      }
+          }, 4500); 
+        } catch (error) { console.error("Error checking tutorial status:", error); }
+      };
+
+      InteractionManager.runAfterInteractions(() => { checkAndStartTutorial(); });
 
       return () => {
         isActive = false;
         if (timer) clearTimeout(timer);
       };
-    }, [policyLoading, PolicyData, start])
+    }, [start])
   );
 
   const toggleClaim = () => {
@@ -186,9 +198,8 @@ const PolicyScreen = () => {
     let token = await AsyncStorage.getItem('token');
     try {
       const response = await GetApi('/profile', {}, token);
-      if (response?.error?.data?.status?.code === 404) {
-        dispatch(setUser(false));
-      } else {
+      if (response?.error?.data?.status?.code === 404) { dispatch(setUser(false)); } 
+      else {
         const version = Platform.OS === 'android' ? response?.data?.version?.android : response?.data?.version?.ios;
         checkAppVersion(version);
       }
@@ -215,7 +226,6 @@ const PolicyScreen = () => {
 
   return (
     <View style={styles.screenWrap}>
-      {/* Decorative Global Pattern */}
       <View pointerEvents="none" style={styles.patternWrap}>
         <LinearGradient colors={['#F6F7FB', '#F0ECF8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
         <Svg width={width} height={height} style={StyleSheet.absoluteFill}>
@@ -232,78 +242,137 @@ const PolicyScreen = () => {
       <View style={styles.safe}>
         <StatusBar barStyle="dark-content" backgroundColor="#FFFFFF" translucent={false} />
         
-        {/* 🔥 THE FIX: Removed the opacity toggle so the header stays visible! 🔥 */}
-      <View style={[styles.fixedHeaderWrapper, shouldHideHeader && { opacity: 0, zIndex: -1 }]}>
+        <View style={[styles.fixedHeaderWrapper]}>
           <Header />
         </View>
         
-        <ScrollView contentContainerStyle={[styles.scrollContent, { paddingTop: HEADER_HEIGHT }]} showsVerticalScrollIndicator={false}>
+        {/* 🔥 DYNAMIC ANCHOR FIX 🔥 */}
+        {/* If enrollment logic is true, anchor to the BOTTOM (so dome renders at bottom like step 2 and 3). */}
+        {/* If enrollment logic is false, anchor to the TOP (so dome renders at the top for standard policy details). */}
+        <CopilotStep
+            name="policyCard"
+            order={1}
+            text={`Get a quick overview of your policy Here\nQuickly review your coverage overview from the Policy Card. Navigate to 'Policy Details' to download your digital e-card, search for nearby cashless hospitals, and manage or add your dependents.`}
+        >
+            <CopilotView 
+              style={[
+                { position: 'absolute', width: 1, height: 1 },
+                enrollmentLogic.shouldShowImage 
+                  ? { bottom: hp(5), left: wp(50) } // Anchor Bottom for Enrollment
+                  : { top: HEADER_HEIGHT, left: 0 } // Anchor Top for Standard Policy 
+              ]} 
+            />
+        </CopilotStep>
+
+        <ScrollView 
+          ref={scrollViewRef}
+          scrollEnabled={!isTutorialActive} 
+          contentContainerStyle={[styles.scrollContent, { paddingTop: HEADER_HEIGHT }]} 
+          showsVerticalScrollIndicator={false}
+        >
           
           <View style={styles.sectionContainer}>
             <ActivePolicyHeader title="Policies" subtitle="Find all your policies here." onBack={() => navigation?.goBack?.()} isEnhanced3D={true} illustration={require('../../assets/policies.png')} />
           </View>
-
-          <View style={[styles.sectionContainer, { marginTop: hp(3), zIndex: 10 }]}>
           
-              <TutorialStepWrapper
-  name="policyCard"
-  order={1}
-  stepNumber={1}
-  title="Get a quick overview of your policy Here "
- description={`1. Quickly review your coverage overview from the Policy Card.\n2. Navigate to 'Policy Details' to download your digital e-card.\n3. Access 'Policy Details' to search for nearby cashless hospitals.\n4. Manage or add your dependents within the 'Policy Details' section.`}
-  circleTopOffset={-hp(25)} // ✅ THIS SHOULD BE -hp(25)
->
-
-              <View style={{ width: '100%', minHeight: hp(20) }}>
-                {policyLoading ? (
-                  <PolicyShimmer />
-                ) : PolicyData?.data?.policy_details?.length > 0 ? (
-                  <PolicyCardList Policydata={PolicyData?.data?.policy_details}  />
-                ) : (
-                  <View style={styles.card}>
-                    <FastImage source={require('../../assets/policynotfound.png')} style={styles.image} resizeMode="cover" />
-                    <View style={styles.textContainer}>
-                      <Text style={styles.title}>No Policies yet</Text>
-                      <Text style={styles.subtitle}>Contact your HR administrator to learn more about available insurance policies.</Text>
-                    </View>
-                  </View>
-                )}
-              </View>
-            </TutorialStepWrapper>
-          </View>
- 
           {/* --- Enrollment Card --- */}
           {enrollmentLogic.shouldShowImage && (
             <View style={[styles.sectionContainer, { marginTop: hp(3) }]}>
-              <TouchableOpacity activeOpacity={0.92} style={styles.banner3DContainer} onPress={() => navigation.navigate('Webrendering', { url: enrollmentlistdata?.url })}>
-                <LinearGradient colors={['#9680c9ff', '#5d5ea3ff', '#6c63c8ff']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.bannerGradient}>
-                  <View style={styles.bannerGradient1}>
-                    <View style={StyleSheet.absoluteFill}>
-                      <Svg height="100%" width="100%" style={{ opacity: 0.15 }}>
-                        <Circle cx="90%" cy="100%" r="60" fill="white" />
-                        <Circle cx="10%" cy="0%" r="40" fill="white" />
-                        <Circle cx="80%" cy="20%" r="20" stroke="white" strokeWidth="4" fill="none" />
-                      </Svg>
+              <TouchableOpacity 
+                activeOpacity={0.92} 
+                style={styles.newBannerContainer} 
+                onPress={() => navigation.navigate('Webrendering', { url: enrollmentlistdata?.url })}
+              >
+                {/* --- Left Column: Text & Button --- */}
+                <View style={styles.newBannerLeft}>
+                  <Text style={styles.newBannerTitle}>Enrollment Open</Text>
+                  <Text style={styles.newBannerDesc}>
+                    Complete your benefit coverages to bring security and modern care to your lifestyle.
+                  </Text>
+                  
+                  <View style={styles.newBannerBtn}>
+                    <Text style={styles.newBannerBtnText}>Start Now</Text>
+                  </View>
+                </View>
+
+                {/* --- Right Column: Tilted Card --- */}
+                <View style={styles.newBannerRight}>
+                  <View style={styles.tiltedCardWrapper}>
+                    {/* Floating Blue Tooltip */}
+                    <View style={styles.floatingTooltip}>
+                      <Text style={styles.tooltipText}>Track your{"\n"}Progress</Text>
                     </View>
-                    <View style={styles.iconGlassBox}>
-                      <Svg width={wp(7)} height={wp(7)} viewBox="0 0 24 24" fill="none"><Path d="M12 2L14.4 9.6L22 12L14.4 14.4L12 22L9.6 14.4L2 12L9.6 9.6L12 2Z" fill="#FFFFFF" stroke="#FFFFFF" strokeWidth={1.5} /></Svg>
-                    </View>
-                    <View style={{ flex: 1, paddingLeft: wp(4) }}>
-                      <Text style={styles.bannerTitle}>Enrollment Open</Text>
-                      <Text style={styles.bannerSub}>Ends {enrollment.endDate}</Text>
-                    </View>
-                    <View style={styles.bannerAction}>
-                      <View style={styles.actionBtnInner}>
-                        <Text style={styles.bannerPillText}>Start</Text>
-                        <Svg width={wp(3.5)} height={wp(3.5)} viewBox="0 0 24 24" style={{marginLeft: wp(1)}}><Path d="M5 12H19M19 12L12 5M19 12L12 19" stroke="#4F46E5" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"/></Svg>
+                    
+                    {/* White Tilted Progress Card */}
+                    <View style={styles.tiltedCard}>
+                      <View style={styles.progressHeader}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <View style={styles.greenDot} />
+                          <Text style={styles.progressText}>Progress</Text>
+                        </View>
+                        {/* Clock Icon */}
+                        <Svg width={wp(3.5)} height={wp(3.5)} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <Circle cx="12" cy="12" r="10"/><Path d="M12 6v6l4 2"/>
+                        </Svg>
+                      </View>
+
+                      {/* Step 1 - Active */}
+                      <View style={styles.stepRow}>
+                        <View style={[styles.stepCircle, styles.stepCircleActive]}>
+                          <Text style={styles.stepCircleTextActive}>1</Text>
+                        </View>
+                        <Text style={styles.stepTextActive}>Add Dependents</Text>
+                      </View>
+                      
+                      {/* Step 2 - Inactive */}
+                      <View style={styles.stepRow}>
+                        <View style={styles.stepCircle}>
+                          <Text style={styles.stepCircleText}>2</Text>
+                        </View>
+                        <Text style={styles.stepText}>Choose Plans</Text>
+                      </View>
+                      
+                      {/* Step 3 - Inactive */}
+                      <View style={styles.stepRow}>
+                        <View style={styles.stepCircle}>
+                          <Text style={styles.stepCircleText}>3</Text>
+                        </View>
+                        <Text style={styles.stepText}>Extra Coverage</Text>
+                      </View>
+                      
+                      {/* Step 4 - Inactive */}
+                      <View style={styles.stepRow}>
+                        <View style={styles.stepCircle}>
+                          <Text style={styles.stepCircleText}>4</Text>
+                        </View>
+                        <Text style={styles.stepText}>Review & Submit</Text>
                       </View>
                     </View>
                   </View>
-                </LinearGradient>
+                </View>
               </TouchableOpacity>
             </View>
           )}
 
+          {/* --- Policy Card --- */}
+          <View style={[styles.sectionContainer, { marginTop: hp(3), zIndex: 10 }]}>
+            <View style={{ width: '100%', minHeight: hp(20) }}>
+              {policyLoading ? (
+                <PolicyShimmer />
+              ) : PolicyData?.data?.policy_details?.length > 0 ? (
+                <PolicyCardList Policydata={PolicyData?.data?.policy_details} />
+              ) : (
+                <View style={styles.card}>
+                  <FastImage source={require('../../assets/policynotfound.png')} style={styles.image} resizeMode="cover" />
+                  <View style={styles.textContainer}>
+                    <Text style={styles.title}>No Policies yet</Text>
+                    <Text style={styles.subtitle}>Contact your HR administrator to learn more about available insurance policies.</Text>
+                  </View>
+                </View>
+              )}
+            </View>
+          </View>
+ 
           {/* --- Survey Card --- */}
           {filteredSurveys.length > 0 && (
             <View style={[styles.sectionContainer, { marginTop: hp(3) }]}>
@@ -394,7 +463,6 @@ const styles = StyleSheet.create({
   screenWrap: { flex: 1, backgroundColor: 'transparent' },
   patternWrap: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 0 },
   safe: { flex: 1, zIndex: 1 },
-  // 🔥 Fixed Header wrapper so it maintains its position and elevation 🔥
   fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: 'white' },
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(18) },
   sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(4),marginBottom: hp(4) },
@@ -440,4 +508,160 @@ const styles = StyleSheet.create({
   actionContainer: { marginLeft: wp(2.5) },
   surveyBtn: { backgroundColor: '#FFFFFF', paddingVertical: hp(0.8), paddingHorizontal: wp(3.3), borderRadius: wp(5), alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4, elevation: 2 },
   surveyBtnText: { color: '#0F766E', fontFamily: 'Montserrat-Bold', fontSize: hp(1.4), textTransform: 'uppercase' },
+  // --- New Enrollment Banner Styles ---
+  // --- Scaled Down Enrollment Banner Styles ---
+  newBannerContainer: {
+    backgroundColor: '#FDE067',
+    borderRadius: wp(5),
+    flexDirection: 'row',
+    paddingVertical: hp(2),
+    paddingHorizontal: wp(4),
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.1, 
+    shadowRadius: 6, 
+    elevation: 4,
+    overflow: 'visible', 
+  },
+  newBannerLeft: {
+    flex: 1.4, // Give text slightly more room
+    paddingRight: wp(2),
+  },
+  newBannerTitle: {
+    fontSize: hp(1.8), // Scaled down from 2.2
+    fontFamily: 'Montserrat-Bold',
+    color: '#111827',
+    marginBottom: hp(0.8),
+  },
+  newBannerDesc: {
+    fontSize: hp(1.25), // Scaled down
+    fontFamily: 'Montserrat-Regular',
+    color: '#1e2126',
+    marginBottom: hp(1),
+    lineHeight: hp(1.6),
+  },
+  newBannerDate: {
+    fontSize: hp(1), // Scaled down
+    fontFamily: 'Montserrat-Bold',
+    color: '#374151',
+    marginBottom: hp(1.5),
+  },
+  newBannerBtn: {
+    backgroundColor: '#FFFFFF',
+    marginTop: hp(0.5),
+    paddingVertical: hp(0.8), // Tighter padding
+    paddingHorizontal: wp(4),
+    borderRadius: wp(5),
+    alignSelf: 'flex-start',
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.05, 
+    shadowRadius: 4, 
+    elevation: 2
+  },
+  newBannerBtnText: {
+    color: '#111827',
+    fontFamily: 'Montserrat-Bold',
+    fontSize: hp(1.15), // Scaled down
+  },
+  newBannerRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+  },
+  tiltedCardWrapper: {
+    position: 'relative',
+    width: wp(34), // Shrunk width so it doesn't push left
+    marginRight: 0,
+  },
+  floatingTooltip: {
+    position: 'absolute',
+    top: -hp(2.5), // Pushed down slightly
+    left: -wp(4), // Pulled right so it stops overlapping the title
+    backgroundColor: '#2563EB',
+    borderRadius: wp(2),
+    paddingVertical: hp(0.6),
+    paddingHorizontal: wp(2),
+    zIndex: 10,
+    elevation: 5,
+    shadowColor: '#2563EB', 
+    shadowOffset: { width: 0, height: 3 }, 
+    shadowOpacity: 0.3, 
+    shadowRadius: 4,
+  },
+  tooltipText: {
+    color: '#FFFFFF',
+    fontFamily: 'Montserrat-SemiBold',
+    fontSize: hp(0.9), // Scaled down
+    textAlign: 'center',
+    lineHeight: hp(1.2),
+  },
+  tiltedCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: wp(3.5),
+    padding: wp(2.5), // Tighter padding inside card
+    transform: [{ rotate: '4deg' }],
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 4 }, 
+    shadowOpacity: 0.08, 
+    shadowRadius: 8, 
+    elevation: 4,
+  },
+  progressHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: hp(1.2),
+  },
+  greenDot: {
+    width: wp(1.8),
+    height: wp(1.8),
+    borderRadius: wp(0.9),
+    backgroundColor: '#10B981',
+    marginRight: wp(1.5),
+  },
+  progressText: {
+    fontSize: hp(1.2), // Scaled down
+    fontFamily: 'Montserrat-Bold',
+    color: '#111827',
+  },
+  stepRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: hp(1),
+  },
+  stepCircle: {
+    width: wp(3.8), // Smaller circles
+    height: wp(3.8),
+    borderRadius: wp(1.9),
+    backgroundColor: '#F3F4F6',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: wp(2),
+  },
+  stepCircleActive: {
+    backgroundColor: '#2563EB',
+  },
+  stepCircleText: {
+    fontSize: hp(1),
+    fontFamily: 'Montserrat-Bold',
+    color: '#9CA3AF',
+  },
+  stepCircleTextActive: {
+    fontSize: hp(1),
+    fontFamily: 'Montserrat-Bold',
+    color: '#FFFFFF',
+  },
+  stepText: {
+    fontSize: hp(1), // Scaled down
+    fontFamily: 'Montserrat-SemiBold',
+    color: '#9CA3AF',
+  },
+  stepTextActive: {
+    fontSize: hp(1),
+    fontFamily: 'Montserrat-Bold',
+    color: '#111827',
+  },
 });

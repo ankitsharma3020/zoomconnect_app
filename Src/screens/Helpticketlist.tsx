@@ -115,9 +115,9 @@ const Helpticketlist = () => {
 
           {/* Footer: Time and Link */}
           <View style={styles.ticketFooter}>
-            <Text style={styles.timeText}>
+            {/* <Text style={styles.timeText}>
               Last updated: {getTimeAgo(item.updated_at || item.created_at)}
-            </Text>
+            </Text> */}
             <View style={styles.linkRow}>
               <Text style={styles.linkText}>View Chat</Text>
               <Icon name="chevron-right" size={hp(2.25)} color="#2563eb" />

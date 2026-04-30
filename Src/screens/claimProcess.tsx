@@ -22,7 +22,7 @@ const ClaimProcessPage = ({ navigation }) => {
         Cashless claims facility assures that hospitalisation expenses are borne by insurers.{"\n\n"}
         It is a specialized service provided by an insurance company or a third-party administrator (TPA), where the payment for the cost of treatment undergone by the policyholder is directly made by the insurer to the network provider in accordance with the policy terms and conditions.{"\n\n"}
         If an insured person undergoes treatment at any of the network hospitals, there is no need for the person to pay the hospital bills.{"\n\n"}
-        Please check your network hospitals <Text style={styles.linkText} onPress={() => Linking.openURL('https://example.com')}>here</Text>.
+        Please check your network hospitals in  your policydetails.
       </Text>
 
       <Text style={styles.subHeading}>How to claim ?</Text>

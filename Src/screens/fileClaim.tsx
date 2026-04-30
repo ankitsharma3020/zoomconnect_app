@@ -9,13 +9,14 @@ import { wp, hp } from '../utilites/Dimension';
 import Header from '../component/header';
 import { Avatar } from 'react-native-paper';
 import { useSubmitclaimMutation } from '../redux/service/user/user';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import FastImage from '@d11/react-native-fast-image';
 
 // RNFS, File Picker, and DateTimePicker imports
 import RNFS from 'react-native-fs';
 import { pick, types, keepLocalCopy } from '@react-native-documents/picker'; 
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { fetchClaims } from './Epicfiles/MainEpic';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -97,7 +98,7 @@ const FileClaimPage = ({ navigation }) => {
   // File states
   const [selectedFile, setSelectedFile] = useState(null);
   const [dp64, setDP64] = useState('');
-
+  const dispatch = useDispatch();
   const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   
   const { data: PolicyData } = useSelector((state) => state.policy);
@@ -203,7 +204,7 @@ const FileClaimPage = ({ navigation }) => {
       const result = await pick({
         mode: 'import', 
         allowMultiSelection: false,
-        type: [types.images, types.pdf], 
+        type: [ types.pdf], 
       });
 
       if (!result || result.length === 0) return;
@@ -334,8 +335,10 @@ const FileClaimPage = ({ navigation }) => {
     setLoading(true);
     try {
       let res = await Submitclaim(payload);
-      if (res?.data?.status === 'success') {
+      console.log("Claim Submission Response:", res);
+      if (res?.data?.success) {
         showToastOrAlert('Claim Submitted Successfully!');
+         dispatch(fetchClaims());
         navigation.goBack();
       } else {
         showToastOrAlert(res.error?.data?.message || 'Failed to submit claim');
@@ -563,7 +566,7 @@ const FileClaimPage = ({ navigation }) => {
                     isCashless === false ? (
                       <>
                         <Text style={styles.typeDesc}>Upload hospital bills, discharge summary, and medical reports</Text>
-                        <Text style={styles.miniLabel}>PDF or images (max 2MB per file) *Required</Text> 
+                        <Text style={styles.miniLabel}>PDF Only (max 2MB per file) *Required</Text> 
                         
                         <TouchableOpacity style={styles.uploadBox} onPress={openGallery}>
                           <Text style={{fontSize: 30}}>{selectedFile ? '✅' : '📁'}</Text>

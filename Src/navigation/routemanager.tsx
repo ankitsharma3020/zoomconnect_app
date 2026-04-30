@@ -1,108 +1,91 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Dimensions, Animated, Easing, Alert } from 'react-native';
+import { View, StyleSheet, Dimensions, Animated, Easing, ActivityIndicator } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import Splash from '../../splash';
 import { UserRoute } from './userroute';
 import { GuestRoute } from './guestroute';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useCompanyStatusMutation } from '../redux/service/user/user';
-import { GetApi } from '../component/Apifunctions';
 import { setUser } from '../redux/service/userSlice';
 
 const { height } = Dimensions.get('window');
 
 const RouteManager = () => {
-  // 1. Get Login status
-  const Login = useSelector((state) => state.user.user);
-  const [isFirstLaunch, setIsFirstLaunch] = useState(null); 
-
-  // 2. State to keep Splash visible in background while animation happens
-  const [isSplashVisible, setSplashVisible] = useState(true);
-  //  const [inactivecmp, setInactivecmp] = useState([]);
-   const [Inactivecomp] = useCompanyStatusMutation();
-  // 3. Animated Value for the Slide (Starts off-screen at 'height')
-  const slideAnim = useRef(new Animated.Value(height)).current;
   const dispatch = useDispatch();
+  // Get user from Redux
+  const user = useSelector((state) => state.user.user);
+  
+  const [isLoading, setIsLoading] = useState(true);
+  const [isSplashVisible, setSplashVisible] = useState(true);
+  const slideAnim = useRef(new Animated.Value(height)).current;
 
   useEffect(() => {
-    // SCENARIO 1: GUEST (No Login)
-    // Hide splash immediately (or after a small delay if you prefer) so they see Login
-    if (!Login) {
-      setSplashVisible(false);
-      return; 
-    }
-
-    // SCENARIO 2: USER (Logged In)
-    // Wait for your Splash animation (3.8s), THEN slide up the Home screen
-    const timer = setTimeout(() => {
-      
-      // Animate UserRoute sliding up from bottom
-      Animated.timing(slideAnim, {
-        toValue: 0, // Slide to top
-        duration: 800, // Speed of slide
-        easing: Easing.out(Easing.ease),
-        useNativeDriver: true, 
-      }).start(() => {
-        // Animation Done: Now we can unmount the Splash behind it
-        setSplashVisible(false);
-      });
-
-    }, 3500);
-
-    return () => clearTimeout(timer);
-  }, [Login]);
-
- useEffect(() => {
-    // Check AsyncStorage to see if the permission screen has run before
-    const checkFirstLaunch = async () => {
-      const hasRequested = await AsyncStorage.getItem('hasRequestedPermissions');
-      setIsFirstLaunch(hasRequested !== 'true');
+    const checkAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        
+        // IF NO TOKEN: Ensure Redux is also cleared
+        if (!token) {
+          dispatch(setUser(null)); 
+        } else {
+          // IF TOKEN EXISTS: But Redux is empty, sync it (optional based on your slice logic)
+          // dispatch(setUser(dataFromToken));
+        }
+      } catch (e) {
+        console.error(e);
+      } finally {
+        // Stop loading only after we are sure about the token
+        setIsLoading(false);
+      }
     };
-    checkFirstLaunch();
+
+    checkAuth();
   }, []);
 
+  // Use a strictly boolean check for the UI
+  // If user is null, undefined, or false, isLoggedIn will be false
+  const isLoggedIn = !!user; 
 
-  
+  useEffect(() => {
+    if (!isLoading) {
+      if (!isLoggedIn) {
+        setSplashVisible(false);
+      } else {
+        // Trigger the slide animation for logged-in users
+        const timer = setTimeout(() => {
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 800,
+            easing: Easing.out(Easing.ease),
+            useNativeDriver: true,
+          }).start(() => setSplashVisible(false));
+        }, 3500);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [isLoggedIn, isLoading]);
 
+  if (isLoading) return <Splash />;
 
-  // --- RENDER LOGIC ---
-
-  // 1. If Guest, just show GuestRoute (No fancy slide needed usually, or add logic if desired)
-  if (!Login) {
-    // If you want to avoid blink for guests, verify logic from previous step:
-    // This assumes GuestRoute renders immediately.
+  // THE KEY FIX: If not logged in, return GuestRoute immediately
+  if (!isLoggedIn) {
     return <GuestRoute />;
   }
 
-  // 2. If User, we render a CONTAINER that holds BOTH Splash and UserRoute
   return (
     <View style={{ flex: 1 }}>
-      
-      {/* BACKGROUND: Splash Screen (Stays visible until we remove it) */}
       {isSplashVisible && (
-        <View style={styles.absoluteFill}>
-          <Splash />
-        </View>
+        <View style={styles.absoluteFill}><Splash /></View>
       )}
-
-      {/* FOREGROUND: UserRoute (Slides up over the splash) */}
-      <Animated.View 
-        style={[
-          styles.absoluteFill, 
-          { transform: [{ translateY: slideAnim }] } // Bind animation
-        ]}
-      >
-        <UserRoute isFirstLaunch={isFirstLaunch} />
+      <Animated.View style={[styles.absoluteFill, { transform: [{ translateY: slideAnim }] }]}>
+        <UserRoute />
       </Animated.View>
-
     </View>
   );
 };
-
 const styles = StyleSheet.create({
   absoluteFill: {
-    ...StyleSheet.absoluteFillObject, // This makes views overlap perfectly
-    backgroundColor: '#fff', // Ensure background is white so no transparency issues
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#fff',
   },
 });
 

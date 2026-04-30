@@ -1,400 +1,393 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
-  View,
-  Text,
-  Modal,
   StyleSheet,
+  Text,
+  View,
   TouchableOpacity,
   TextInput,
+  SafeAreaView,
+  StatusBar,
+  Keyboard,
+  TouchableWithoutFeedback,
   Animated,
-  Dimensions,
+  Image,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
-  Alert,
+  ActivityIndicator,
   ToastAndroid,
 } from 'react-native';
+
+import React, { useState, useRef, useEffect } from 'react';
+import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
-import RNFS from 'react-native-fs';
-import { pick, keepLocalCopy, types } from '@react-native-documents/picker';
-import DateTimePicker from '@react-native-community/datetimepicker';
-import { useAdddependentMutation, useEditdependentMutation } from '../redux/service/user/user';
-import { fetchDependence } from '../screens/Epicfiles/MainEpic';
+import { useNavigation, useRoute } from '@react-navigation/native';
+import { wp, hp } from '../utilites/Dimension';
+import { useResetPasswordMutation } from '../redux/service/user/user';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
+import { setUser } from '../redux/service/userSlice';
 
-const { height } = Dimensions.get('window');
+// --- CONSTANTS & THEME (Kept from your original) ---
+const START_HEIGHT = hp(32);
+const OVERLAP = hp(8);
+const COLORS = {
+  primary: '#934790',     
+  primaryDark: '#6A2C66', 
+  primaryLight: '#B565B0',
+  secondary: '#FFE8D6',   
+  white: '#FFFFFF',
+  bg: '#FDF8F5', 
+  text: '#333333',
+  textLight: '#888',
+  inputBorder: '#EADDF2',
+  inputBg: '#FAFAFC',
+};
 
-const relationOptions = [
-  { key: '1', value: 'CHILD' },
-  { key: '2', value: 'SPOUSE' },
-];
+// ... ExactShardPattern and CardPattern components remain the same ...
 
-const genderOptions = [
-  { key: '1', value: 'MALE' },
-  { key: '2', value: 'FEMALE' },
-];
-
-const DependantModal = ({ visible, onClose, policyId, data }) => {
+const ResetPassword = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
   const dispatch = useDispatch();
-  const [Adddependent] = useAdddependentMutation();
-  const [Editdependent] = useEditdependentMutation();
+  const{ user,firstLogin, mode } = route.params;
+ 
+  // Extract token from navigation params (passed from previous screen)
 
-  // --- Form State ---
-  const [name, setName] = useState('');
-  const [relation, setRelation] = useState(null);
-  const [showRelDropdown, setShowRelDropdown] = useState(false);
-  const [gender, setGender] = useState(null);
-  const [showGenDropdown, setShowGenDropdown] = useState(false);
-  const [dob, setDob] = useState(null);
-  const [showDobPicker, setShowDobPicker] = useState(false);
-  const [doe, setDoe] = useState(null);
-  const [showDoePicker, setShowDoePicker] = useState(false);
-  const [selectedFile, setSelectedFile] = useState(null);
-  const [dp64, setDP64] = useState(null);
-  const [isChecked, setIsChecked] = useState(false);
 
-  // Animation Values
-  const scaleValue = useRef(new Animated.Value(0)).current;
-  const opacityValue = useRef(new Animated.Value(0)).current;
+  // --- STATE ---
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // --- Custom Notification Utility ---
-  const showToastOrAlert = (msg) => {
-    if (Platform.OS === 'android') {
-      ToastAndroid.show(msg, ToastAndroid.SHORT);
-    } else {
-      Alert.alert('Notice', msg);
-    }
-  };
+  const [resetPasswordApi] = useResetPasswordMutation();
 
+  // --- ANIMATIONS ---
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
+  const topShift = useRef(new Animated.Value(0)).current;
+  const topSectionHeightAnim = useRef(new Animated.Value(START_HEIGHT)).current;
+
+  // --- KEYBOARD HANDLING ---
   useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.spring(scaleValue, { toValue: 1, friction: 6, tension: 50, useNativeDriver: true }),
-        Animated.timing(opacityValue, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]).start();
+    const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
+    const hideEvent = Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide';
 
-      if (data && Object.keys(data).length > 0) {
-        setName(data.insured_name || '');
-        setRelation(relationOptions.find(r => r.value === data.relation?.toUpperCase()) || null);
-        setGender(genderOptions.find(g => g.value === data.gender?.toUpperCase()) || null);
-        setDob(data.dob ? new Date(data.dob) : null);
-        setDoe(data.date_of_event ? new Date(data.date_of_event) : null);
-        if (data.document) {
-          const extractedName = data.document.split('/').pop();
-          setSelectedFile({ name: extractedName, uri: data.document });
-        }
-      } else {
-        resetForm();
-      }
-    } else {
-      Animated.timing(scaleValue, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-      Animated.timing(opacityValue, { toValue: 0, duration: 200, useNativeDriver: true }).start();
-    }
-  }, [visible, data]);
+    const onShow = (e) => {
+      const h = e?.endCoordinates?.height ?? 0;
+      Animated.timing(keyboardOffset, { toValue: -Math.max(0, h * 0.2), duration: 250, useNativeDriver: false }).start();
+      Animated.timing(topShift, { toValue: -hp(5), duration: 250, useNativeDriver: false }).start();
+    };
 
-  const resetForm = () => {
-    setName('');
-    setRelation(null);
-    setGender(null);
-    setDob(null);
-    setDoe(null);
-    setSelectedFile(null);
-    setDP64(null);
-    setIsChecked(false);
-  };
+    const onHide = () => {
+      Animated.timing(keyboardOffset, { toValue: 0, duration: 250, useNativeDriver: false }).start();
+      Animated.timing(topShift, { toValue: 0, duration: 250, useNativeDriver: false }).start();
+    };
 
-  const formatDate = (dateObj) => {
-    if (!dateObj) return '';
-    const d = new Date(dateObj);
-    let month = '' + (d.getMonth() + 1);
-    let day = '' + d.getDate();
-    if (month.length < 2) month = '0' + month;
-    if (day.length < 2) day = '0' + day;
-    return `${day}/${month}/${d.getFullYear()}`;
-  };
+    const subShow = Keyboard.addListener(showEvent, onShow);
+    const subHide = Keyboard.addListener(hideEvent, onHide);
+    return () => { subShow.remove(); subHide.remove(); };
+  }, []);
 
-  const formatApiDate = (dateObj) => {
-    if (!dateObj) return null;
-    const d = new Date(dateObj);
-    let month = '' + (d.getMonth() + 1);
-    let day = '' + d.getDate();
-    if (month.length < 2) month = '0' + month;
-    if (day.length < 2) day = '0' + day;
-    return `${d.getFullYear()}-${month}-${day}`;
-  };
-
-  const handledateofbirthChange = (event, selectedDate) => {
-    if (Platform.OS === 'android') setShowDobPicker(false);
-    if (event.type === 'dismissed' || !selectedDate) return;
-
-    const pickedDate = new Date(selectedDate);
-    const currentDate = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(currentDate.getDate() - 30);
-
-    if (pickedDate > currentDate) {
-      showToastOrAlert('The date cannot be in the future.');
-      return;
-    }
-    if (relation?.value === 'CHILD' && pickedDate < thirtyDaysAgo) {
-      showToastOrAlert('Child birthdate cannot be older than 30 days.');
-      return;
-    }
-    setDob(pickedDate);
-  };
-
-  const handledateofeventChange = (event, selectedDate) => {
-    if (Platform.OS === 'android') setShowDoePicker(false);
-    if (event.type === 'dismissed' || !selectedDate) return;
-
-    const pickedDate = new Date(selectedDate);
-    const currentDate = new Date();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(currentDate.getDate() - 30);
-
-    if (pickedDate > currentDate) {
-      showToastOrAlert('The date cannot be in the future.');
-      return;
-    }
-    if (pickedDate < thirtyDaysAgo) {
-      showToastOrAlert('The date cannot be more than 30 days in the past.');
-      return;
-    }
-    setDoe(pickedDate);
-  };
-
-  const openGallery = useCallback(async () => {
-    try {
-      const result = await pick({
-        mode: 'import',
-        allowMultiSelection: false,
-        type: [types.images, types.pdf],
-      });
-
-      if (!result || result.length === 0) return;
-
-      const fileObj = result[0];
-      let filePath = fileObj.uri;
-
-      if (Platform.OS === 'android' && filePath.startsWith('content://')) {
-        const [copyResult] = await keepLocalCopy({
-          files: [{ uri: fileObj.uri, fileName: fileObj.name ?? `doc_${Date.now()}` }],
-          destination: 'cachesDirectory',
-        });
-        filePath = copyResult.localUri;
-      }
-
-      const stats = await RNFS.stat(filePath);
-      if (stats.size / (1024 * 1024) > 2) {
-        showToastOrAlert('File size exceeds 2MB limit.');
+ const handleReset = async () => {
+    // 1. Validations
+    if (!newPassword || !confirmPassword) {
+        ToastAndroid.show("Please fill all fields", ToastAndroid.SHORT);
         return;
-      }
-
-      const base64Data = await RNFS.readFile(filePath, 'base64');
-      setSelectedFile({ name: fileObj.name, size: stats.size, uri: filePath });
-      setDP64(base64Data);
-      showToastOrAlert('File attached successfully.');
-
-    } catch (error) {
-      if (error?.code !== 'OPERATION_CANCELED') {
-        showToastOrAlert('Failed to select document.');
-      }
     }
-  }, [relation]);
-
-  const handleSave = async () => {
-    const isEdit = !!data?.id;
-    const hasDocument = dp64 || selectedFile;
-
-    if (!name || !relation || !gender || !dob || !hasDocument) {
-      showToastOrAlert('Please fill all mandatory fields and attach proof.');
-      return;
+    if (newPassword.length < 6) {
+        ToastAndroid.show("Password must be at least 6 characters", ToastAndroid.SHORT);
+        return;
+    }
+    if (newPassword !== confirmPassword) {
+        ToastAndroid.show("Passwords do not match", ToastAndroid.SHORT);
+        return;
     }
 
-    if (relation?.value === 'SPOUSE' && !doe) {
-      showToastOrAlert('Marriage date is required for Spouse.');
-      return;
-    }
-
-    if (!isChecked) {
-      showToastOrAlert('Please accept the declaration.');
-      return;
-    }
-
+    setLoading(true);
     try {
-      const dobString = formatApiDate(dob);
-      const reqbody = {
-        policy_id: policyId,
-        dependent_name: name,
-        dependent_relation: relation?.value,
-        dependent_gender: gender?.value,
-        dependent_dob: dobString,
-        date_of_event: relation?.value === 'CHILD' ? dobString : formatApiDate(doe),
-      };
+        console.log('Reset Password Request Body:');
+        // Safely check and assign the token without shadowing the variable
+        let finalToken  = await AsyncStorage.getItem('token');
+        
 
-      if (dp64) reqbody.document = dp64;
-      if (isEdit) reqbody.id = data.id;
-
-      const response = isEdit ? await Editdependent(reqbody) : await Adddependent(reqbody);
-
-      if (response?.data?.success) {
-        dispatch(fetchDependence());
-        showToastOrAlert(isEdit ? 'Dependant updated successfully!' : 'Dependant added successfully!');
-        onClose();
-      } else {
-        showToastOrAlert(response?.error?.data?.message || 'Something went wrong.');
-      }
+        const body = {
+            token: finalToken,
+            new_password: newPassword,
+            confirm_password: confirmPassword
+        };
+      
+      
+        
+        // Added .unwrap() so failures properly trigger the catch block
+        let response = await resetPasswordApi(body).unwrap();
+        console.log('Reset for firstlogin Password Response:', response);
+        
+        // Now this will execute reliably upon a successful API call
+        dispatch(setUser(true));
+        
+        // Success Handling
+        let toastMsg = "Password Reset Successfully";
+        if (response && response.message) {
+            toastMsg = response.message;
+        }
+        ToastAndroid.show(toastMsg, ToastAndroid.LONG);
+        
+        // Pop the screen back to Login or Home depending on navigation stack
+      
+        
     } catch (error) {
-      showToastOrAlert('Network error occurred.');
+        let errorMsg = "Failed to reset password";
+        if (error && error.data && error.data.message) {
+            errorMsg = error.data.message;
+        }
+        ToastAndroid.show(errorMsg, ToastAndroid.SHORT);
+    } finally {
+        setLoading(false);
     }
-  };
+};
 
   return (
-    <Modal transparent visible={visible} animationType="none">
-      <View style={styles.overlay}>
-        <Animated.View style={[styles.backdrop, { opacity: opacityValue }]}>
-          <TouchableOpacity style={styles.backdropTouch} onPress={onClose} />
-        </Animated.View>
-
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.keyboardView}>
-          <Animated.View style={[styles.modalContainer, { transform: [{ scale: scaleValue }], opacity: opacityValue }]}>
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primaryDark} />
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.container}>
+          
+          <Animated.View style={[styles.topSection, { height: topSectionHeightAnim, zIndex: 1, transform: [{ translateY: topShift }] }]}>
+            <LinearGradient colors={[COLORS.primaryDark, COLORS.primary, COLORS.primaryLight]} start={{ x: 0, y: 0.5 }} end={{ x: 1, y: 0.5 }} style={StyleSheet.absoluteFill} />
+            {/* <ExactShardPattern /> (Keep your pattern components here) */}
             
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.title}>{data?.id ? 'Edit Dependant' : 'New Dependant'}</Text>
-                <Text style={styles.subtitle}>Enter details for cashless coverage</Text>
-              </View>
-              <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-                <Icon name="close" size={20} color="#64748b" />
-              </TouchableOpacity>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButtonAbsolute}>
+              <Text style={styles.backText}>‹ Back</Text>
+            </TouchableOpacity>
+
+            <View style={styles.topLogoWrap}>
+              <Image source={require('../../assets/WhiteNewZoomConnectlogo.png')} style={styles.topLogo} resizeMode="contain" />
             </View>
+          </Animated.View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Full Name</Text>
-                <TextInput style={styles.input} placeholder="Enter name" value={name} onChangeText={setName} />
-              </View>
-
-              <View style={styles.row}>
-                <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-                  <Text style={styles.label}>Relation</Text>
-                  <TouchableOpacity style={styles.selector} onPress={() => setShowRelDropdown(!showRelDropdown)}>
-                    <Text style={relation ? styles.inputText : styles.placeholderText}>{relation?.value || 'Select'}</Text>
-                    <Icon name="chevron-down" size={20} color="#64748b" />
-                  </TouchableOpacity>
-                  {showRelDropdown && (
-                    <View style={styles.dropdownList}>
-                      {relationOptions.map(opt => (
-                        <TouchableOpacity key={opt.key} style={styles.dropdownItem} onPress={() => { setRelation(opt); setShowRelDropdown(false); }}>
-                          <Text style={styles.dropdownItemText}>{opt.value}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
+          <Animated.View style={[styles.floatingCard, { top: Animated.add(Animated.subtract(topSectionHeightAnim, OVERLAP), topShift), transform: [{ translateY: keyboardOffset }], zIndex: 10 }]}>
+            {/* <CardPattern /> (Keep your pattern components here) */}
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" bounces={false}>
+                <View style={styles.titleContainer}>
+                    <Text style={styles.welcomeTitle}>
+                      <Text style={{ color: COLORS.primaryDark }}>Reset </Text>
+                      <Text style={{ color: COLORS.primary }}>Password</Text>
+                    </Text>
+                    <View style={styles.titleUnderline} />
                 </View>
 
-                <View style={[styles.inputGroup, { flex: 1 }]}>
-                  <Text style={styles.label}>Gender</Text>
-                  <TouchableOpacity style={styles.selector} onPress={() => setShowGenDropdown(!showGenDropdown)}>
-                    <Text style={gender ? styles.inputText : styles.placeholderText}>{gender?.value || 'Select'}</Text>
-                    <Icon name="chevron-down" size={20} color="#64748b" />
-                  </TouchableOpacity>
-                  {showGenDropdown && (
-                    <View style={styles.dropdownList}>
-                      {genderOptions.map(opt => (
-                        <TouchableOpacity key={opt.key} style={styles.dropdownItem} onPress={() => { setGender(opt); setShowGenDropdown(false); }}>
-                          <Text style={styles.dropdownItemText}>{opt.value}</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  )}
-                </View>
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Date of Birth</Text>
-                <TouchableOpacity style={styles.selector} onPress={() => setShowDobPicker(true)}>
-                  <Text style={dob ? styles.inputText : styles.placeholderText}>{dob ? formatDate(dob) : 'DD/MM/YYYY'}</Text>
-                  <Icon name="calendar-outline" size={20} color="#6366f1" />
-                </TouchableOpacity>
-                {showDobPicker && <DateTimePicker value={dob || new Date()} mode="date" maximumDate={new Date()} onChange={handledateofbirthChange} />}
-              </View>
-
-              {relation?.value === 'SPOUSE' && (
+                {/* --- NEW PASSWORD --- */}
                 <View style={styles.inputGroup}>
-                  <Text style={styles.label}>Marriage Date</Text>
-                  <TouchableOpacity style={styles.selector} onPress={() => setShowDoePicker(true)}>
-                    <Text style={doe ? styles.inputText : styles.placeholderText}>{doe ? formatDate(doe) : 'DD/MM/YYYY'}</Text>
-                    <Icon name="ring" size={20} color="#ec4899" />
-                  </TouchableOpacity>
-                  {showDoePicker && <DateTimePicker value={doe || new Date()} mode="date" maximumDate={new Date()} onChange={handledateofeventChange} />}
+                  <Text style={styles.label}>New Password</Text>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      placeholder="Enter new password"
+                      placeholderTextColor="#BBB"
+                      onChangeText={setNewPassword}
+                      value={newPassword}
+                      secureTextEntry={!showNew}
+                      style={styles.input}
+                    />
+                    <TouchableOpacity onPress={() => setShowNew(!showNew)} style={styles.eyeIcon}>
+                      <Icon name={showNew ? "eye-off" : "eye"} size={hp(2.5)} color="#BBB" />
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              )}
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Upload Proof</Text>
-                <TouchableOpacity style={styles.uploadBox} onPress={openGallery}>
-                  {selectedFile ? (
-                    <View style={styles.fileSelected}>
-                      <Icon name="file-check" size={24} color="#22c55e" />
-                      <Text style={[styles.fileName, {flex:1, marginLeft: 10}]}>{selectedFile.name}</Text>
-                      <Icon name="pencil" size={16} color="#64748b" />
+                {/* --- CONFIRM PASSWORD --- */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Confirm Password</Text>
+                  <View style={styles.inputContainer}>
+                    <TextInput
+                      placeholder="Confirm new password"
+                      placeholderTextColor="#BBB"
+                      onChangeText={setConfirmPassword}
+                      value={confirmPassword}
+                      secureTextEntry={!showConfirm}
+                      style={styles.input}
+                    />
+                    <TouchableOpacity onPress={() => setShowConfirm(!showConfirm)} style={styles.eyeIcon}>
+                      <Icon name={showConfirm ? "eye-off" : "eye"} size={hp(2.5)} color="#BBB" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* --- SUBMIT BUTTON --- */}
+                <TouchableOpacity onPress={loading ? null : handleReset} style={styles.buttonShadow} activeOpacity={0.8} disabled={loading}>
+                  <LinearGradient colors={[COLORS.primary, COLORS.primaryLight]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.loginBtn}>
+                    <View style={styles.loginBtn1}>
+                      {loading ? (
+                        <ActivityIndicator color={COLORS.white} />
+                      ) : (
+                        <Text style={styles.loginBtnText}>Update Password</Text>
+                      )}
                     </View>
-                  ) : (
-                    <Text style={styles.uploadText}>Tap to upload Birth/Marriage Certificate</Text>
-                  )}
+                  </LinearGradient>
                 </TouchableOpacity>
-              </View>
 
-              <TouchableOpacity style={styles.checkboxContainer} onPress={() => setIsChecked(!isChecked)}>
-                <View style={[styles.checkbox, isChecked && styles.checkboxActive]}>
-                  {isChecked && <Icon name="check" size={14} color="#fff" />}
+                <View style={styles.footerContainer}>
+                    <Text style={styles.poweredByText}>Powered by Novel Healthtech</Text>
                 </View>
-                <Text style={styles.checkboxText}>Information provided is true to my knowledge.</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity style={styles.submitBtn} onPress={handleSave}>
-                <Text style={styles.submitBtnText}>{data?.id ? 'Update' : 'Submit'}</Text>
-              </TouchableOpacity>
+                <View style={{height: hp(2.5)}} />
             </ScrollView>
           </Animated.View>
-        </KeyboardAvoidingView>
-      </View>
-    </Modal>
+        </View>
+      </TouchableWithoutFeedback>
+    </SafeAreaView>
   );
 };
 
-const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.5)' },
-  backdropTouch: { flex: 1 },
-  keyboardView: { width: '100%', alignItems: 'center' },
-  modalContainer: { width: '90%', maxHeight: height * 0.85, backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden' },
-  header: { padding: 20, borderBottomWidth: 1, borderBottomColor: '#f1f5f9', flexDirection: 'row', justifyContent: 'space-between' },
-  title: { fontSize: 18, fontWeight: '700', color: '#1e293b' },
-  subtitle: { fontSize: 12, color: '#64748b' },
-  closeBtn: { padding: 5 },
-  scrollContent: { padding: 20 },
-  inputGroup: { marginBottom: 15 },
-  label: { fontSize: 12, fontWeight: '600', color: '#475569', marginBottom: 5 },
-  input: { backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 12 },
-  row: { flexDirection: 'row' },
-  selector: { flexDirection: 'row', justifyContent: 'space-between', backgroundColor: '#f8fafc', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, padding: 12 },
-  dropdownList: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#e2e8f0', borderRadius: 10, marginTop: 5 },
-  dropdownItem: { padding: 12, borderBottomWidth: 1, borderBottomColor: '#f1f5f9' },
-  dropdownItemText: { fontSize: 14 },
-  placeholderText: { color: '#94a3b8' },
-  inputText: { color: '#1e293b' },
-  uploadBox: { borderStyle: 'dashed', borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 10, padding: 15, alignItems: 'center', backgroundColor: '#f8fafc' },
-  uploadText: { fontSize: 12, color: '#6366f1' },
-  fileSelected: { flexDirection: 'row', alignItems: 'center' },
-  fileName: { fontSize: 12, color: '#1e293b' },
-  checkboxContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
-  checkbox: { width: 18, height: 18, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 4, marginRight: 10, justifyContent: 'center', alignItems: 'center' },
-  checkboxActive: { backgroundColor: '#6366f1', borderColor: '#6366f1' },
-  checkboxText: { fontSize: 11, color: '#64748b' },
-  submitBtn: { backgroundColor: '#ac25a8', padding: 15, borderRadius: 10, alignItems: 'center' },
-  submitBtnText: { color: '#fff', fontWeight: '700' },
-});
+export default ResetPassword;
 
-export default DependantModal;
+// ... Your existing styles remain the same ...
+
+const styles = StyleSheet.create({
+  safeArea: { flex: 1, backgroundColor: COLORS.primaryDark },
+  container: { flex: 1, backgroundColor: COLORS.primaryDark },
+
+  // --- Top Section ---
+  topSection: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0,
+    overflow: 'hidden',
+    justifyContent: 'flex-start', 
+    alignItems: 'center',
+    paddingTop: Platform.OS === 'android' ? hp(7.5) : hp(8.5), // approx 60/70
+  },
+  backButtonAbsolute: {
+    position: 'absolute',
+    top: Platform.OS === 'android' ? hp(5) : hp(5),
+    left: wp(5),
+    flexDirection: 'row',
+    alignItems: 'center',
+    zIndex: 10,
+    padding: wp(2),
+  },
+  backText: { 
+    color: COLORS.white, 
+    fontSize: hp(2), // approx 16
+    fontFamily: 'Montserrat-SemiBold' 
+  },
+  topLogoWrap: { 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: hp(5), 
+  },
+  topLogo: { 
+    width: wp(65), 
+    height: hp(10) 
+  }, 
+
+  // --- Floating Card ---
+  floatingCard: {
+    position: 'absolute',
+    left: wp(5), 
+    right: wp(5), 
+    backgroundColor: '#FFFFFF',
+    borderRadius: wp(6),
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: hp(1) },
+    shadowOpacity: 0.15,
+    shadowRadius: 16,
+    elevation: 10,
+    paddingBottom: hp(1.2),
+    overflow: 'hidden', 
+  },
+  scrollContent: {
+    paddingHorizontal: wp(6),
+    paddingTop: hp(3.8), // approx 30
+    paddingBottom: hp(2.5),
+  },
+
+  // --- Titles ---
+  titleContainer: {
+    alignItems: 'center',
+    marginBottom: hp(3.8), // approx 30
+  },
+  welcomeTitle: { 
+    fontSize: hp(2.7), // approx 28
+    fontFamily: 'Montserrat-Bold', 
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  titleUnderline: {
+      width: wp(10), 
+      height: hp(0.5), 
+      backgroundColor: COLORS.secondary, 
+      marginTop: hp(1),
+      borderRadius: wp(0.5),
+  },
+
+  // --- Input Styling ---
+  inputGroup: {
+    marginBottom: hp(2.5), // approx 20
+  },
+  label: {
+    fontSize: hp(1.5), // approx 14
+    fontFamily: 'Montserrat-SemiBold',
+    color: COLORS.textLight,
+    marginBottom: hp(1),
+    marginLeft: wp(1),
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.inputBorder,
+    borderRadius: wp(4), // approx 16
+    height: hp(6.5), // approx 52
+    paddingHorizontal: wp(4),
+    backgroundColor: COLORS.inputBg,
+  },
+  input: {
+    flex: 1,
+    fontSize: hp(1.5), // approx 15
+    fontFamily: 'Montserrat-Regular',
+    color: COLORS.text,
+    height: '100%',
+  },
+  eyeIcon: {
+    padding: wp(2),
+  },
+
+  // --- Buttons ---
+  buttonShadow: {
+      marginTop: hp(2.5),
+      marginBottom: hp(0.8),
+      shadowColor: COLORS.primary,
+      shadowOffset: { width: 0, height: hp(0.5) },
+      shadowOpacity: 0.3,
+      shadowRadius: 8,
+      elevation: 6,
+  },
+  loginBtn: {
+    width: '100%',
+    alignSelf: 'center',
+    borderRadius: wp(7.2), // approx 29
+    alignItems: 'center',
+  },
+   loginBtn1: {
+    width: '100%',
+    alignSelf: 'center',
+    paddingVertical: hp(1.7), // approx 16
+    borderRadius: wp(7.2), // approx 29
+    alignItems: 'center',
+  },
+  loginBtnText: { 
+    color: '#FFFFFF', 
+    fontSize: hp(1.8), // approx 18
+    fontFamily: 'Montserrat-Bold', 
+    letterSpacing: 1 
+  },
+
+  // --- Footer ---
+  footerContainer: {
+    marginTop: hp(3.8), // approx 30
+    alignItems: 'center',
+  },
+  poweredByText: {
+    fontSize: hp(1.2), // approx 12
+    fontFamily: 'Montserrat-Regular',
+    color: '#AAAAAA',
+  },
+});

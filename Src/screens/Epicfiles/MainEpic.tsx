@@ -286,3 +286,36 @@ export const fetchDependence=createAsyncThunk(
     }
   }
 );
+
+export const fetchClaims=createAsyncThunk(
+  'claims/fetchClaims',
+  // 1. FIXED: The first argument is the payload (unused here, so '_'), 
+  // the second argument is the thunkAPI object containing rejectWithValue.
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+
+      const endpoint = '/claim-details'; 
+
+      // 2. FIXED: GetApi expects (url, params, token). 
+      // We must pass an empty object {} as the second argument.
+      const response = await PostApi(endpoint, {}, token);
+        // console.log('surveys API Response:', JSON.stringify(response, null, 2));
+
+      // 3. REQUESTED: Console log the response
+
+
+      return response?.data;
+    } catch (error) {
+      console.log('Profile API Error:', error);
+      
+      return rejectWithValue(
+        error.response?.data?.message || error.message || 'Something went wrong'
+      );
+    }
+  }
+);

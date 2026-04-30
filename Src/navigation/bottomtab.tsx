@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import Help from '../screens/Help';
 import { hp } from '../utilites/Dimension';
 import TutorialStepWrapper from '../component/TutorialStepWrapper';
 import BottomTabTutorialWrapper from '../component/BottomTabTutorialWrapper';
+import { useSelector } from 'react-redux';
 
 const { width } = Dimensions.get('window');
 const Tab = createBottomTabNavigator();
@@ -99,10 +100,21 @@ const HelpIcon = ({ size = 20, color = '#8E9AAF', filled = false }) => (
 );
 
 // --- CUSTOM TAB BAR COMPONENT ---
+// --- CUSTOM TAB BAR COMPONENT ---
 const CustomTabBar = ({ state, descriptors, navigation }) => {
   const insets = useSafeAreaInsets();
+  const {data:PolicyData, isLoading:policyLoading} = useSelector((state:any)=>state.policy);
+  let enrollmentlistdata = PolicyData?.data?.enrolment;
+console.log("enrollmentlistdata", enrollmentlistdata);
+const enrollmentLogic = useMemo(() => {
+    if (!enrollmentlistdata) return { shouldShowImage: false };
+
+    // Check if new_enrolment_assigned exists and has at least one item
+    const shouldShowImage = enrollmentlistdata?.new_enrolment_assigned?.length > 0;
+
+    return { shouldShowImage };
+  }, [enrollmentlistdata]);
   
-  // 🔥 Identify if a tab is currently being highlighted
   const { currentStep } = useCopilot();
   const isTabStep = ['claimsTab', 'wellnessTab', 'helpTab'].includes(currentStep?.name);
 
@@ -146,6 +158,11 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           const isFocused = state.index === index;
           const isCenter = route.name === 'Policy'; 
 
+          // Determine if the current tab should be disabled
+          const isTabDisabled = 
+  (!PolicyData?.data?.policy_details || PolicyData?.data?.policy_details?.length === 0) && 
+  (route.name === 'Home' || route.name === 'Claims');
+
           const onPress = () => {
             const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
             if (!isFocused && !event.defaultPrevented) navigation.navigate(route.name);
@@ -164,16 +181,21 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           }
 
           const tabContent = (
-            <TouchableOpacity style={styles.tabInner} onPress={onPress} activeOpacity={0.7}>
-              <View style={[styles.iconWrapper, isFocused && styles.iconWrapperActive]}>
+            <TouchableOpacity 
+              style={[styles.tabInner, isTabDisabled && { opacity: 0.35 }]} 
+              onPress={onPress} 
+              activeOpacity={0.7}
+              disabled={isTabDisabled} // 🔥 THIS KILLS ALL CLICKING EFFECTS 🔥
+            >
+              <View style={[styles.iconWrapper, isFocused && !isTabDisabled && styles.iconWrapperActive]}>
                  {getIcon(route.name, isFocused)}
               </View>
-              <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
+              <Text style={[styles.tabLabel, isFocused && !isTabDisabled && styles.tabLabelActive]}>
                 {label}
               </Text>
             </TouchableOpacity>
           );
-      // 🔥 FIXED: Standard CopilotStep. Removed TutorialStepWrapper which was breaking the layout.
+
           if (route.name === 'Claims') {
             return (
               <CopilotStep 
@@ -188,13 +210,12 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             );
           }
 
-          // 🔥 FIXED: Standard CopilotStep.
           if (route.name === 'Wellness') {
             return (
               <CopilotStep 
                 name="wellnessTab" 
                 order={3} 
-                text={"Wellness Program\nExplore wellness programs and earn rewards for a healthy lifestyle."}
+                text={"Your Wellness Journey\nUnlock exclusive health programs to elevate your daily lifestyle."}
               >
                 <CopilotView style={styles.tabWrapper}>
                   {tabContent}
@@ -203,7 +224,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             );
           }
 
-          // 🔥 COPILOT STEP 4: Help 🔥
           if (route.name === 'Help') {
             return (
               <CopilotStep 
@@ -217,50 +237,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
               </CopilotStep>
             );
           }
-          // 🔥 COPILOT STEP 2: Claims 🔥
-      //  if (route.name === 'Claims') {
-      //       return (
-      //         <BottomTabTutorialWrapper
-      //           name="claimsTab"
-      //           order={2}
-      //           stepNumber={2}
-      //           title="Claims"
-      //           description="File your claim and track its status easily right from this tab." 
-      //         >
-      //           {tabContent}
-      //         </BottomTabTutorialWrapper>
-      //       );
-      //     }
-
-      //     // 🔥 COPILOT STEP 3: Wellness 🔥
-      //     if (route.name === 'Wellness') {
-      //       return (
-      //         <BottomTabTutorialWrapper
-      //           name="wellnessTab"
-      //           order={3}
-      //           stepNumber={3}
-      //           title="Wellness"
-      //           description="Access your wellness programs, track your health, and explore benefits." 
-      //         >
-      //           {tabContent}
-      //         </BottomTabTutorialWrapper>
-      //       );
-      //     }
-
-      //     // 🔥 COPILOT STEP 4: Help 🔥
-      //     if (route.name === 'Help') {
-      //       return (
-      //         <BottomTabTutorialWrapper
-      //           name="helpTab"
-      //           order={4}
-      //           stepNumber={4}
-      //           title="Help & Support"
-      //           description="Need assistance? Get help and support for your policies here." 
-      //         >
-      //           {tabContent}
-      //         </BottomTabTutorialWrapper>
-      //       );
-      //     }
 
           return (
             <View key={route.key} style={styles.tabWrapper}>

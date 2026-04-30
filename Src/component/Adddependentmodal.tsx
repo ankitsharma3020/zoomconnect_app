@@ -13,6 +13,7 @@ import {
   Platform,
   Alert,
   ToastAndroid,
+  ActivityIndicator,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import RNFS from 'react-native-fs';
@@ -42,8 +43,11 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
   // Dropdown States
   const [relation, setRelation] = useState(null);
   const [showRelDropdown, setShowRelDropdown] = useState(false);
-  const [Adddependent] = useAdddependentMutation();
-  const [Editdependent] = useEditdependentMutation();
+  
+  // Mutations with loading states extracted
+  const [Adddependent, { isLoading: isAdding }] = useAdddependentMutation();
+  const [Editdependent, { isLoading: isEditing }] = useEditdependentMutation();
+  const isSubmitting = isAdding || isEditing;
   
   const [gender, setGender] = useState(null);
   const [showGenDropdown, setShowGenDropdown] = useState(false);
@@ -592,9 +596,26 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
               </TouchableOpacity>
 
               {/* Submit */}
-              <TouchableOpacity style={styles.submitBtn} onPress={data?.id ? handleEdit : handleSubmit}>
-                <Text style={styles.submitBtnText}>{data?.id ? 'Update Details' : 'Submit Details'}</Text>
-                <Icon name={data?.id ? "content-save" : "arrow-right"} size={18} color="#fff" style={{marginLeft: 8}} />
+              <TouchableOpacity 
+                style={[styles.submitBtn, isSubmitting && styles.submitBtnDisabled]} 
+                onPress={data?.id ? handleEdit : handleSubmit}
+                disabled={isSubmitting} 
+              >
+                {isSubmitting ? (
+                  <ActivityIndicator color="#fff" size="small" />
+                ) : (
+                  <>
+                    <Text style={styles.submitBtnText}>
+                      {data?.id ? 'Update Details' : 'Submit Details'}
+                    </Text>
+                    <Icon 
+                      name={data?.id ? "content-save" : "arrow-right"} 
+                      size={18} 
+                      color="#fff" 
+                      style={{marginLeft: 8}} 
+                    />
+                  </>
+                )}
               </TouchableOpacity>
 
             </ScrollView>
@@ -870,6 +891,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#ffffff',
+  },
+  submitBtnDisabled: {
+    backgroundColor: '#d084cd', 
+    shadowOpacity: 0,
+    elevation: 0,
   },
 });
 

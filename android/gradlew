@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# Add Node.js to PATH for Gradle
+export PATH=$PATH:/opt/homebrew/bin:/usr/local/bin
+
 #
 # Copyright © 2015 the original authors.
 #

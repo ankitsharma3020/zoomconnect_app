@@ -176,9 +176,9 @@ const Help = () => {
                       </View>
 
                       <View style={styles.ticketFooter}>
-                          <Text style={styles.timeText}>
+                          {/* <Text style={styles.timeText}>
                             Last reply: {getTimeAgo(latestTicket.updated_at || latestTicket.created_at)}
-                          </Text>
+                          </Text> */}
                       </View>
                   </View>
                 </TouchableOpacity>
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
   backgroundLayer: { ...StyleSheet.absoluteFillObject, zIndex: 0, overflow: 'hidden', opacity: 0.5 },
   fixedHeaderWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, elevation: 10, backgroundColor: '#F8F9FD' },
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(3.75) },
-  headerContainer: { paddingHorizontal:  wp(4), marginBottom: hp(3), marginTop: hp(4) },
+  headerContainer: { paddingHorizontal:  wp(4), marginBottom: hp(3), marginTop: hp(3.5) },
   contentSection: { paddingHorizontal: wp(5), marginBottom: hp(3), marginTop: hp(1.25) },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(1.5), marginLeft: wp(1) },
   sectionTitle: { fontSize: hp(1.55), fontFamily: 'Montserrat-Bold', color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.6 },
@@ -312,17 +312,22 @@ const styles = StyleSheet.create({
   },
   chatButton: { 
     borderRadius: wp(4), 
+   
     shadowColor: '#2563eb', 
     shadowOffset: { width: 0, height: hp(0.5) }, 
     shadowOpacity: 0.3, 
     shadowRadius: 8, 
+     paddingVertical: hp(1), 
+   
     elevation: 6 
   },
   chatButtonGradient: { 
     flexDirection: 'row', 
+    height:  Platform.OS === 'ios' ? hp(7.5) : hp(7),
     alignItems: 'center', 
     justifyContent: 'center', 
-    paddingVertical: hp(1.8), 
+    
+    paddingVertical:Platform.OS === 'ios' ?   0:hp(1.8), 
     borderRadius: wp(4) 
   },
   chatButtonText: { 

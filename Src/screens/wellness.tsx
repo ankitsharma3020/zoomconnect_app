@@ -21,6 +21,7 @@ import Header from '../component/header';
 import ActivePolicyHeader from '../component/activpolicy';
 import { useSelector } from 'react-redux';
 import FastImage from '@d11/react-native-fast-image';
+import { DOMAIN_URI } from '../redux/apiSlice';
 
 const { width } = Dimensions.get('window');
 const BOTTOM_TAB_HEIGHT = hp(10); 
@@ -249,7 +250,7 @@ const handleCardPress = (item) => {
                 
                 let imageUrl = item.icon_url;
                 if (imageUrl && !imageUrl.startsWith('http')) {
-                  imageUrl = `${IMAGE_BASE_URL}${imageUrl}`;
+                  imageUrl = `${DOMAIN_URI}${imageUrl}`;
                 }
                 let vendorLogo = item.vendor?.logo_url;
 
@@ -348,7 +349,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FD' 
   },
   scrollContent: { paddingBottom: BOTTOM_TAB_HEIGHT + hp(6.25) }, 
-   sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(4),marginBottom: hp(4) },
+   sectionContainer: { paddingHorizontal: wp(4) ,marginTop: hp(3.5),marginBottom: hp(4) },
 
   // --- TABS ---
   tabWrapper: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(1.2) },
