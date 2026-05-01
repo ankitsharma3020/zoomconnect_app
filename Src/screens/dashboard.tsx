@@ -102,9 +102,10 @@ const getBanner=async()=>{
 
 try {
    let res=await getBannerlist({token:token});
+   console.log("Banner List API Response:", res);
    setBannerData(res?.data?.data?.banners || []);
    setPromobannerData(res?.data?.data?.promos || []);
-   console.log("Banner List Response:", res?.data?.data?.promos); 
+ 
 } catch (error) {
   console.error("Error fetching banner list:", error);
 }
