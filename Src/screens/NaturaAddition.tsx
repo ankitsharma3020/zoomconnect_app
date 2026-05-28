@@ -123,17 +123,18 @@ const NaturaAddition = ({ navigation,route }) => {
   useEffect(()=>{
     dispatch(fetchDependence({policyid:policyid}));
   }, []);
-const Edit=(data)=>{ 
-  setIsedit(true);
-  setEditableData(data);
-  setModalVisible(true);
- }
- const Add=()=>{ 
-  setIsedit(false);
+  
+  const Edit=(data)=>{ 
+    setIsedit(true);
+    setEditableData(data);
+    setModalVisible(true);
+  }
+  
+  const Add=()=>{ 
+    setIsedit(false);
+    setModalVisible(true);
+  }
  
-  setModalVisible(true);
- }
- // Debug log to check state before opening modal
   const {data} = useSelector(state => state.dependence);
   const listData = Array.isArray(data) ? data : [];
 
@@ -154,7 +155,8 @@ const Edit=(data)=>{
         <View style={{ width: wp(10) }} /> 
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      {/* Added flex: 1 to ScrollView so it stops exactly before the footer */}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
         {/* --- Banner --- */}
         <View style={styles.bannerContainer}>
@@ -205,8 +207,8 @@ const Edit=(data)=>{
 
       </ScrollView>
 
-      {/* Footer Button */}
-      <View style={[styles.footer, { bottom: Math.max(hp(10)) }]}>
+      {/* Static Solid Footer - Prevents cards from going underneath */}
+      <View style={styles.solidFooter}>
         <TouchableOpacity 
             style={styles.addButton} 
             activeOpacity={0.9} 
@@ -227,7 +229,7 @@ const Edit=(data)=>{
 
       <DependantModal
         visible={modalVisible}
-        data={isEdit ?editableData : null}
+        data={isEdit ? editableData : null}
         policyId={policyid}
         onClose={() => setModalVisible(false)} 
       />
@@ -314,7 +316,7 @@ const DependantCard = ({ data ,openModal}) => {
               
               {/* --- ACTION BUTTONS ROW --- */}
               <View style={styles.actionRow}>
-                <TouchableOpacity style={styles.docButton}  onPress={()=>Linking.openURL(`${DOMAIN_URI}/${data?.document}`)}>
+                <TouchableOpacity style={styles.docButton}  onPress={()=>Linking.openURL(`${DOMAIN_URI}${data?.document}`)}>
                     <Icon name="file-document-outline" size={hp(2)} color="#2563eb" style={{marginRight: wp(1)}}/>
                     <Text style={styles.docButtonText}>View Docs</Text>
                 </TouchableOpacity>
@@ -329,8 +331,7 @@ const DependantCard = ({ data ,openModal}) => {
                
               </View>
 
-              {/* --- REASON TEXT (Shows if there is a reason/remark) --- */}
-              {/* Replace `data.reason` with your API's actual key (e.g., `data.remark` or `data.rejection_reason`) */}
+              {/* --- REASON TEXT --- */}
               {(data.reason || data.status === 2 || data.status === "2") && (
                 <View style={styles.reasonContainer}>
                   <Text style={styles.reasonLabel}>Reason:</Text>
@@ -516,7 +517,7 @@ const styles = StyleSheet.create({
   cardList: {
     paddingHorizontal: wp(5),
     gap: hp(2.5),
-    paddingBottom: hp(15), 
+    paddingBottom: hp(2), // Reduced since the footer is no longer floating on top of it
   },
   cardContainer: {
     borderRadius: wp(6),
@@ -624,18 +625,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#334155',
   },
-  
-  // --- New Action Row Buttons ---
   actionRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: hp(1.5),
-    flexWrap: 'wrap', // Prevents overflow on smaller devices
+    flexWrap: 'wrap', 
   },
   docButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#eff6ff', // Light Blue
+    backgroundColor: '#eff6ff', 
     paddingVertical: hp(1),
     paddingHorizontal: wp(3),
     borderRadius: wp(2.5),
@@ -649,7 +648,7 @@ const styles = StyleSheet.create({
   editButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fdf4fd', // Light Brand Purple
+    backgroundColor: '#fdf4fd', 
     paddingVertical: hp(1),
     paddingHorizontal: wp(4),
     borderRadius: wp(2.5),
@@ -659,15 +658,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#934790',
   },
-
-  // --- New Reason Text ---
   reasonContainer: {
     marginTop: hp(1.5),
     padding: wp(2.5),
-    backgroundColor: '#fef2f2', // Light Red for emphasis
+    backgroundColor: '#fef2f2', 
     borderRadius: wp(2),
     borderLeftWidth: 3,
-    borderLeftColor: '#ef4444', // Red border
+    borderLeftColor: '#ef4444', 
   },
   reasonLabel: {
     fontSize: hp(1.3),
@@ -681,21 +678,23 @@ const styles = StyleSheet.create({
     lineHeight: hp(1.8),
   },
 
-  // --- Footer ---
-  footer: {
-    position: 'absolute',
-    bottom: hp(4),
-    alignSelf: 'center',
-    width: '90%',
+  // --- Solid Footer (Not Absolutely Positioned) ---
+  solidFooter: {
+    backgroundColor: '#f8fafc', // matches the background to hide anything scrolling up
+    paddingHorizontal: wp(5),
+    paddingTop: hp(1.5),
+    paddingBottom: hp(5), // Increased bottom padding to shift the button "a little above" the exact bottom
+    width: '100%',
+  },
+  addButton: {
+    width: '100%',
+    borderRadius: wp(4.5),
+    overflow: 'hidden',
     shadowColor: "#1e3a8a",
     shadowOffset: { width: 0, height: hp(1.2) },
     shadowOpacity: 0.3,
     shadowRadius: 20,
     elevation: 10,
-  },
-  addButton: {
-    borderRadius: wp(4.5),
-    overflow: 'hidden',
   },
   addButtonGradient: {
     flexDirection: 'row',

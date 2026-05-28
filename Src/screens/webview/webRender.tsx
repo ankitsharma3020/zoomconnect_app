@@ -107,7 +107,7 @@ const WebRendering = ({ route, navigation }) => {
             
             <WebView
                 ref={webViewRef}
-                source={{ uri: `${DOMAIN_URI}/${url}` }}
+                source={{ uri: `${DOMAIN_URI}${url}` }}
                 onShouldStartLoadWithRequest={onShouldStartLoadWithRequest}
                 onNavigationStateChange={(navState) => {
                     if (webViewRef.current) {

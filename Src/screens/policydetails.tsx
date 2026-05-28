@@ -461,6 +461,7 @@ const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, o
   const tpaData = data.tpa_data || {};
   const insurer = data.insurance_company || {};
   const tpa = data.tpa_company || {};
+  console.log('Policy Data in DetailsContent:',data.policy_manual);
 
   // Check if policy is GTL or GPA
   const policyName = (policy?.policy_name || policy?.name || data?.policy_name || '').toLowerCase();
@@ -512,16 +513,35 @@ const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, o
           {/* Beneficiaries List */}
           <View style={styles.sectionHeader}>
             <View>
-              {/* Only show Download eCard if NOT GTL or GPA */}
-            
-                  {!isGtlOrGpa && (
-            <TouchableOpacity style={styles.moreActions}
-              onPress={()=>navigation.navigate('networkHospitalScreen',{policyid:id})}
-            >
-              <Text style={styles.moreActionsText}>Search your cashless hospital here</Text>
-              <Ionicons name="arrow-forward" size={hp(2.2)} color={COLORS.primary} style={{marginLeft: wp(6.5)}}/>
-            </TouchableOpacity>
-          )}
+              {/* Action Buttons Row */}
+              {!isGtlOrGpa && (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: hp(2), marginTop: hp(1) }}>
+                  
+                  {/* Network Hospital Button */}
+                  <TouchableOpacity 
+                    style={[styles.moreActions, { flex: 1, marginRight: wp(2), paddingVertical: hp(1.2), borderRadius: wp(2.5), paddingHorizontal: wp(2), justifyContent: 'center' }]}
+                    onPress={()=>navigation.navigate('networkHospitalScreen',{policyid:id})}
+                    activeOpacity={0.8}
+                  >
+                    <Ionicons name="business-outline" size={hp(2)} color={COLORS.primary} style={{ marginRight: wp(1) }} />
+                    <Text style={[styles.moreActionsText, { fontSize: hp(1.4), textAlign: 'center' }]} numberOfLines={1}>Cashless Hospital</Text>
+                  </TouchableOpacity>
+
+                  {/* Download E-Card Button */}
+                  <TouchableOpacity  
+                    onPress={()=>DownloadEcard()} 
+                    activeOpacity={0.8}
+                    style={{ flex: 1, marginLeft: wp(2), borderWidth: 1, alignItems: 'center', borderRadius: wp(2.5), borderColor: COLORS.info, flexDirection: 'row', paddingVertical: hp(1.2), paddingHorizontal: wp(2), justifyContent: 'center', backgroundColor: 'rgba(59, 130, 246,0.05)' }}
+                  >
+                    <Ionicons name="download-outline" size={hp(2)} color={COLORS.info} style={{ marginRight: wp(1) }} />
+                    <Text style={{ fontSize: hp(1.4), fontFamily: 'Montserrat-Bold', color: COLORS.info, textAlign: 'center' }} numberOfLines={1}>
+                      Download E-Card
+                    </Text>
+                  </TouchableOpacity>
+
+                </View>
+              )}
+
               <Text style={styles.sectionTitle}>Beneficiaries</Text>
             </View>
             <View style={styles.underline} />
@@ -571,18 +591,24 @@ const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, o
             </View>
           )}
           
-          {/* Only show Network Hospital if NOT GTL or GPA */}
-           {!isGtlOrGpa && (
-                <TouchableOpacity  onPress={()=>DownloadEcard()} style={{ width:wp(80),height:hp(4),marginBottom:hp(1),borderWidth:1,alignItems:'center',borderRadius:hp(1.5),borderColor:COLORS.info,flexDirection:'row',paddingHorizontal:wp(2),justifyContent:'center',backgroundColor:'rgba(59, 130, 246,0.1)'}}>
-                  <Text style={styles.sectionTitle1}>Download your health card
-                    <Text  style={{color:COLORS.info,fontSize:hp(1.6)}} >  Download</Text>
-                  </Text>
-                </TouchableOpacity>
-              )}
       </View>
   
       {/* Actions */}
-
+     {data?.policy_manual ? ( 
+  <TouchableOpacity 
+    style={styles.connectCard} 
+    activeOpacity={0.9} 
+    onPress={() => Linking.openURL(data.policy_manual)}
+  >
+    <View style={{flex: 1}}>
+      <Text style={styles.connectText}>Policy Manual</Text>
+    </View>
+    <View style={styles.iconCircle}>
+      <Ionicons name="arrow-forward" size={hp(2)} color={COLORS.textDark} />
+    </View>
+  </TouchableOpacity>
+) : null}
+     
       {/* Only show Claim Insurance if NOT GTL or GPA */}
       {!isGtlOrGpa && (
         <TouchableOpacity style={styles.claimButton} activeOpacity={0.9} onPress={()=>navigation.navigate('fileclaim')}>
@@ -598,7 +624,7 @@ const DetailsContent = ({ data, navigation, selectedMember, setSelectedMember, o
         <TouchableOpacity style={styles.claimButton} activeOpacity={0.9}
         onPress={()=>navigation.navigate('NaturalAddition',{policyid:id})}
         >
-          <Text style={styles.claimButtonText}>Add Dependent {'\n'} (Spouse/Child/Parents)</Text>
+          <Text style={styles.claimButtonText}>Add Dependent {'\n'} (Natural addition)</Text>
           <View style={styles.iconCircle}>
             <Ionicons name="arrow-forward" size={hp(2)} color={COLORS.textDark} />
           </View>
@@ -842,7 +868,7 @@ const styles = StyleSheet.create({
     marginBottom: hp(1) 
   },
   sectionTitle: { 
-    marginTop:hp(2),
+    marginTop:hp(1),
     fontSize: hp(2), 
     fontFamily: 'Montserrat-Bold', 
     color: COLORS.primary 

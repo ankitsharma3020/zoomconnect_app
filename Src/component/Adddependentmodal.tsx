@@ -302,12 +302,13 @@ const DependantModal = ({ visible, onClose, policyId, data }) => {
 
       if (dp64) {
          reqbody.document = dp64;
+         reqbody.document_type = selectedFile?.type 
       }
 
       if (data && data.id) {
          reqbody.id = data.id; 
       }
-      
+      console.log('Request Body for Add/Edit Dependant:', reqbody);
       let res = await Adddependent(reqbody)
       console.log('Add/Edit Dependant Response:', res);
       

@@ -126,7 +126,7 @@ export default function Header({
 
       {/* --- RIGHT SECTION --- */}
       <FastImage
-        source={{ uri: `${DOMAIN_URI}/${data?.data?.user?.company?.comp_icon_url}` }}
+        source={{ uri: `${DOMAIN_URI}${data?.data?.user?.company?.comp_icon_url}` }}
         style={styles.companyLogo}
         resizeMode="contain"
       />

@@ -11,7 +11,8 @@ import {
   UIManager,
   Image,
   Animated,
-  Easing
+  Easing,
+  ActivityIndicator
 } from 'react-native';
 import LinearGradient from 'react-native-linear-gradient';
 import { wp, hp } from '../utilites/Dimension'; 
@@ -143,6 +144,29 @@ const WellnessShimmer = () => {
     </View>
   );
 };
+
+// --- COMPONENT: IMAGE WITH LOADER ---
+const ImageWithLoader = ({ source, style, resizeMode, themeColor }) => {
+  const [isLoading, setIsLoading] = useState(true);
+
+  return (
+    <View style={style}>
+      {isLoading && (
+        <View style={styles.imageLoaderContainer}>
+          <ActivityIndicator size="small" color={themeColor} />
+        </View>
+      )}
+      <FastImage
+        source={source}
+        style={[StyleSheet.absoluteFill, { opacity: isLoading ? 0 : 1 }]}
+        resizeMode={resizeMode}
+        onLoad={() => setIsLoading(false)}
+        onError={() => setIsLoading(false)} // Stop loading if error occurs
+      />
+    </View>
+  );
+};
+
 
 // --- MAIN SCREEN COMPONENT ---
 const WellnessScreen = ({ navigation }: any) => {
@@ -309,12 +333,13 @@ const handleCardPress = (item) => {
                               </Text>
                             </View>
 
-                            {/* Bottom-Right Image */}
+                            {/* Bottom-Right Image with Loader */}
                             {imageUrl ? (
-                              <FastImage
+                              <ImageWithLoader
                                 source={{ uri: imageUrl }}
                                 style={styles.bottomRightImage}
                                 resizeMode="cover"
+                                themeColor={theme.textColor}
                               />
                             ) : null}
 
@@ -461,6 +486,11 @@ const styles = StyleSheet.create({
     right: -wp(1.2),
     width: wp(28),
     height: hp(12),
+  },
+  imageLoaderContainer: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   tagContainer: {
     position: 'absolute', 

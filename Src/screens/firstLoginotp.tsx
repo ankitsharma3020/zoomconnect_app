@@ -22,7 +22,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { wp, hp } from '../utilites/Dimension'; 
-import { useLoginmobileMutation, useOtpVerifyMutation } from '../redux/service/user/user';
+import { useFirstLoginSendOtpMutation, useFirstLoginVerifyMobileMutation, useLoginmobileMutation, useOtpVerifyMutation } from '../redux/service/user/user';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { setUser } from '../redux/service/userSlice';
@@ -76,7 +76,7 @@ const CardPattern = () => (
 
 const FirstLoginOtp = ({ route }) => {
   const { data, mode, firstLogin } = route.params;
-  console.log("OTP Screen received params:", { data, mode, firstLogin });
+  // console.log("OTP Screen received params:", { data, mode, firstLogin });
   const firstLoginFlag = firstLogin || false;
   
   // Define dynamic OTP length
@@ -87,10 +87,10 @@ const FirstLoginOtp = ({ route }) => {
 
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const [Mobilelogin] = useLoginmobileMutation(); 
+  const [Mobilelogin] = useFirstLoginSendOtpMutation(); 
 
   const [otp, setOtp] = useState('');
-  const [OtpVerify] = useOtpVerifyMutation();
+  const [OtpVerify] = useFirstLoginVerifyMobileMutation();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('idle');
   const [timer, setTimer] = useState(30);
@@ -203,8 +203,11 @@ const FirstLoginOtp = ({ route }) => {
       if (mode === 'email') {
           loginType = 'email';
       }
-      const body = { login_type: loginType=='phone'?'mobile':loginType, login_value: data, otp: otp };
-      
+     const token = await AsyncStorage.getItem('token');
+     
+      const body = {  mobile: data, otp: otp,token:token };
+      console.log("Verifying OTP with body:", body, "and token:", token);
+   
       const response = await OtpVerify(body).unwrap();
 
      console.log("OTP Verify Response:", response);

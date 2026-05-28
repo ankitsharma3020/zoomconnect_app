@@ -119,6 +119,7 @@ const PolicyScreen = () => {
 
   const {data:PolicyData, isLoading:policyLoading} = useSelector((state:any)=>state.policy);
   let enrollmentlistdata = PolicyData?.data?.enrolment;
+  console.log("enrollmentlistdata:", enrollmentlistdata);
 
   const enrollmentLogic = useMemo(() => {
     if (!enrollmentlistdata) return { shouldShowImage: false };
@@ -189,6 +190,7 @@ const PolicyScreen = () => {
 
   const checkAppVersion = useCallback(async (apiVersion) => {
     try {
+      console.log("Checking app version... API Version:", apiVersion);
       const currentVersion = VersionCheck.getCurrentVersion();
       if (apiVersion && currentVersion !== apiVersion) setShowUpdateModal(true);
     } catch (e) {}
@@ -198,6 +200,7 @@ const PolicyScreen = () => {
     let token = await AsyncStorage.getItem('token');
     try {
       const response = await GetApi('/profile', {}, token);
+      console.log("Profile API Response:", response);
       if (response?.error?.data?.status?.code === 404) { dispatch(setUser(false)); } 
       else {
         const version = Platform.OS === 'android' ? response?.data?.version?.android : response?.data?.version?.ios;

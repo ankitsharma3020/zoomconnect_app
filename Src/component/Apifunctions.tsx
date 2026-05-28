@@ -6,8 +6,8 @@ import { baseUrl } from '../redux/apiSlice';
 // Added 'export' directly before const
 export const GetApi = async (url: string, params: Record<string, any> = {}, token?: string) => {
   try {
-    
-    const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+    console.log("GetApi called with URL:", url, "Params:", params,); // Debug log
+    const fullUrl = url.startsWith('http') ? url : `${baseUrl?baseUrl:"https://zoomconnect.co.in/api/v1"}${url}`;
     // console.log('Full API URL:', fullUrl,token); // Debug: Log the full URL being requested
     const config: any = {
       headers: {
@@ -31,7 +31,7 @@ export const GetApi = async (url: string, params: Record<string, any> = {}, toke
 export const PostApi = async (url: string, body: Record<string, any> = {}, token?: string) => {
   try {
     console.log("body:", body); 
-    const fullUrl = url.startsWith('http') ? url : `${baseUrl}${url}`;
+    const fullUrl = url.startsWith('http') ? url : `${baseUrl?baseUrl:"https://zoomconnect.co.in/api/v1"}${url}`;
     // console.log('Full API URL:', fullUrl, token); // Debug: Log the full URL being requested
     
     const config: any = {

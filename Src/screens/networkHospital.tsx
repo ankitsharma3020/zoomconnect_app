@@ -14,6 +14,7 @@ import {
   ScrollView,
   Platform,
   Linking,
+  ActivityIndicator,
 } from 'react-native';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
@@ -23,6 +24,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { fetchhospitalstate } from './Epicfiles/MainEpic';
 import { useGethospitallistMutation } from '../redux/service/user/user';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useNavigation } from '@react-navigation/native'; // Added Navigation
 
 const NetworkHospitalScreen = ({ route }) => { 
   
@@ -30,11 +32,14 @@ const NetworkHospitalScreen = ({ route }) => {
   const [pincode, setPincode] = useState('');
   const [hasSearched, setHasSearched] = useState(false);
   const [localSearch, setLocalSearch] = useState('');
+  const navigation = useNavigation(); // Initialize navigation
 
   // Redux & API
   const { data } = useSelector((state) => state.hospitalstate);
   const API_RESPONSE = data;
-  const [getList] = useGethospitallistMutation();
+  
+  // Extract isLoading from the mutation
+  const [getList, { isLoading }] = useGethospitallistMutation();
   const dispatch = useDispatch();
   const [hospitalList, setHospital] = useState();
   
@@ -68,6 +73,7 @@ const NetworkHospitalScreen = ({ route }) => {
         }
 
         const response = await getList(reqbody).unwrap();
+        console.log("Hospital API Request Body:", response);
         setHospital(response?.data?.hospitals || []);
         console.log("Hospital API Response:", response.data.hospitals);
     } catch (error) { 
@@ -76,105 +82,93 @@ const NetworkHospitalScreen = ({ route }) => {
     }
   };
 
-const openGoogleMap = (latitude, longitude) => {
-  // Check if coordinates exist
-  if (!latitude || !longitude) {
-    Alert.alert('Error', 'Location coordinates are missing.');
-    return;
-  }
+  // --- Updated Google Maps Logic ---
+const openGoogleMap = (hospital) => {
+    const queryParts = [
+      hospital?.hospital_name,
+      hospital?.address_line_1,
+      hospital?.city,
+      hospital?.state,
+      hospital?.pincode
+    ]
+      .filter(Boolean)
+      .join(', ');
 
-  // Ensure they are strings for concatenation
-  let lat = latitude + '';
-  let lng = longitude + '';
-  let url = '';
-
-  if (Platform.OS === 'android') {
-    // Android ke liye 'geo:' tag direct Google Maps app open karta hai
-    // '?q=' query pin drop karne ke kaam aati hai
-    url = 'geo:' + lat + ',' + lng + '?q=' + lat + ',' + lng;
-  } else {
-    // iOS ke liye 'maps:' tag default maps app open karta hai
-    url = 'maps://?q=' + lat + ',' + lng;
-  }
-
-  // Check if the phone can open the native map app
-  Linking.canOpenURL(url)
-    .then((supported) => {
-      if (supported) {
-        // Agar native app hai toh usme open karein
-        Linking.openURL(url);
-      } else {
-        // Fallback: Agar map app nahi hai, toh seedha browser mein universal Google Maps link open karein
-        let browserUrl = 'https://www.google.com/maps/search/?api=1&query=' + lat + ',' + lng;
-        Linking.openURL(browserUrl).catch((err) => {
-          Alert.alert('Error', 'Could not open Google Maps.');
-        });
-      }
-    })
-    .catch((err) => {
-      Alert.alert('Error', 'An error occurred while opening the map.');
-      console.error('An error occurred', err);
-    });
-};
-const openDialer = (phoneNumber) => {
-  try {
-    let formattedPhoneNumber = '';
-    
-    // Bina kisi default JS function ke sirf numbers filter karne ka pure loop
-    if (phoneNumber) {
-      for (let i = 0; i < phoneNumber.length; i++) {
-        let char = phoneNumber[i];
-        if (char >= '0' && char <= '9') {
-          formattedPhoneNumber += char;
-        }
-      }
-    }
-
-    // Agar number khali hai toh return kar dein
-    if (formattedPhoneNumber === '') {
-      Alert.alert('Error', 'Phone number is invalid or empty.');
+    if (!queryParts) {
+      Alert.alert('Error', 'Address information is missing.');
       return;
     }
-
-    let url = '';
     
-    if (Platform.OS === 'android') {
-      url = 'tel:' + formattedPhoneNumber;
-    } else {
-      // iOS ke liye telprompt use karna best hai taaki wo call karne se pehle confirm kare
-      url = 'telprompt:' + formattedPhoneNumber;
-    }
+    console.log('Google Maps Query:', queryParts);
 
-    // Direct dialer open karna
+    // Encode the address properly for a URL
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(queryParts)}`;
+
+    // Skip canOpenURL and call openURL directly to bypass Android 11+ visibility blocks.
+    // If the device truly has no browser or maps app, the catch block will handle it.
     Linking.openURL(url).catch((err) => {
-      Alert.alert('Error', 'An error occurred while trying to open the dialer: ' + err.message);
-      console.error('An error occurred', err);
+      Alert.alert('Error', 'Could not open Google Maps.');
+      console.error('An error occurred while opening the map:', err);
     });
+  };
 
-  } catch (error) {
-    Alert.alert('Error', 'An error occurred: ' + error.message);
-    console.error('An error occurred', error);
-  }
-};
+  const openDialer = (phoneNumber) => {
+    try {
+      let formattedPhoneNumber = '';
+      
+      // Bina kisi default JS function ke sirf numbers filter karne ka pure loop
+      if (phoneNumber) {
+        for (let i = 0; i < phoneNumber.length; i++) {
+          let char = phoneNumber[i];
+          if (char >= '0' && char <= '9') {
+            formattedPhoneNumber += char;
+          }
+        }
+      }
+
+      // Agar number khali hai toh return kar dein
+      if (formattedPhoneNumber === '') {
+        Alert.alert('Error', 'Phone number is invalid or empty.');
+        return;
+      }
+
+      let url = '';
+      
+      if (Platform.OS === 'android') {
+        url = 'tel:' + formattedPhoneNumber;
+      } else {
+        // iOS ke liye telprompt use karna best hai taaki wo call karne se pehle confirm kare
+        url = 'telprompt:' + formattedPhoneNumber;
+      }
+
+      // Direct dialer open karna
+      Linking.openURL(url).catch((err) => {
+        Alert.alert('Error', 'An error occurred while trying to open the dialer: ' + err.message);
+        console.error('An error occurred', err);
+      });
+
+    } catch (error) {
+      Alert.alert('Error', 'An error occurred: ' + error.message);
+      console.error('An error occurred', error);
+    }
+  };
+
   const statesList = useMemo(() => {
      if (!API_RESPONSE?.data?.search_options?.states) return [];
      return API_RESPONSE?.data.search_options.states.map(item => item.state).sort();
   }, [API_RESPONSE]);
-  console.log('hospitalList:', hospitalList);
- const filteredHospitals = hospitalList?.filter((hospital) => {
-  const searchLower = localSearch.toLowerCase();
   
-  // Safe string conversion: Agar value nahi hai toh empty string use karo
-  const hospitalName = (hospital?.hospital_name || "").toLowerCase();
-  const hospitalPincode = (hospital?.pincode || "").toString().toLowerCase();
+  const filteredHospitals = hospitalList?.filter((hospital) => {
+    const searchLower = localSearch.toLowerCase();
+    const hospitalName = (hospital?.hospital_name || "").toLowerCase();
+    const hospitalPincode = (hospital?.pincode || "").toString().toLowerCase();
 
-  return hospitalName.includes(searchLower) || hospitalPincode.includes(searchLower);
-});
+    return hospitalName.includes(searchLower) || hospitalPincode.includes(searchLower);
+  });
 
   // --- Input Handlers (Mutual Exclusivity) ---
   const handlePincodeChange = (text) => {
     setPincode(text);
-    // Clear State/City if user starts typing a pincode
     if (text.length > 0) {
         setSelectedState(null);
         setSelectedCity(null);
@@ -183,7 +177,6 @@ const openDialer = (phoneNumber) => {
   };
 
   const openStateModal = () => {
-    // Clear Pincode if user decides to search by State/City
     setPincode('');
     setStateModalVisible(true);
   };
@@ -204,14 +197,13 @@ const openDialer = (phoneNumber) => {
 
   // --- Button Enable Logic ---
   const isButtonEnabled = useMemo(() => {
-    // Enable if Pincode is 6 digits OR both State and City are selected
     return (pincode.length === 6) || (selectedState !== null && selectedCity !== null);
   }, [pincode, selectedState, selectedCity]);
 
   const handleSearch = () => {
     Keyboard.dismiss();
-    GethospitalList(selectedState, selectedCity, pincode);
     setHasSearched(true);
+    GethospitalList(selectedState, selectedCity, pincode);
   };
 
   const handleReset = () => {
@@ -277,18 +269,14 @@ const openDialer = (phoneNumber) => {
   };
 
   const renderHospitalCard = ({ item }) => (
-
     <View style={styles.resultCard3D}>
       <View style={styles.cardPatternCircle} />
 
       <View style={styles.cardContent}>
         <Text style={styles.hospitalName}>{item?.hospital_name }</Text>
-        <Text style={[styles.hospitalAddress,{marginBottom:hp(0)}]}>{item.
-address_line_1 }</Text>
-     <Text style={[styles.hospitalAddress]}>{item.
-address_line_2? `${item.address_line_2}, ` : ''}{item.city}, {item.state}</Text>
+        <Text style={[styles.hospitalAddress,{marginBottom:hp(0)}]}>{item.address_line_1}</Text>
+        <Text style={[styles.hospitalAddress]}>{item.address_line_2? `${item.address_line_2}, ` : ''}{item.city}, {item.state}</Text>
   
-        
         <View style={styles.pincodeContainer}>
           <MaterialCommunityIcons name="map-marker-radius" size={16} color="#AB47BC" />
           <Text style={styles.pincodeLabel}>Pincode: </Text>
@@ -300,9 +288,8 @@ address_line_2? `${item.address_line_2}, ` : ''}{item.city}, {item.state}</Text>
         <TouchableOpacity style={[styles.actionBtn, styles.callBtn]} onPress={()=>openDialer(item?.phone)} >
             <MaterialIcons name="call" size={20} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.actionBtn, styles.navBtn]} onPress={()=>openGoogleMap(item.
-latitude_column ,item?.longitude_column
-)}>
+        {/* Pass the entire item to openGoogleMap */}
+        <TouchableOpacity style={[styles.actionBtn, styles.navBtn]} onPress={()=>openGoogleMap(item)}>
             <MaterialIcons name="directions" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
@@ -317,6 +304,11 @@ latitude_column ,item?.longitude_column
         
         {/* Top Header Card */}
         <View style={styles.topHeader}>
+            {/* Added Back Button Here */}
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backArrowHeader}>
+                <MaterialIcons name="arrow-back" size={24} color="#1A3B5D" />
+            </TouchableOpacity>
+            
             <View style={styles.topHeaderIcon}>
                 <MaterialCommunityIcons name="hospital-building" size={24} color="#AB47BC" />
             </View>
@@ -335,14 +327,6 @@ latitude_column ,item?.longitude_column
             <View style={styles.patternCircle1} />
             <View style={styles.patternCircle2} />
 
-            <View style={styles.cardTitleRow}>
-                <View style={styles.iconCircle}>
-                    <MaterialIcons name="search" size={20} color="#AB47BC" />
-                </View>
-                <Text style={styles.cardTitleText}>Find cashless treatment facilities near you</Text>
-            </View>
-            <Text style={styles.cardSubtitle}>Flexible Search</Text>
-
             <View style={styles.pinkBanner}>
                 <View style={{flexDirection:'row', alignItems:'center', marginBottom: 4}}>
                     <MaterialCommunityIcons name="target" size={18} color="#AB47BC" />
@@ -354,7 +338,6 @@ latitude_column ,item?.longitude_column
             </View>
 
             <View style={styles.formContainer}>
-                
                 {/* 1. Pincode Input */}
                 <View style={styles.inputGroup}>
                     <Text style={styles.inputLabel}>Pincode</Text>
@@ -405,7 +388,6 @@ latitude_column ,item?.longitude_column
                 <Text style={styles.searchButtonText}>Search Hospitals</Text>
             </TouchableOpacity>
 
-            {/* Spacer for bottom scrolling */}
             <View style={{ height: 40 }} />
           </ScrollView>
         ) : (
@@ -425,14 +407,22 @@ latitude_column ,item?.longitude_column
                 </View>
             </View>
             
-            <FlatList
-              data={filteredHospitals}
-              keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
-              renderItem={renderHospitalCard}
-              contentContainerStyle={styles.listContent}
-              showsVerticalScrollIndicator={false}
-              ListEmptyComponent={<Text style={{textAlign: 'center', marginTop: 20, color: '#666'}}>No hospitals found.</Text>}
-            />
+            {/* Added Loading Indicator Condition Here */}
+            {isLoading ? (
+               <View style={styles.loaderContainer}>
+                 <ActivityIndicator size="large" color="#AB47BC" />
+                 <Text style={styles.loaderText}>Fetching hospitals...</Text>
+               </View>
+            ) : (
+              <FlatList
+                data={filteredHospitals}
+                keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
+                renderItem={renderHospitalCard}
+                contentContainerStyle={styles.listContent}
+                showsVerticalScrollIndicator={false}
+                ListEmptyComponent={<Text style={{textAlign: 'center', marginTop: 20, color: '#666'}}>No hospitals found.</Text>}
+              />
+            )}
           </View>
         )}
 
@@ -473,6 +463,10 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOpacity: 0.05,
     shadowOffset: { width:0, height:2 },
+  },
+  backArrowHeader: {
+    marginRight: 10,
+    padding: 4,
   },
   topHeaderIcon: {
     width: 40,
@@ -533,32 +527,6 @@ const styles = StyleSheet.create({
     borderRadius: 75,
     backgroundColor: '#F3E5F5',
     opacity: 0.4,
-  },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  iconCircle: {
-    width: 35,
-    height: 35,
-    borderRadius: 12,
-    backgroundColor: '#fdf2f9', 
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-  },
-  cardTitleText: {
-    fontSize: hp('1.7%'),
-    fontFamily: 'Montserrat-Bold',
-    color: '#333',
-    flex: 1,
-  },
-  cardSubtitle: {
-    fontSize: hp('1.4%'),
-    color: '#666',
-    marginLeft: 42,
-    marginBottom: 15,
   },
   pinkBanner: {
     backgroundColor: '#fdf2f9', 
@@ -693,7 +661,7 @@ const styles = StyleSheet.create({
   callBtn: { backgroundColor: '#6b9f6dff' },
   navBtn: { backgroundColor: '#6ab1ebff' },
 
-  // --- Modals & Results Header ---
+  // --- Modals, Results Header & Loader ---
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalContainer: { backgroundColor: '#FFF', borderTopLeftRadius: 20, borderTopRightRadius: 20, height: hp('70%'), paddingTop: 20 },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20, marginBottom: 10 },
@@ -725,8 +693,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     elevation: 4,
   },
-
   resultSearchInput: { flex: 1, marginLeft: 10, color: '#333' },
+  
+  // Loader styles
+  loaderContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loaderText: {
+    marginTop: 10,
+    color: '#666',
+    fontFamily: 'Montserrat-Medium',
+  }
 });
 
 export default NetworkHospitalScreen;

@@ -63,10 +63,13 @@ const ChatScreen = ({ route }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [isTyping, setIsTyping] = useState(false); 
   const [issueDescription, setIssueDescription] = useState('');
+  
+  // --- SUBMISSION STATE TO PREVENT MULTIPLE CLICKS ---
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // --- NEW MULTI-STEP STATE ---
   const [step, setStep] = useState(1);
-  const [selectedDepartment, setSelectedDepartment] = useState(null); // Now stores whole object
+  const [selectedDepartment, setSelectedDepartment] = useState(null); 
   const [selectedPolicy, setSelectedPolicy] = useState(null);
 
   useEffect(() => { 
@@ -218,6 +221,7 @@ const ChatScreen = ({ route }) => {
     setSelectedPolicy(null);
     setIssueDescription('');
     setSelectedImage(null);
+    setIsSubmitting(false); // Reset submitting state on close
     setModalVisible(false);
   };
 
@@ -227,8 +231,13 @@ const ChatScreen = ({ route }) => {
       Alert.alert("Error", "Description is required.");
       return;
     }
+    
+    // Prevent double execution
+    if (isSubmitting) return;
 
     try {
+      setIsSubmitting(true); // Disable the button instantly
+      
       const formData = new FormData();
       
       // 1. subject = "Issue with [department]"
@@ -246,7 +255,6 @@ const ChatScreen = ({ route }) => {
 
       // 4. policy_id = policy ID from API
       if (selectedPolicy) {
-        // Fallback to policy_id or id depending on your API structure
         formData.append('policy_id', selectedPolicy.id || selectedPolicy.policy_id || '');
       }
 
@@ -261,7 +269,7 @@ const ChatScreen = ({ route }) => {
 
       const response = await addSupportTicket(formData).unwrap();
       
-      handleCloseModal(); // Close and reset
+      handleCloseModal(); // Close and reset, including setIsSubmitting(false)
 
       const ticketMsg = {
         id: Date.now(),
@@ -292,6 +300,7 @@ const ChatScreen = ({ route }) => {
     } catch (error) {
       console.error("Support Ticket API Error:", error);
       Alert.alert("Submission Failed", "Something went wrong. Please try again.");
+      setIsSubmitting(false); // Re-enable the button if an error occurs
     }
   };
 
@@ -305,7 +314,6 @@ const ChatScreen = ({ route }) => {
           {!isUser && <Image source={{ uri: BOT_AVATAR }} style={styles.botAvatar} />}
           <View style={[styles.bubble, isUser ? styles.userBubble : styles.botBubble]}>
             
-            {/* --- NEW: Handle the custom Ticket data layout --- */}
             {item.type === 'ticket' ? (
               <View>
                 <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: hp(0.5) }}>
@@ -335,7 +343,6 @@ const ChatScreen = ({ route }) => {
                 )}
               </View>
             ) : (
-              /* --- Original Text Render --- */
               <Text style={[styles.messageText, isUser ? styles.userText : styles.botText]}>
                 {item.text}
               </Text>
@@ -357,7 +364,6 @@ const ChatScreen = ({ route }) => {
     );
   };
 
-  // --- MODAL RENDERS ---
   const renderStep1 = () => (
     <View style={styles.stepContainer}>
       <View style={styles.modalHeaderRow}>
@@ -376,7 +382,7 @@ const ChatScreen = ({ route }) => {
           <TouchableOpacity 
             key={dept.id} 
             style={styles.selectionCard} 
-            onPress={() => { setSelectedDepartment(dept); setStep(2); }} // Storing whole object
+            onPress={() => { setSelectedDepartment(dept); setStep(2); }} 
             activeOpacity={0.7}
           >
             <View style={[styles.cardIconBox, { backgroundColor: dept.color }]}>
@@ -471,7 +477,7 @@ const ChatScreen = ({ route }) => {
               onChangeText={setIssueDescription}
               multiline={true}
               textAlignVertical="top"
-              editable={!isLoading}
+              editable={!isLoading && !isSubmitting}
             />
 
             <Text style={styles.inputLabel}>Supporting Document <Text style={{color: '#94a3b8'}}>(Optional)</Text></Text>
@@ -488,11 +494,11 @@ const ChatScreen = ({ route }) => {
            </TouchableOpacity>
            
            <TouchableOpacity 
-              style={[styles.submitBtn, { opacity: issueDescription.trim() && !isLoading ? 1 : 0.5 }]} 
+              style={[styles.submitBtn, { opacity: (issueDescription.trim() && !isLoading && !isSubmitting) ? 1 : 0.5 }]} 
               onPress={handleModalSubmit}
-              disabled={!issueDescription.trim() || isLoading}
+              disabled={!issueDescription.trim() || isLoading || isSubmitting}
            >
-               {isLoading ? (
+               {isLoading || isSubmitting ? (
                  <ActivityIndicator color="#fff" size="small" />
                ) : (
                  <>

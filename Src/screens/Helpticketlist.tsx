@@ -81,7 +81,7 @@ const Helpticketlist = () => {
               <Text style={styles.ticketId}>{item.ticket_id}</Text>
             </View>
             
-            <View style={[styles.statusPill, 
+            {/* <View style={[styles.statusPill, 
               { backgroundColor: isClosed ? '#f1f5f9' : '#f0fdf4' }
             ]}>
               <View style={[styles.statusDot, 
@@ -92,7 +92,7 @@ const Helpticketlist = () => {
               ]}>
                 {item.status ? item.status.toUpperCase() : 'UNKNOWN'}
               </Text>
-            </View>
+            </View> */}
           </View>
 
           {/* Middle Row: Icon and Details */}

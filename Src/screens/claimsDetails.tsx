@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Linking, Dimensions, Platform,LayoutAnimation } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Modal, Linking, Dimensions, Platform, LayoutAnimation } from 'react-native';
 import { Avatar } from 'react-native-paper';
-// import { DOMAIN_URL } from '../../utility/strings';
 import Header from '../component/header';
 import LinearGradient from 'react-native-linear-gradient';
 import Svg, { Circle, Defs, Pattern, Rect } from 'react-native-svg';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 
-import { wp, hp } from '../utilites/Dimension'; // Adjusted import
+import { wp, hp } from '../utilites/Dimension'; 
 
 const { width } = Dimensions.get('window');
-
-// --- DUMMY DATA ---
-
 
 // --- SVG PATTERN ---
 const HeaderPattern = () => (
@@ -31,16 +27,12 @@ const HeaderPattern = () => (
 const ClaimDetailss = ({ navigation, route }) => {
   const [showModal, setShowModal] = useState(false);
   const [modalDocuments, setModalDocuments] = useState([]);
-    const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
   
-    // 1. Check if text is long enough to need expansion
-   
-
   const claim = route.params?.item || null;
-  console.log('Claim Details Route Params:', claim);
-const onDownload = route.params?.onDownload || null;
- const statusText = claim?.claim_status || '';
-    const isLongText = statusText.length > 15; 
+  const onDownload = route.params?.onDownload || null;
+  const statusText = claim?.claim_status || '';
+  const isLongText = statusText.length > 15; 
 
   const getStatusColor = (status) => {
     const s = status?.toLowerCase() || '';
@@ -55,11 +47,13 @@ const onDownload = route.params?.onDownload || null;
     if (s.includes('reject') || s.includes('denied')) return '#FEE2E2'; 
     return '#FEF3C7'; 
   };
-    const toggleExpand = () => {
-      if (!isLongText) return; // Disable click for short text
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-      setIsExpanded(!isExpanded);
-    };
+  
+  const toggleExpand = () => {
+    if (!isLongText) return; 
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsExpanded(!isExpanded);
+  };
+  
   useEffect(() => {
    if(onDownload){
       setModalDocuments(claim.claim_document);
@@ -70,7 +64,7 @@ const onDownload = route.params?.onDownload || null;
   return (
     <View style={styles.mainContainer}>
       
-      {/* LAYER 1: Background Gradient (Fixed) */}
+      {/* LAYER 1: Background Gradient (Absolute, stays fixed behind everything) */}
       <View style={styles.backgroundHeader}>
         <LinearGradient
           colors={['#F6DCC5', '#F6DCC5']} 
@@ -80,7 +74,9 @@ const onDownload = route.params?.onDownload || null;
         />
         <HeaderPattern />
       </View>
-           <View style={styles.stickyHeader}>
+
+      {/* LAYER 2: Header (Normal flow - this pushes the ScrollView down naturally) */}
+      <View style={styles.headerContainer}>
         <Header
           showBack={true} 
           onBack={() => navigation.goBack()} 
@@ -88,20 +84,20 @@ const onDownload = route.params?.onDownload || null;
         />
       </View>
 
-      {/* LAYER 2: Scrollable Content */}
+      {/* LAYER 3: Scrollable Content (Fills remaining space below header) */}
       <ScrollView 
         style={styles.scrollView} 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
       >
         
-        {/* --- 1. Policy Header Card (Floating) --- */}
+        {/* --- 1. Policy Header Card --- */}
         <View style={styles.policyHeaderCard}>
           <View style={styles.logoContainer}>
                <Avatar.Text size={wp(14)} label="INS" style={{backgroundColor: '#0f172a'}} /> 
           </View>
           <View style={styles.policyInfo}>
-            <Text style={styles.companyName}>{claim?.policy.insurance_company_name}</Text>
+            <Text style={styles.companyName}>{claim?.policy?.insurance_company_name}</Text>
             <View style={styles.policyBadge}>
                 <Text style={styles.policyNumber}>Policy: {claim?.policy_number}</Text>
             </View>
@@ -118,39 +114,31 @@ const onDownload = route.params?.onDownload || null;
              </View>
              
               <TouchableOpacity 
-                               activeOpacity={isLongText ? 0.5 : 1}
-                               onPress={toggleExpand}
-                               disabled={!isLongText} // Disable touch if text is short
-                               style={[
-                                 styles.statusBadge, 
-                                 { 
-                                     backgroundColor: getStatusBg(claim?.claim_status),
-                                     maxWidth: '100%', // Ensure it doesn't overflow parent flex
-                                 }
-                               ]}
-                             >
-                               <Text 
-                                 // If expanded, show all lines. If collapsed, show 1 line.
-                                 numberOfLines={isExpanded ? 0 : 1} 
-                                 ellipsizeMode="tail"
-                                 style={[styles.statusText, { color: getStatusColor(claim?.claim_status)  }]}
-                               >
-                                 {statusText}
-                               </Text>
-                               
-                               {/* Only show arrow if text is actually long */}
-                               {isLongText && (
-                                 <Icon 
-                                   name={isExpanded ? "chevron-up" : "chevron-down"} 
-                                   size={hp(1.8)} 
-                                   color={getStatusColor(claim?.claim_status)} 
-                                   style={{ marginLeft: 4, marginTop: 1 }}
-                                 />
-                               )}
-                             </TouchableOpacity>
-             {/* <View style={[styles.statusBadge, { backgroundColor: getStatusBg(claim?.claim_status) }]}>
-               <Text style={[styles.statusText, { color: getStatusColor(claim?.claim_status) }]}>{claim?.claim_status}</Text>
-             </View> */}
+                   activeOpacity={isLongText ? 0.5 : 1}
+                   onPress={toggleExpand}
+                   disabled={!isLongText} 
+                   style={[
+                     styles.statusBadge, 
+                     { backgroundColor: getStatusBg(claim?.claim_status), maxWidth: '100%' }
+                   ]}
+                 >
+                   <Text 
+                     numberOfLines={isExpanded ? 0 : 1} 
+                     ellipsizeMode="tail"
+                     style={[styles.statusText, { color: getStatusColor(claim?.claim_status)  }]}
+                   >
+                     {statusText}
+                   </Text>
+                   
+                   {isLongText && (
+                     <Icon 
+                       name={isExpanded ? "chevron-up" : "chevron-down"} 
+                       size={hp(1.8)} 
+                       color={getStatusColor(claim?.claim_status)} 
+                       style={{ marginLeft: 4, marginTop: 1 }}
+                     />
+                   )}
+                 </TouchableOpacity>
           </View>
 
           <View style={styles.dashedDivider} />
@@ -191,46 +179,26 @@ const onDownload = route.params?.onDownload || null;
           )}
 
           <View style={styles.actionContainer}>
-            {claim.settlment_letter && (
-              <TouchableOpacity 
-                style={styles.primaryButton}
-                onPress={() => Linking.openURL(claim.settlment_letter)}
-                activeOpacity={0.8}
-              >
-                <LinearGradient
-                  colors={['#0f172a', '#334155']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.gradientButton}
-                >
+            {claim?.settlment_letter && (
+              <TouchableOpacity style={styles.primaryButton} onPress={() => Linking.openURL(claim.settlment_letter)} activeOpacity={0.8}>
+                <LinearGradient colors={['#0f172a', '#334155']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.gradientButton}>
                    <View style={styles.gradientButton1}>
                       <Text style={styles.primaryButtonText}>Download Settlement Letter</Text>
                    </View>
-                  
                 </LinearGradient>
               </TouchableOpacity>
             )}
 
-            {claim.query_letter && (
-              <TouchableOpacity 
-                style={[styles.primaryButton, {marginTop: hp(1.2)}]}
-                onPress={() => Linking.openURL(claim.query_letter)}
-                activeOpacity={0.8}
-              >
-                 <LinearGradient
-                  colors={['#d97706', '#b45309']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.gradientButton}
-                >
+            {claim?.query_letter && (
+              <TouchableOpacity style={[styles.primaryButton, {marginTop: hp(1.2)}]} onPress={() => Linking.openURL(claim.query_letter)} activeOpacity={0.8}>
+                 <LinearGradient colors={['#d97706', '#b45309']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.gradientButton}>
                   <View style={styles.gradientButton1}>
                      <Text style={styles.primaryButtonText}>Download Query Letter</Text>
                   </View>
-                  
                 </LinearGradient>
               </TouchableOpacity>
             )}
-{/* Check if document exists (either non-empty array OR valid string) */}
+
           {(
             (Array.isArray(claim?.claim_document) && claim?.claim_document.length > 0) || 
             (typeof claim?.claim_document === 'string' && claim?.claim_document.trim() !== '')
@@ -239,14 +207,10 @@ const onDownload = route.params?.onDownload || null;
               style={styles.secondaryButton}
               onPress={() => {
                 if (Array.isArray(claim.claim_document)) {
-                  // It's an array -> Open the modal
                   setModalDocuments(claim.claim_document);
                   setShowModal(true);
                 } else {
-                  // It's a string -> Open the URL directly
-                  Linking.openURL(claim.claim_document).catch(err => 
-                    console.error("Failed to open document URL:", err)
-                  );
+                  Linking.openURL(claim.claim_document).catch(err => console.error("Failed to open document URL:", err));
                 }
               }}
             >
@@ -256,29 +220,16 @@ const onDownload = route.params?.onDownload || null;
             </TouchableOpacity>
           )}
           </View>
-
         </View>
       </ScrollView>
 
-      {/* LAYER 3: Fixed Header (Stays on Top) */}
- 
-
       {/* Modal */}
-      <Modal
-        visible={showModal}
-        transparent
-        animationType="slide"
-        onRequestClose={() => setShowModal(false)}
-      >
+      <Modal visible={showModal} transparent animationType="slide" onRequestClose={() => setShowModal(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Documents</Text>
             {modalDocuments.map((doc, idx) => (
-              <TouchableOpacity
-                key={idx}
-                onPress={() => Linking.openURL(`https://${doc.url}`)}
-                style={styles.docItem}
-              >
+              <TouchableOpacity key={idx} onPress={() => Linking.openURL(`https://${doc.url}`)} style={styles.docItem}>
                 <View style={styles.docIconPlaceholder} />
                 <Text style={styles.docName} numberOfLines={1}>{doc.filename}</Text>
                 <Text style={styles.downloadLink}>OPEN</Text>
@@ -316,24 +267,21 @@ const styles = StyleSheet.create({
     backgroundColor: '#F1F5F9',
   },
   
-  // 1. Background (Fixed)
+  // 1. Background (Fixed absolutely behind everything)
   backgroundHeader: {
-    height: hp(31), // approx 250
+    height: hp(31), 
     width: '100%',
     position: 'absolute',
     top: 0,
-    zIndex: 0, // Behind everything
+    zIndex: 0, 
   },
 
-  // 2. Sticky Header (Fixed Top)
-  stickyHeader: {
-    // position: 'absolute',
-    top: Platform.OS === 'ios' ? hp(3.6) : hp(0.6), // approx 5
-    // left: 0,
-    right: 0,
-    height: hp(10), // approx 60
-    // zIndex: 100, // Highest zIndex ensures it stays on top
-    // backgroundColor: 'transparent' // Uncomment if you want clear background
+  // 2. Normal Header Flow (Not Absolute anymore!)
+  headerContainer: {
+    paddingTop: Platform.OS === 'ios' ? hp(1) : hp(0), // Adjust safe area padding
+    zIndex: 10, // Ensures header text stays visible
+    backgroundColor: 'transparent',
+    // Note: No position: 'absolute' here. This ensures the ScrollView starts strictly BELOW this header.
   },
 
   // 3. Scroll Content
@@ -342,10 +290,9 @@ const styles = StyleSheet.create({
     zIndex: 1,
   },
   scrollContent: {
-    paddingHorizontal: wp(4), // approx 16
-    // Add ample padding top so content starts below the header bar
-    paddingTop: hp(3.7), // approx 30
-    paddingBottom: hp(5), // approx 40
+    paddingHorizontal: wp(4), 
+    paddingTop: hp(2), // Restored to a normal gap since it now safely starts below the header
+    paddingBottom: hp(5), 
   },
 
   // --- Cards & Content Styles ---
@@ -353,9 +300,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    borderRadius: wp(4), // approx 16
-    padding: wp(4), // approx 16
-    marginBottom: hp(2.5), // approx 20
+    borderRadius: wp(4), 
+    padding: wp(4), 
+    marginBottom: hp(2.5), 
     shadowColor: '#0f172a', 
     shadowOffset: { width: 0, height: hp(1) },
     shadowOpacity: 0.15,
@@ -363,81 +310,69 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   logoContainer: {
-    marginRight: wp(4), // approx 16
-    padding: wp(0.5), // approx 2
+    marginRight: wp(4), 
+    padding: wp(0.5), 
     backgroundColor: '#F8FAFC',
-    borderRadius: wp(7.5), // approx 30
+    borderRadius: wp(7.5), 
     borderWidth: 1,
     borderColor: '#E2E8F0'
   },
   policyInfo: { flex: 1 },
   companyName: { 
-    fontSize: hp(2), // approx 16
-    fontWeight: '800', // Note: fonts usually don't support fontWeight property with fontFamily
+    fontSize: hp(2), 
     fontFamily: 'Montserrat-Bold',
     color: '#1E293B', 
-    marginBottom: hp(0.75) // approx 6
+    marginBottom: hp(0.75) 
   },
   policyBadge: { 
     backgroundColor: '#F1F5F9', 
-    paddingHorizontal: wp(2), // approx 8
-    paddingVertical: hp(0.5), // approx 4
-    borderRadius: wp(1.5), // approx 6
+    paddingHorizontal: wp(2), 
+    paddingVertical: hp(0.5), 
+    borderRadius: wp(1.5), 
     alignSelf: 'flex-start' 
   },
   policyNumber: { 
-    fontSize: hp(1.5), // approx 12
+    fontSize: hp(1.5), 
     fontFamily: 'Montserrat-SemiBold',
     color: '#475569' 
   },
 
   detailsCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: wp(5), // approx 20
-    padding: wp(6), // approx 24
+    borderRadius: wp(5), 
+    padding: wp(6), 
     shadowColor: '#000',
     shadowOffset: { width: 0, height: hp(0.25) },
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
-    marginBottom: hp(2.5), // approx 20
+    marginBottom: hp(2.5), 
   },
   statusSection: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'flex-start', 
-    marginBottom: hp(2) // approx 16
+    marginBottom: hp(2) 
   },
    statusBadge: {
-    marginLeft: wp(8), // Pushes badge to the right
+    marginLeft: wp(8), 
     paddingVertical: hp(0.6), 
     paddingHorizontal: wp(2.5),
     borderRadius: wp(3),
     flexDirection: 'row',
-    alignItems: 'center', // Aligns arrow with text center
+    alignItems: 'center', 
     justifyContent: 'center',
-    alignSelf: 'flex-end', // Ensures badge stays to the right
-    flexShrink: 1, // Allows badge to shrink if needed
+    alignSelf: 'flex-end', 
+    flexShrink: 1, 
   },
   statusText: {
     fontSize: hp(1.3),
     fontFamily: 'Montserrat-Bold',
     textTransform: 'uppercase',
     letterSpacing: 0.3,
-    flexShrink: 1, // Critical: Allows text to wrap or shrink
-    textAlign: 'right', // Aligns text to look neat next to arrow
+    flexShrink: 1, 
+    textAlign: 'right', 
   },
-  // statusBadge: { 
-  //   paddingHorizontal: wp(3), // approx 12
-  //   paddingVertical: hp(0.75), // approx 6
-  //   borderRadius: wp(5) // approx 20
-  // },
-  // statusText: { 
-  //   fontSize: hp(1.5), // approx 12
-  //   fontFamily: 'Montserrat-Bold',
-  //   textTransform: 'uppercase', 
-  //   letterSpacing: 0.5 
-  // },
   dashedDivider: { 
     height: 1, 
     width: '100%', 
@@ -445,61 +380,60 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0', 
     borderStyle: 'dashed', 
     borderRadius: 1, 
-    marginBottom: hp(2.5) // approx 20
+    marginBottom: hp(2.5) 
   },
   divider: { 
     height: 1, 
     backgroundColor: '#F1F5F9', 
-    marginVertical: hp(2) // approx 16
+    marginVertical: hp(2) 
   },
   sectionTitle: { 
-    fontSize: hp(1.6), // approx 13
+    fontSize: hp(1.6), 
     fontFamily: 'Montserrat-Bold',
     color: '#64748B', 
-    marginBottom: hp(1.5), // approx 12
+    marginBottom: hp(1.5), 
     textTransform: 'uppercase', 
-    // letterSpacing: 1 
   },
   row: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
-    marginBottom: hp(1.5) // approx 12
+    marginBottom: hp(1.5) 
   },
   detailBox: { flex: 1 },
-  detailRow: { marginBottom: hp(1.5) }, // approx 12
+  detailRow: { marginBottom: hp(1.5) }, 
   label: { 
-    fontSize: hp(1.5), // approx 12
+    fontSize: hp(1.5), 
     color: '#94A3B8', 
-    marginBottom: hp(0.5), // approx 4
+    marginBottom: hp(0.5), 
     fontFamily: 'Montserrat-Regular' 
   },
   value: { 
-    fontSize: hp(1.75), // approx 14
+    fontSize: hp(1.75), 
     color: '#212936ff', 
     fontFamily: 'Montserrat-SemiBold' 
   },
   valueBold: { 
-    fontSize: hp(2), // approx 16
+    fontSize: hp(2), 
     color: '#0F172A', 
     fontFamily: 'Montserrat-Bold' 
   },
   amountBox: { 
     backgroundColor: '#F8FAFC', 
-    borderRadius: wp(3), // approx 12
-    padding: wp(4), // approx 16
+    borderRadius: wp(3), 
+    padding: wp(4), 
     alignItems: 'center', 
-    marginBottom: hp(2), // approx 16
+    marginBottom: hp(2), 
     borderWidth: 1, 
     borderColor: '#E2E8F0' 
   },
   amountLabel: { 
-    fontSize: hp(1.5), // approx 12
+    fontSize: hp(1.5), 
     color: '#64748B', 
-    marginBottom: hp(0.5), // approx 4
+    marginBottom: hp(0.5), 
     fontFamily: 'Montserrat-Regular'
   },
   amountValue: { 
-    fontSize: hp(3), // approx 24
+    fontSize: hp(3), 
     fontFamily: 'Montserrat-Bold',
     color: '#0F172A' 
   },
@@ -507,24 +441,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFBEB', 
     borderWidth: 1, 
     borderColor: '#FEF3C7', 
-    borderRadius: wp(2), // approx 8
-    padding: wp(3), // approx 12
-    marginTop: hp(1) // approx 8
+    borderRadius: wp(2), 
+    padding: wp(3), 
+    marginTop: hp(1) 
   },
   warningLabel: { 
-    fontSize: hp(1.5), // approx 12
+    fontSize: hp(1.5), 
     fontFamily: 'Montserrat-Bold',
     color: '#B45309', 
     marginBottom: hp(0.25) 
   },
   warningValue: { 
-    fontSize: hp(1.5), // approx 12
+    fontSize: hp(1.5), 
     color: '#92400E',
     fontFamily: 'Montserrat-Regular'
   },
-  actionContainer: { marginTop: hp(3) }, // approx 24
+  actionContainer: { marginTop: hp(3) }, 
   primaryButton: { 
-    borderRadius: wp(3), // approx 12
+    borderRadius: wp(3), 
     overflow: 'hidden', 
     shadowColor: '#000', 
     shadowOffset: { width: 0, height: hp(0.5) }, 
@@ -533,7 +467,6 @@ const styles = StyleSheet.create({
     elevation: 4 
   },
   gradientButton: { 
-   
     alignItems: 'center' 
   },
    gradientButton1: { 
@@ -542,22 +475,22 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: { 
     color: '#FFFFFF', 
-    fontSize: hp(1.75), // approx 14
+    fontSize: hp(1.75), 
     fontFamily: 'Montserrat-Bold',
     letterSpacing: 0.5 
   },
   secondaryButton: { 
-    marginTop: hp(1.5), // approx 12
+    marginTop: hp(1.5), 
     backgroundColor: '#FFFFFF', 
-    borderRadius: wp(3), // approx 12
-    paddingVertical: hp(1.75), // approx 14
+    borderRadius: wp(3), 
+    paddingVertical: hp(1.75), 
     alignItems: 'center', 
     borderWidth: 1, 
     borderColor: '#CBD5E1' 
   },
   secondaryButtonText: { 
     color: '#475569', 
-    fontSize: hp(1.75), // approx 14
+    fontSize: hp(1.75), 
     fontFamily: 'Montserrat-Bold' 
   },
   modalOverlay: { 
@@ -567,49 +500,49 @@ const styles = StyleSheet.create({
   },
   modalContent: { 
     backgroundColor: '#FFFFFF', 
-    borderTopLeftRadius: wp(6), // approx 24
-    borderTopRightRadius: wp(6), // approx 24
-    padding: wp(6), // approx 24
-    paddingBottom: hp(5), // approx 40
+    borderTopLeftRadius: wp(6), 
+    borderTopRightRadius: wp(6), 
+    padding: wp(6), 
+    paddingBottom: hp(5), 
     elevation: 10 
   },
   modalTitle: { 
-    fontSize: hp(2.5), // approx 20
+    fontSize: hp(2.5), 
     fontFamily: 'Montserrat-Bold',
     color: '#0F172A', 
-    marginBottom: hp(2.5) // approx 20
+    marginBottom: hp(2.5) 
   },
   docItem: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    paddingVertical: hp(2), // approx 16
+    paddingVertical: hp(2), 
     borderBottomWidth: 1, 
     borderBottomColor: '#F1F5F9' 
   },
   docIconPlaceholder: { 
-    width: wp(8), // approx 32
+    width: wp(8), 
     height: wp(8),
-    borderRadius: wp(2), // approx 8
+    borderRadius: wp(2), 
     backgroundColor: '#E2E8F0', 
-    marginRight: wp(3) // approx 12
+    marginRight: wp(3) 
   },
   docName: { 
-    fontSize: hp(1.75), // approx 14
+    fontSize: hp(1.75), 
     color: '#334155', 
     fontFamily: 'Montserrat-SemiBold',
     flex: 1, 
-    marginRight: wp(2.5) // approx 10
+    marginRight: wp(2.5) 
   },
   downloadLink: { 
-    fontSize: hp(1.5), // approx 12
+    fontSize: hp(1.5), 
     color: '#0F172A', 
     fontFamily: 'Montserrat-Bold' 
   },
   modalCloseBtn: { 
-    marginTop: hp(3), // approx 24
+    marginTop: hp(3), 
     backgroundColor: '#F1F5F9', 
-    paddingVertical: hp(1.75), // approx 14
-    borderRadius: wp(3), // approx 12
+    paddingVertical: hp(1.75), 
+    borderRadius: wp(3), 
     alignItems: 'center' 
   },
   modalCloseText: { 

@@ -22,7 +22,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { wp, hp } from '../utilites/Dimension'; 
-import { useLoginmobileMutation } from '../redux/service/user/user'; 
+import { useFirstLoginSendOtpMutation, useLoginmobileMutation } from '../redux/service/user/user'; 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Enable LayoutAnimation for Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -99,7 +100,7 @@ const RegisterScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false); 
 
   // --- API MUTATION ---
-  const [Mobilelogin] = useLoginmobileMutation(); 
+  const [Mobilelogin] = useFirstLoginSendOtpMutation(); 
 
   // --- ANIMATIONS ---
   const keyboardOffset = useRef(new Animated.Value(0)).current;
@@ -138,10 +139,12 @@ const RegisterScreen = ({ navigation, route }) => {
       ToastAndroid.show('Please enter a valid mobile number', ToastAndroid.SHORT);
       return;
     }
-    
+    console.log('firstLogin:' ,firstLogin)
     setLoading(true);
+    const token = await AsyncStorage.getItem('token');
     try {
-      const response = await Mobilelogin({ mobile: targetMobile }).unwrap();
+      const response = await Mobilelogin({ mobile: targetMobile,token:token }).unwrap();
+      console.log('response==>',response)
       
       if (response && (response.success || response.token || response.status === 'success')) {
         navigation.navigate('FirstloginOtp', { data: targetMobile, firstLogin: true, mode: 'phone' });

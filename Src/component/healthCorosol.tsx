@@ -126,14 +126,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#f3f4f6', 
   },
   bannerImage: {
-    width: '100%',
-    height: '100%',
-    position: 'absolute', // Required to let the overlay sit on top
+    
+    width: wp(99.5),
+    height: '90%',
+    // position: 'absolute', // Required to let the overlay sit on top
   },
   // --- New Overlay Styles ---
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.4)', // Dark tint so white text pops
+    // backgroundColor: 'rgba(0, 0, 0, 0.4)', // Dark tint so white text pops
     justifyContent: 'center',
     alignItems: 'flex-start',
     paddingHorizontal: wp(5),

@@ -158,12 +158,12 @@ const Help = () => {
                             <Icon name="pound" size={hp(1.75)} color="#64748b" />
                             <Text style={styles.ticketId}>{latestTicket.ticket_id}</Text>
                         </View>
-                        <View style={[styles.statusPill, { backgroundColor: latestTicket.status === 'open' ? '#f0fdf4' : '#f1f5f9' }]}>
+                        {/* <View style={[styles.statusPill, { backgroundColor: latestTicket.status === 'open' ? '#f0fdf4' : '#f1f5f9' }]}>
                             <View style={[styles.statusDot, { backgroundColor: latestTicket.status === 'open' ? '#22c55e' : '#64748b' }]} />
                             <Text style={[styles.statusText, { color: latestTicket.status === 'open' ? '#16a34a' : '#64748b' }]}>
                               {latestTicket.status ? latestTicket.status.toUpperCase() : 'UNKNOWN'}
                             </Text>
-                        </View>
+                        </View> */}
                       </View>
 
                       <View style={styles.ticketContent}>

@@ -67,11 +67,13 @@ const RepresentativeIcon = () => (
   </Svg>
 );
 
-// --- SHIMMER SKELETON ---
+// --- SHIMMER SKELETON WITH PROGRESSIVE MESSAGES ---
 const ClaimCardSkeleton = () => {
   const animatedValue = useRef(new Animated.Value(0)).current;
+  const [loadingMsg, setLoadingMsg] = useState('Loading...');
 
   useEffect(() => {
+    // Start shimmer animation
     Animated.loop(
       Animated.timing(animatedValue, {
         toValue: 1,
@@ -80,6 +82,21 @@ const ClaimCardSkeleton = () => {
         useNativeDriver: true,
       })
     ).start();
+
+    // Setup progressive loading messages
+    const fetchTimer = setTimeout(() => {
+      setLoadingMsg('Fetching claims...');
+    }, 3000); // changes after 3 seconds
+
+    const longTimer = setTimeout(() => {
+      setLoadingMsg('Taking longer than usual from TPA side...');
+    }, 8000); // changes after 8 seconds
+
+    // Cleanup timers on unmount
+    return () => {
+      clearTimeout(fetchTimer);
+      clearTimeout(longTimer);
+    };
   }, []);
 
   const translateX = animatedValue.interpolate({
@@ -90,7 +107,7 @@ const ClaimCardSkeleton = () => {
   return (
     <View style={styles.cardContainerSkeleton}>
       <View style={styles.skeletonInner}>
-        <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX }] }]}>
+        <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ translateX }], zIndex: 10 }]}>
           <LinearGradient
             colors={['transparent', 'rgba(255,255,255,0.6)', 'transparent']}
             start={{ x: 0, y: 0 }}
@@ -103,7 +120,12 @@ const ClaimCardSkeleton = () => {
           <View style={{ width: wp(30), height: hp(1.5), backgroundColor: '#E0E0E0', borderRadius: 4 }} />
           <View style={{ width: wp(20), height: hp(1.5), backgroundColor: '#E0E0E0', borderRadius: 4 }} />
         </View>
-        <View style={{ width: '100%', height: hp(8), backgroundColor: '#E0E0E0', borderRadius: 8, marginBottom: hp(2) }} />
+        <View style={{ width: '100%', height: hp(8), backgroundColor: '#E0E0E0', borderRadius: 8, marginBottom: hp(2), justifyContent: 'center', alignItems: 'center' }}>
+          {/* Dynamic Loading Message injected into the center of the skeleton card */}
+          <Text style={{ color: '#9E9E9E', fontSize: hp(1.5), fontFamily: 'Montserrat-SemiBold' }}>
+            {loadingMsg}
+          </Text>
+        </View>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
           <View style={{ width: wp(25), height: hp(4), backgroundColor: '#E0E0E0', borderRadius: 8 }} />
           <View style={{ width: wp(25), height: hp(4), backgroundColor: '#E0E0E0', borderRadius: 8 }} />

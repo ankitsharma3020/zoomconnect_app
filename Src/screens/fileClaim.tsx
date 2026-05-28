@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   TextInput, StatusBar, ImageBackground, Modal, FlatList, Animated, Dimensions, ToastAndroid, Platform, KeyboardAvoidingView,
@@ -20,6 +20,10 @@ import { fetchClaims } from './Epicfiles/MainEpic';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// ── ADD YOUR COUNTRYSTATECITY API KEY HERE ──
+const API_KEY = "7c912bcadb95395f855360d8057e85f50eebf972ae38f7dc93ce8754b8c1a40b";
+            const HEADERS = { "X-CSCAPI-KEY": API_KEY };
+
 const formatCurrency = (amount) => {
   if (!amount) return '₹ 0';
   return "₹ " + Number(amount).toLocaleString('en-IN');
@@ -31,7 +35,7 @@ const formatDate = (dateString) => {
   return date.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 
-// --- NEW ILLNESS CATEGORY & NATURE DATA ---
+// --- ILLNESS CATEGORY & NATURE DATA ---
 const illnessData = {
   "LAE":["LAE"],
   "ULAE":["ULAE"],
@@ -71,9 +75,11 @@ const FileClaimPage = ({ navigation }) => {
   const [hospitalName, setHospitalName] = useState('');
   const [pinCode, setPinCode] = useState('');
   
-  // Category and Nature dropdowns
+  // Dropdowns
   const [selectedCategory, setSelectedCategory] = useState('Select Category');
   const [natureOfIllness, setNatureOfIllness] = useState('Select Nature of Illness');
+  const [selectedState, setSelectedState] = useState('Select State');
+  const [selectedCity, setSelectedCity] = useState('Select City');
 
   const [claimNo, setClaimNo] = useState('');
   const [claimAmount, setClaimAmount] = useState('');
@@ -86,9 +92,11 @@ const FileClaimPage = ({ navigation }) => {
   const [showDoaPicker, setShowDoaPicker] = useState(false);
   const [showDodPicker, setShowDodPicker] = useState(false);
 
-  // Auto-filled States (No longer dropdowns)
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
+  // State & City API States
+  const [states, setStates] = useState([]);
+  const [cities, setCities] = useState([]);
+  const [loadingStates, setLoadingStates] = useState(false);
+  const [loadingCities, setLoadingCities] = useState(false);
   
   // Modal States
   const [isModalVisible, setModalVisible] = useState(false);
@@ -109,6 +117,45 @@ const FileClaimPage = ({ navigation }) => {
     ? ["Policy", "Claim Mode", "Patient", "Admission Details", "Upload Docs", "Contact Details"]
     : ["Policy", "Claim Mode", "Patient", "Admission Details", "Contact Details"];
 
+  // ── Load all states on mount ──
+  useEffect(() => {
+    loadStates();
+  }, []);
+  
+  const loadStates = async () => {
+    setLoadingStates(true);
+    try {
+      const response = await fetch("https://api.countrystatecity.in/v1/countries/IN/states", { headers: HEADERS });
+      if (!response.ok) throw new Error("States API failed");
+      const data = await response.json();
+      console.log("Fetched States:", data);
+      const sorted = data.sort((a, b) => a.name.localeCompare(b.name));
+      setStates(sorted);
+    } catch (error) {
+      console.error("States failed:", error);
+    } finally {
+      setLoadingStates(false);
+    }
+  };
+  
+  // ── Load cities when state changes ──
+  const loadCities = async (stateIso2) => {
+    setCities([]);
+    if (!stateIso2) return;
+    setLoadingCities(true);
+    try {
+      const response = await fetch(`https://api.countrystatecity.in/v1/countries/IN/states/${stateIso2}/cities`, { headers: HEADERS });
+      if (!response.ok) throw new Error("Cities API failed");
+      const data = await response.json();
+      const sorted = data.sort((a, b) => a.name.localeCompare(b.name));
+      setCities(sorted);
+    } catch (error) {
+      console.error("Cities failed:", error);
+    } finally {
+      setLoadingCities(false);
+    }
+  };
+
   const handleBack = () => step === 1 ? navigation?.goBack() : setStep(step - 1);
 
   const autoAdvance = (nextStepValue) => {
@@ -123,48 +170,67 @@ const FileClaimPage = ({ navigation }) => {
     }
   };
 
-  // --- PINCODE API AUTO-FILL LOGIC ---
+  // ── Pincode auto-fill ──
   const handlePincodeChange = async (val) => {
     setPinCode(val);
     if (val.length === 6) {
       try {
         const response = await fetch(`https://api.postalpincode.in/pincode/${val}`);
         const data = await response.json();
-        
+  
         if (data && data[0] && data[0].Status === 'Success') {
           const postOffice = data[0].PostOffice[0];
-          setSelectedState(postOffice.State);
-          setSelectedCity(postOffice.District);
+          
+          // find matching state iso2 from loaded states
+          const matchedState = states.find((s) => s.name.toLowerCase() === postOffice.State.toLowerCase());
+  
+          if (matchedState) {
+            setSelectedState(matchedState.name);
+            await loadCities(matchedState.iso2); // load cities for that state
+            
+            // wait for cities then set city
+            const cityRes = await fetch(`https://api.countrystatecity.in/v1/countries/IN/states/${matchedState.iso2}/cities`, { headers: HEADERS });
+            const cityData = await cityRes.json();
+            const matchedCity = cityData.find((c) => c.name.toLowerCase() === postOffice.District.toLowerCase());
+  
+            if (matchedCity) {
+              setSelectedCity(matchedCity.name);
+            } else {
+              setSelectedCity('Select City');
+            }
+          } else {
+            // Fallback if matching fails
+            setSelectedState(postOffice.State);
+            setSelectedCity(postOffice.District);
+          }
         } else {
           showToastOrAlert('Invalid Pincode entered');
-          setSelectedState('');
-          setSelectedCity('');
+          setSelectedState('Select State');
+          setSelectedCity('Select City');
+          setCities([]);
         }
       } catch (error) {
         console.error("Pincode Fetch Error:", error);
       }
     } else {
-      setSelectedState('');
-      setSelectedCity('');
+      setSelectedState('Select State');
+      setSelectedCity('Select City');
+      setCities([]);
     }
   };
 
   // --- VALIDATIONS ---
   const validateAndProceed = (targetStep) => {
-    // Validating Admission Details (Step 4)
     if (step === 4) {
       if (!doa) return showToastOrAlert('Date of Admission is mandatory');
       if (!dod) return showToastOrAlert('Date of Discharge is mandatory');
       if (!hospitalName.trim()) return showToastOrAlert('Hospital Name is mandatory');
       if (!pinCode || pinCode.length < 6) return showToastOrAlert('Valid 6-digit Hospital Pincode is mandatory');
-      if (!selectedState || !selectedCity) return showToastOrAlert('State and City are mandatory (Enter valid Pincode)');
-      
-      // Category and nature validations
+      if (selectedState === 'Select State' || selectedCity === 'Select City') return showToastOrAlert('State and City are mandatory');
       if (selectedCategory === 'Select Category') return showToastOrAlert('Category of Illness is mandatory');
       if (natureOfIllness === 'Select Nature of Illness') return showToastOrAlert('Nature of Illness is mandatory');
     }
 
-    // Validating Document Upload (Step 5 in Reimbursement)
     if (step === 5 && isCashless === false) {
       if (!dp64) return showToastOrAlert('Please upload the required medical documents');
     }
@@ -183,30 +249,20 @@ const FileClaimPage = ({ navigation }) => {
     handleSubmit();
   };
 
-  // --- DATE PICKER HANDLERS ---
   const onDoaChange = (event, selectedDate) => {
     setShowDoaPicker(false);
-    if (selectedDate) {
-      setDoa(selectedDate.toISOString().split('T')[0]);
-    }
+    if (selectedDate) setDoa(selectedDate.toISOString().split('T')[0]);
   };
 
   const onDodChange = (event, selectedDate) => {
     setShowDodPicker(false);
-    if (selectedDate) {
-      setDod(selectedDate.toISOString().split('T')[0]);
-    }
+    if (selectedDate) setDod(selectedDate.toISOString().split('T')[0]);
   };
 
   // --- DOCUMENT PICKER ---
   const openGallery = useCallback(async () => {
     try {
-      const result = await pick({
-        mode: 'import', 
-        allowMultiSelection: false,
-        type: [ types.pdf], 
-      });
-
+      const result = await pick({ mode: 'import', allowMultiSelection: false, type: [ types.pdf] });
       if (!result || result.length === 0) return;
 
       const fileObj = result[0];
@@ -217,54 +273,32 @@ const FileClaimPage = ({ navigation }) => {
            files: [{ uri: fileObj.uri, fileName: fileObj.name ?? `document_${Date.now()}` }],
            destination: 'cachesDirectory',
          });
-
-         if (copyResult?.status === 'success') {
-           filePath = copyResult.localUri;
-         } else {
-           throw new Error(copyResult?.copyError || 'Failed to copy file.');
-         }
+         if (copyResult?.status === 'success') filePath = copyResult.localUri;
+         else throw new Error(copyResult?.copyError || 'Failed to copy file.');
       } else if (Platform.OS === 'ios') {
          let cleanPath = '';
          let isFileUrl = true;
          let filePrefix = 'file://';
          for (let i = 0; i < 7; i++) {
-             if (filePath[i] !== filePrefix[i]) {
-                 isFileUrl = false;
-                 break;
-             }
+             if (filePath[i] !== filePrefix[i]) { isFileUrl = false; break; }
          }
          let startIndex = isFileUrl ? 7 : 0;
-         for (let i = startIndex; i < filePath.length; i++) {
-             cleanPath += filePath[i];
-         }
+         for (let i = startIndex; i < filePath.length; i++) cleanPath += filePath[i];
          filePath = decodeURIComponent(cleanPath);
       }
 
       const fileSize = fileObj.size ?? (await RNFS.stat(filePath)).size;
       const fileSizeInMB = fileSize / (1024 * 1024);
 
-      if (fileSizeInMB > 2) {
-        showToastOrAlert('Please select a file under 2MB limit.');
-        return;
-      }
+      if (fileSizeInMB > 2) return showToastOrAlert('Please select a file under 2MB limit.');
 
       const base64Data = await RNFS.readFile(filePath, 'base64');
-      
-      setSelectedFile({
-          name: fileObj.name,
-          size: fileSize,
-          type: fileObj.type,
-          uri: filePath
-      });
+      setSelectedFile({ name: fileObj.name, size: fileSize, type: fileObj.type, uri: filePath });
       setDP64(base64Data);
-
       showToastOrAlert(`File Selected: ${fileObj.name}`);
 
     } catch (error) {
-      if (error?.code === 'OPERATION_CANCELED' || error?.code === 'DOCUMENTS_PICKER_CANCELED') {
-        console.log('User cancelled document picking');
-      } else {
-        console.error('File pick error:', error);
+      if (error?.code !== 'OPERATION_CANCELED' && error?.code !== 'DOCUMENTS_PICKER_CANCELED') {
         showToastOrAlert('Failed to pick document');
       }
     }
@@ -273,7 +307,7 @@ const FileClaimPage = ({ navigation }) => {
   // --- MODAL / PICKER LOGIC ---
   const openPicker = (type) => {
     setActivePicker(type);
-    setSearchQuery(''); // Reset search whenever modal opens
+    setSearchQuery(''); 
     setModalVisible(true);
     Animated.timing(slideAnim, { toValue: 0, duration: 350, useNativeDriver: true }).start();
   };
@@ -285,16 +319,29 @@ const FileClaimPage = ({ navigation }) => {
   const onSelectItem = (item) => {
     if (activePicker === 'category') { 
         setSelectedCategory(item); 
-        setNatureOfIllness('Select Nature of Illness'); // Reset Nature when Category changes
+        setNatureOfIllness('Select Nature of Illness'); 
     }
-    else if (activePicker === 'nature') { setNatureOfIllness(item); }
+    else if (activePicker === 'nature') { 
+        setNatureOfIllness(item); 
+    }
+    else if (activePicker === 'state') {
+        setSelectedState(item);
+        setSelectedCity('Select City'); 
+        const matchedState = states.find(s => s.name === item);
+        if (matchedState) loadCities(matchedState.iso2);
+    }
+    else if (activePicker === 'city') {
+        setSelectedCity(item);
+    }
     closePicker();
   };
 
-  // Dynamically get modal data & filter it via search
+  // Dynamically map modal data
   let currentModalData = [];
   if (activePicker === 'category') currentModalData = categoriesList;
   else if (activePicker === 'nature') currentModalData = illnessData[selectedCategory] || [];
+  else if (activePicker === 'state') currentModalData = states.map(s => s.name);
+  else if (activePicker === 'city') currentModalData = cities.map(c => c.name);
 
   const filteredModalData = currentModalData.filter(item => 
     item.toLowerCase().includes(searchQuery.toLowerCase())
@@ -316,7 +363,6 @@ const FileClaimPage = ({ navigation }) => {
       hospital_state: selectedState,
       hospital_city: selectedCity,
       hospital_pin_code: pinCode,
-      // Pass the selected Nature as diagnosis
       diagnosis: natureOfIllness === 'Select Nature of Illness' ? '' : natureOfIllness,
       claim_amount: Number(claimAmount) || 0,
       relation_with_patient: dependent?.relation || "SELF",
@@ -328,17 +374,14 @@ const FileClaimPage = ({ navigation }) => {
       category: selectedCategory === 'Select Category' ? '' : selectedCategory,
     };
 
-    if (isCashless === false) {
-      payload.file_url = dp64 || "";
-    }
+    if (isCashless === false) payload.file_url = dp64 || "";
 
     setLoading(true);
     try {
       let res = await Submitclaim(payload);
-      console.log("Claim Submission Response:", res);
       if (res?.data?.success) {
         showToastOrAlert('Claim Submitted Successfully!');
-         dispatch(fetchClaims());
+        dispatch(fetchClaims());
         navigation.goBack();
       } else {
         showToastOrAlert(res.error?.data?.message || 'Failed to submit claim');
@@ -514,31 +557,35 @@ const FileClaimPage = ({ navigation }) => {
                         />
                       )}
                       
-                      {/* Claim No is now shown for both and is optional */}
                       <PatternedInput label="Claim No (Optional)" placeholder="Enter Claim No" value={claimNo} onChangeText={setClaimNo} />
-                      
                       <PatternedInput label="Hospital Name *" placeholder="Enter Hospital Name" value={hospitalName} onChangeText={setHospitalName} />
-                      
-                      {/* Pincode shifted above State & City */}
                       <PatternedInput label="Hospital Pin Code *" placeholder="000000" keyboardType="numeric" value={pinCode} onChangeText={handlePincodeChange} maxLength={6} />
 
-                      {/* State and City are now disabled PatternedInputs autofilled by Pincode */}
+                      {/* State and City Auto-filled but Enabled as Dropdowns */}
                       <View style={styles.row}>
                         <View style={styles.flexHalf}>
-                          <PatternedInput label="State *" placeholder="State" value={selectedState} editable={false} />
+                          <Text style={styles.boxLabel}>State *</Text>
+                          <TouchableOpacity style={styles.dropdownTrigger} onPress={() => openPicker('state')}>
+                              <Text style={[styles.dropdownText, selectedState === 'Select State' && styles.disabledText]} numberOfLines={1}>{selectedState}</Text>
+                          </TouchableOpacity>
                         </View>
                         <View style={styles.flexHalf}>
-                          <PatternedInput label="City *" placeholder="City" value={selectedCity} editable={false} />
+                          <Text style={styles.boxLabel}>City *</Text>
+                          <TouchableOpacity 
+                              style={[styles.dropdownTrigger, selectedState === 'Select State' && styles.disabledDropdown]} 
+                              disabled={selectedState === 'Select State'}
+                              onPress={() => openPicker('city')}
+                          >
+                              <Text style={[styles.dropdownText, selectedCity === 'Select City' && styles.disabledText]} numberOfLines={1}>{selectedCity}</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                       
-                      {/* Category of Illness */}
                       <Text style={styles.boxLabel}>Category of Illness *</Text>
                       <TouchableOpacity style={[styles.dropdownTrigger, {marginBottom: hp(1.5)}]} onPress={() => openPicker('category')}>
                           <Text style={styles.dropdownText} numberOfLines={1}>{selectedCategory}</Text>
                       </TouchableOpacity>
                       
-                      {/* Nature of Illness (Disabled until Category is selected) */}
                       <Text style={styles.boxLabel}>Nature of Illness *</Text>
                       <TouchableOpacity 
                           style={[styles.dropdownTrigger, {marginBottom: hp(2)}, selectedCategory === 'Select Category' && styles.disabledDropdown]} 
@@ -565,7 +612,6 @@ const FileClaimPage = ({ navigation }) => {
                   {step === 5 && (
                     isCashless === false ? (
                       <>
-                        <Text style={styles.typeDesc}>Upload hospital bills, discharge summary, and medical reports</Text>
                         <Text style={styles.miniLabel}>PDF Only (max 2MB per file) *Required</Text> 
                         
                         <TouchableOpacity style={styles.uploadBox} onPress={openGallery}>
@@ -574,7 +620,29 @@ const FileClaimPage = ({ navigation }) => {
                             {selectedFile ? selectedFile.name : 'Tap to Choose Files'}
                           </Text>
                         </TouchableOpacity>
-                        
+
+                        <View style={styles.instructionBox}>
+                          <Text style={styles.instructionHeader}>Please combine all the below Required documents into a single PDF file:</Text>
+                          {selectedPolicy?.tpa_id == 75 ? (
+                            <>
+                              <Text style={styles.instructionBullet}>• Claim Form – duly filled & signed</Text>
+                              <Text style={styles.instructionBullet}>• Consultation Papers</Text>
+                              <Text style={styles.instructionBullet}>• Discharge Summary</Text>
+                              <Text style={styles.instructionBullet}>• Investigation Reports</Text>
+                              <Text style={styles.instructionBullet}>• Hospital Bills</Text>
+                              <Text style={styles.instructionBullet}>• Pharmacy Bills</Text>
+                              <Text style={styles.instructionBullet}>• NEFT / Cancelled Cheque / Bank Passbook</Text>
+                            </>
+                          ) : (
+                            <>
+                              <Text style={styles.instructionBullet}>• Discharge summary</Text>
+                              <Text style={styles.instructionBullet}>• Original bills and receipts</Text>
+                              <Text style={styles.instructionBullet}>• Investigation reports (blood tests, X-rays, etc.)</Text>
+                              <Text style={styles.instructionBullet}>• Prescription and medication bills</Text>
+                            </>
+                          )}
+                        </View>
+
                         <View style={styles.buttonRow}>
                             <TouchableOpacity style={styles.btnPrevSmall} onPress={handleBack}>
                               <Text style={styles.btnPrevTextSmall}>Previous</Text>
@@ -651,7 +719,7 @@ const FileClaimPage = ({ navigation }) => {
 
               <FlatList
                 data={filteredModalData}
-                keyExtractor={(item) => item}
+                keyExtractor={(item, index) => item + index}
                 renderItem={({ item }) => (
                   <TouchableOpacity style={styles.modalItem} onPress={() => onSelectItem(item)}>
                     <Text style={styles.modalItemText}>{item}</Text>
@@ -671,7 +739,6 @@ const FileClaimPage = ({ navigation }) => {
   );
 };
 
-// UI Component for Input with Touchable Support (For Dates)
 const PatternedInput = ({ label, isTouchable, onPress, ...props }) => {
   if (isTouchable) {
     return (
@@ -714,7 +781,6 @@ const styles = StyleSheet.create({
   
   detailsCardWrapper: { backgroundColor: '#FFFFFF', borderRadius: wp(5), padding: wp(4), elevation: 6, shadowOpacity: 0.06, marginBottom: hp(1), minHeight: hp(70) },
   
-  // NEW PREMIUM POLICY CARD STYLES
   policyHeaderCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: wp(4), padding: wp(4), marginBottom: hp(1.5), borderWidth: 1, borderColor: '#E2E8F0', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 2 },
   selectedGlow: { borderColor: '#0f172a', backgroundColor: '#F8FAFD', borderWidth: 1.5 },
   policyLogoBox: { marginRight: wp(4), padding: wp(2), backgroundColor: '#eff2fa', borderRadius: wp(3), justifyContent: 'center', alignItems: 'center', shadowColor: '#0f172a', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
@@ -732,7 +798,6 @@ const styles = StyleSheet.create({
   valueBold: { fontSize: hp(1.6), color: '#0F172A', fontFamily: 'Montserrat-Bold', marginTop: 2 },
   miniLabel: { fontSize: hp(1.1), color: '#64748B', fontFamily: 'Montserrat-Medium', letterSpacing: 0.5 },
   
-  // CLAIM TYPE STYLES
   typeCard: { padding: wp(4), borderRadius: wp(4), borderWidth: 1, borderColor: '#E2E8F0', backgroundColor: '#FFFFFF', marginBottom: hp(1.5), shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 2, elevation: 1 },
   typeHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: hp(0.5) },
   choiceEmoji: { fontSize: 24, marginRight: 10 },
@@ -766,7 +831,10 @@ const styles = StyleSheet.create({
   uploadBox: { borderStyle: 'dashed', borderWidth: 2, borderColor: '#cbd5e1', borderRadius: 12, padding: 20, alignItems: 'center', marginVertical: 15, backgroundColor: '#F8FAFC' },
   btnTextBlack: { color: '#0f172a', fontFamily: 'Montserrat-Bold', fontSize: hp(1.6), marginTop: 10 },
 
-  // --- MODAL / SEARCH STYLES ---
+  instructionBox: { backgroundColor: '#FEF9C3', borderWidth: 1, borderColor: '#FDE047', borderRadius: 8, padding: 12, marginBottom: hp(2), marginTop: hp(1) },
+  instructionHeader: { fontFamily: 'Montserrat-Bold', fontSize: hp(1.4), color: '#854D0E', marginBottom: 8 },
+  instructionBullet: { fontFamily: 'Montserrat-Medium', fontSize: hp(1.3), color: '#A16207', marginBottom: 4, paddingLeft: 4 },
+
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
   modalContent: { backgroundColor: '#FFF', borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, maxHeight: hp(75) },
   modalHandle: { width: 40, height: 5, backgroundColor: '#D1D9E6', borderRadius: 3, alignSelf: 'center', marginBottom: 15 },
