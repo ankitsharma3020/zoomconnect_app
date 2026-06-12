@@ -46,6 +46,23 @@ export const userApi = apiSlice.injectEndpoints({
       }),
       //   invalidatesTags: [""],
     }),
+     isfirstLoginsendOtp: builder.mutation({
+      query: ({...body}) => ({
+        url: '/first-login/send-otp',
+        method: 'POST',
+        body: body,
+      }),
+      //   invalidatesTags: [""],
+    }),
+  
+      isfirstLoginotpVerify: builder.mutation({
+      query: ({...body}) => ({
+        url: 'first-login/verify-mobile',
+        method: 'POST',
+        body: body,
+      }),
+      //   invalidatesTags: [""],
+    }),
 
     getNewProfile: builder.query({
       // Replace 'ProfileType' and 'QueryParamsType' with your actual types
@@ -259,4 +276,6 @@ useLoginemailMutation,
   useSubmitclaimMutation,
   useDownloadEcardMutation,
   useCompanyStatusMutation,
+  useIsfirstLoginsendOtpMutation,
+  useIsfirstLoginotpVerifyMutation,
 } = userApi;

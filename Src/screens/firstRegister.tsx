@@ -22,7 +22,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { wp, hp } from '../utilites/Dimension'; 
-import { useFirstLoginSendOtpMutation, useLoginmobileMutation } from '../redux/service/user/user'; 
+import {useIsfirstLoginsendOtpMutation, useLoginmobileMutation } from '../redux/service/user/user'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Enable LayoutAnimation for Android
@@ -100,7 +100,7 @@ const RegisterScreen = ({ navigation, route }) => {
   const [loading, setLoading] = useState(false); 
 
   // --- API MUTATION ---
-  const [Mobilelogin] = useFirstLoginSendOtpMutation(); 
+  const [Mobilelogin] = useIsfirstLoginsendOtpMutation(); 
 
   // --- ANIMATIONS ---
   const keyboardOffset = useRef(new Animated.Value(0)).current;

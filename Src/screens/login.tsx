@@ -327,6 +327,7 @@ const handleSSOApiCall = async (email, providerName) => {
           }
         
           let isFirstLogin = userData?.first_login === 1;
+          console.log('Is first login:', isFirstLogin);
 
           if (isFirstLogin) {
              navigation.navigate('FirstRegister', { user: userData, firstLogin: true, mode: loginMode }); 

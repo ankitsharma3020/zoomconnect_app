@@ -93,8 +93,8 @@ android {
         applicationId "com.zoomconnect"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 65
-        versionName "1.7.3"
+        versionCode 66
+        versionName "1.7.4"
      
 
          

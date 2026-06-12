@@ -22,7 +22,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import Icon from 'react-native-vector-icons/MaterialCommunityIcons';
 import { useNavigation } from '@react-navigation/native';
 import { wp, hp } from '../utilites/Dimension'; 
-import { useFirstLoginSendOtpMutation, useFirstLoginVerifyMobileMutation, useLoginmobileMutation, useOtpVerifyMutation } from '../redux/service/user/user';
+import {   useIsfirstLoginotpVerifyMutation, useIsfirstLoginsendOtpMutation, useLoginmobileMutation, useOtpVerifyMutation } from '../redux/service/user/user';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useDispatch } from 'react-redux';
 import { setUser } from '../redux/service/userSlice';
@@ -87,10 +87,10 @@ const FirstLoginOtp = ({ route }) => {
 
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const [Mobilelogin] = useFirstLoginSendOtpMutation(); 
+  const [Mobilelogin] = useIsfirstLoginsendOtpMutation(); 
 
   const [otp, setOtp] = useState('');
-  const [OtpVerify] = useFirstLoginVerifyMobileMutation();
+  const [OtpVerify] = useIsfirstLoginotpVerifyMutation();
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState('idle');
   const [timer, setTimer] = useState(30);
